@@ -3,6 +3,9 @@
     python3 scripts/vehicle_icons/build.py            # writes packages/tamiltaxi_ui/assets/vehicles/<kind>.webp
     python3 scripts/vehicle_icons/build.py --preview  # also build/vehicle_icons/preview.png (light + dark rows)
 
+Pink Taxi (rides for women riders with women drivers) uses `<kind>_pink.webp`: the same vehicles with the coral
+accent turned pink (only coral-orange hues move, so the yellow plates and white bodies stay).
+
 The sheets are transparent 1536 x 1024 PNGs, two rows of vehicles, made with the ChatGPT image model from the brief
 in prompt.md (soft 3D, front three-quarter view, white with one coral accent, no logos or text). The folder is kept
 local (git-ignored) like the earlier renders. ChatGPT draws the fronts pointing left; every app in the market shows
@@ -27,6 +30,10 @@ SHEETS = {
     'Tamil Taxi goods vehicles (ChatGPT).png': ['goods_bike', 'three_wheeler', 'mini_truck', 'pickup', 'truck'],
 }
 ROWS = 2
+
+# Pink Taxi copies of the vehicles a rider can book.
+PINK = ['bike', 'scooty', 'auto', 'auto_priority', 'mini', 'sedan', 'suv']
+PINK_HUE = 241  # #E91E63 on PIL's 0-255 hue scale (340°)
 
 CW, CH, BASE = 336, 240, 220  # canvas and the line the wheels stand on, px
 # Largest box (w, h) each vehicle may fill on the canvas, so the list reads at a real-world-ish scale.
@@ -89,6 +96,20 @@ def with_bolt(auto):
     return im
 
 
+def pink(im):
+    """The coral accent (hue up to ~34°, saturated) turned pink; everything else unchanged."""
+    r, g, b, a = im.split()
+    hsv = Image.merge('RGB', (r, g, b)).convert('HSV')
+    h, s, v = hsv.split()
+    hp, sp, vp = h.load(), s.load(), v.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            if hp[x, y] <= 24 and sp[x, y] > 90 and vp[x, y] > 60:
+                hp[x, y] = PINK_HUE
+    out = Image.merge('HSV', (h, s, v)).convert('RGB')
+    return Image.merge('RGBA', (*out.split(), a))
+
+
 def save(name, im):
     path = os.path.join(OUT, f'{name}.webp')
     im.save(path, 'WEBP', quality=90, method=6)
@@ -106,6 +127,8 @@ def main():
         for name, v in zip(names, found):
             built[name] = place(v, *FIT[name])
     built['auto_priority'] = with_bolt(built['auto'])
+    for name in PINK:
+        built[f'{name}_pink'] = pink(built[name])
     for name, im in built.items():
         save(name, im)
     if '--preview' in sys.argv:

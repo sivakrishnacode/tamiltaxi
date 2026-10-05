@@ -18,7 +18,14 @@ void main() {
       expect(find.text(name, skipOffstage: false), findsWidgets, reason: name);
       expect(find.text(formatInr(fare), skipOffstage: false), findsWidgets, reason: '$name $fare');
     }
-    expect(find.byType(VehicleArt, skipOffstage: false), findsNWidgets(7));
+    // One picture per tier row (the Pink Taxi strip has its own pink car).
+    expect(
+      find.descendant(
+        of: find.byType(VehicleOptionCard, skipOffstage: false),
+        matching: find.byType(VehicleArt, skipOffstage: false),
+      ),
+      findsNWidgets(7),
+    );
     expect(Seed.rideVehicles.map((v) => v.kind), [
       VehicleKind.bike,
       VehicleKind.scooty,

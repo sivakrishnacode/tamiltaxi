@@ -9,8 +9,8 @@ import '../theme/tt_tokens.dart';
 enum VehicleBadgeTone { coral, navy }
 
 /// One row of a ride / goods vehicle list, like Rapido's and Uber's: the vehicle's miniature ([art]) or a symbol tile,
-/// name + capacity + badge, "3 min away · Drop 9:24 PM" and the fare. 64 dp tall with no box of its own: only the
-/// [selected] row gets a white fill and a coral outline. [onInfo] adds an ⓘ before the selected row's fare (P-10:
+/// name + capacity + badge, "3 min away · Drop 9:24 PM" and the fare. 60 dp tall with no box of its own: only the
+/// [selected] row gets a white fill and an outline ([accent], coral). [onInfo] adds an ⓘ before the selected row's fare (P-10:
 /// fare details). Disabled shows [disabledReason] in grey. [fastest] adds a "Fastest" chip (earliest drop of the list).
 class VehicleOptionCard extends StatelessWidget {
   const VehicleOptionCard({
@@ -28,6 +28,7 @@ class VehicleOptionCard extends StatelessWidget {
     this.fastest = false,
     this.art,
     this.onInfo,
+    this.accent = TtColors.coral500,
   });
 
   final IconData icon;
@@ -55,6 +56,9 @@ class VehicleOptionCard extends StatelessWidget {
 
   /// "Fare details" ⓘ before the fare, shown on the selected row only.
   final VoidCallback? onInfo;
+
+  /// The selected row's outline (Pink Taxi: pink).
+  final Color accent;
 
   bool get _disabled => disabledReason != null;
 
@@ -84,13 +88,13 @@ class VehicleOptionCard extends StatelessWidget {
           color: selected ? TtColors.surface : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: TtRadii.cardRadius,
-            side: BorderSide(color: selected ? TtColors.coral500 : Colors.transparent, width: 1.5),
+            side: BorderSide(color: selected ? accent : Colors.transparent, width: 1.5),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: _disabled ? null : onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
                   ExcludeSemantics(

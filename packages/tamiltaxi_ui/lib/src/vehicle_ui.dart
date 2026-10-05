@@ -48,6 +48,18 @@ extension VehicleKindUi on VehicleKind {
         VehicleKind.truck => 'packages/tamiltaxi_ui/assets/vehicles/truck.webp',
       };
 
+  /// The Pink Taxi copy (pink accent instead of coral) of a vehicle a rider can book; null for goods vehicles.
+  String? get pinkArtAsset => switch (this) {
+        VehicleKind.bike => 'packages/tamiltaxi_ui/assets/vehicles/bike_pink.webp',
+        VehicleKind.scooty => 'packages/tamiltaxi_ui/assets/vehicles/scooty_pink.webp',
+        VehicleKind.auto => 'packages/tamiltaxi_ui/assets/vehicles/auto_pink.webp',
+        VehicleKind.autoPriority => 'packages/tamiltaxi_ui/assets/vehicles/auto_priority_pink.webp',
+        VehicleKind.cab => 'packages/tamiltaxi_ui/assets/vehicles/mini_pink.webp',
+        VehicleKind.sedan => 'packages/tamiltaxi_ui/assets/vehicles/sedan_pink.webp',
+        VehicleKind.suv => 'packages/tamiltaxi_ui/assets/vehicles/suv_pink.webp',
+        _ => null,
+      };
+
   /// Marker glyph class for the map.
   MapVehicleType get mapType => switch (this) {
         VehicleKind.bike || VehicleKind.scooty || VehicleKind.goodsBike => MapVehicleType.bike,
@@ -65,7 +77,7 @@ enum MapVehicleType { bike, auto, car, truck }
 /// ground shadow. Every miniature shares one canvas, so a bike reads smaller than a car at the same size. Decorative
 /// (screen readers get the name next to it).
 class VehicleArt extends StatelessWidget {
-  const VehicleArt(this.kind, {super.key, this.width = 56, this.height = 40, this.color});
+  const VehicleArt(this.kind, {super.key, this.width = 56, this.height = 40, this.color, this.pink = false});
 
   final VehicleKind kind;
   final double width;
@@ -74,9 +86,12 @@ class VehicleArt extends StatelessWidget {
   /// Symbol colour for vehicles without a render (coral by default).
   final Color? color;
 
+  /// Pink Taxi: the pink-accent copy ([VehicleKindUi.pinkArtAsset]) where there is one.
+  final bool pink;
+
   @override
   Widget build(BuildContext context) {
-    final asset = kind.artAsset;
+    final asset = (pink ? kind.pinkArtAsset : null) ?? kind.artAsset;
     return ExcludeSemantics(
       child: SizedBox(
         width: width,

@@ -12,9 +12,9 @@ import '../../state/ride_flow.dart';
 import 'p10b_who_is_riding_sheet.dart';
 import 'p11_fare_details_sheet.dart';
 
-/// P-10 Choose vehicle: route map, a slim "Choose a ride · For me" row, one 64 dp row per tier ("3 min away · Drop
-/// 9:24 PM", Fastest; only the selected one outlined, its ⓘ opens fare details), Butterfly (women riders: women
-/// drivers preferred / only), then "Cash / UPI" and "Book Bike · ₹38" pinned at the bottom.
+/// P-10 Choose vehicle: route map, a slim "Choose a ride · For me" row, Pink Taxi for women riders (a woman driver,
+/// first or only; the list turns pink), one 60 dp row per tier ("3 min away · Drop 9:24 PM", Fastest; only the
+/// selected one outlined, its ⓘ opens fare details), then "Cash / UPI" and "Book Bike · ₹38" pinned at the bottom.
 class P10ChooseVehicleScreen extends ConsumerStatefulWidget {
   const P10ChooseVehicleScreen({super.key, this.showcase = false});
 
@@ -89,7 +89,7 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
       backgroundColor: TtColors.surface,
       body: LayoutBuilder(
         builder: (context, c) {
-          final sheetH = (c.maxHeight * 0.66).clamp(360.0, 580.0).toDouble();
+          final sheetH = (c.maxHeight * 0.70).clamp(360.0, 620.0).toDouble();
           final mapH = c.maxHeight - sheetH + TtSpacing.l;
           return Stack(
             fit: StackFit.expand,
@@ -176,7 +176,7 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                               // One slim row (like Uber's "Choose a trip"): the title and who's riding. Fare details open
                               // from the ⓘ on the selected ride.
                               SizedBox(
-                                height: 44,
+                                height: 40,
                                 child: Row(
                                   children: [
                                     Expanded(child: Text('Choose a ride', style: t.bodySemibold)),
@@ -191,7 +191,16 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: TtSpacing.xs),
+                              // Women riders: Pink Taxi right here, in view (a woman driver, preferred or only).
+                              if (flow.canUseButterfly) ...[
+                                PinkTaxiStrip(
+                                  value: womenDriver,
+                                  onChanged: flow.setWomenDriver,
+                                  riderName: state.rider?.firstName,
+                                ),
+                                const SizedBox(height: TtSpacing.s),
+                              ] else
+                                const SizedBox(height: 2),
                               if (!quotesReady)
                                 noPickup
                                     ? const _QuotesPending(error: kChoosePickupForFares, onRetry: null)
@@ -200,7 +209,8 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                               for (final q in state.quotes) ...[
                                 VehicleOptionCard(
                                   icon: q.vehicle.kind.icon,
-                                  art: VehicleArt(q.vehicle.kind),
+                                  art: VehicleArt(q.vehicle.kind, pink: womenDriver.isOn),
+                                  accent: womenDriver.isOn ? TtColors.butterfly600 : TtColors.coral500,
                                   name: q.vehicle.name,
                                   subtitle: subtitleOf(q),
                                   capacity: q.vehicle.capacityLabel,
@@ -214,11 +224,7 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                                   onTap: () => flow.selectVehicle(q.vehicle.kind),
                                   onInfo: () => P11FareDetailsSheet.show(context),
                                 ),
-                                const SizedBox(height: TtSpacing.xs),
-                              ],
-                              if (flow.canUseButterfly) ...[
-                                const SizedBox(height: TtSpacing.m),
-                                ButterflyCard(value: womenDriver, onChanged: flow.setWomenDriver, riderName: state.rider?.firstName),
+                                const SizedBox(height: 2),
                               ],
                               const SizedBox(height: TtSpacing.s),
                             ],
@@ -318,12 +324,12 @@ class _PayNote extends StatelessWidget {
     return InkWell(
       onTap: () => showTtSnack(context, 'Pay your driver by cash or UPI when the ride ends. Tamil Taxi takes 0% of it.'),
       child: Container(
-        height: 44,
+        height: 36,
         padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l),
         decoration: const BoxDecoration(border: Border(top: BorderSide(color: TtColors.divider))),
         child: Row(
           children: [
-            const Icon(Symbols.payments_rounded, size: 20, color: TtColors.success),
+            const Icon(Symbols.payments_rounded, size: 18, color: TtColors.success),
             const SizedBox(width: TtSpacing.s),
             Text('Cash / UPI', style: t.bodySmallMedium),
             const SizedBox(width: TtSpacing.m),
@@ -345,79 +351,132 @@ class _PayNote extends StatelessWidget {
   }
 }
 
-/// Butterfly (women riders only): Off / Preferred / Only, with what each one means.
-class ButterflyCard extends StatelessWidget {
-  const ButterflyCard({super.key, required this.value, required this.onChanged, this.riderName});
+/// Pink Taxi (women riders only; code name Butterfly): one slim row with a pink car and a switch. On, it opens two
+/// choices, women drivers first (the nearest driver if none is near) or women drivers only, and the list above turns
+/// pink (pink vehicles, pink outline). Replaces the large Butterfly card that sat under the list.
+class PinkTaxiStrip extends StatelessWidget {
+  const PinkTaxiStrip({super.key, required this.value, required this.onChanged, this.riderName});
   final WomenDriverPref value;
   final ValueChanged<WomenDriverPref> onChanged;
 
-  /// Booked for someone else: "For Anjali: …".
+  /// Booked for someone else: "A woman driver for Anjali".
   final String? riderName;
 
   @override
   Widget build(BuildContext context) {
     final t = context.type;
     final on = value.isOn;
+    final subtitle = switch (value) {
+      WomenDriverPref.none => riderName != null ? 'A woman driver for $riderName' : 'A woman driver, for women riders',
+      WomenDriverPref.preferred => 'Women drivers first, else the nearest driver',
+      WomenDriverPref.only => 'Only women drivers. It can take a little longer',
+    };
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.all(TtSpacing.m),
+      padding: EdgeInsets.fromLTRB(10, 6, 4, on ? 10 : 6),
       decoration: BoxDecoration(
         color: on ? TtColors.butterfly50 : TtColors.surface,
         borderRadius: TtRadii.cardRadius,
-        border: Border.all(color: on ? TtColors.butterfly100 : TtColors.divider, width: on ? 1.5 : 1),
+        border: Border.all(color: on ? TtColors.butterfly100 : TtColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: on ? TtColors.surface : TtColors.butterfly50,
-                  borderRadius: TtRadii.cardRadius,
-                ),
-                alignment: Alignment.center,
-                child: const ButterflyMark(size: 36),
+          Semantics(
+            toggled: on,
+            label: 'Pink Taxi. $subtitle',
+            excludeSemantics: true,
+            child: InkWell(
+              borderRadius: TtRadii.cardRadius,
+              onTap: () => onChanged(on ? WomenDriverPref.none : WomenDriverPref.preferred),
+              child: Row(
+                children: [
+                  const VehicleArt(VehicleKind.cab, pink: true, width: 48, height: 34),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Text('Pink Taxi', style: t.listTitle.copyWith(color: TtColors.butterfly600)),
+                            const SizedBox(width: 4),
+                            const ButterflyMark(size: 14),
+                          ],
+                        ),
+                        Text(subtitle, style: t.listMeta, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: on,
+                    onChanged: (v) => onChanged(v ? WomenDriverPref.preferred : WomenDriverPref.none),
+                    trackColor: WidgetStateProperty.resolveWith(
+                      (s) => s.contains(WidgetState.selected) ? TtColors.butterfly600 : TtColors.inputBg,
+                    ),
+                    trackOutlineColor: WidgetStateProperty.resolveWith(
+                      (s) => s.contains(WidgetState.selected) ? TtColors.butterfly600 : TtColors.navy500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: TtSpacing.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Butterfly', style: t.bodySemibold.copyWith(color: TtColors.butterfly600, fontSize: 17)),
-                    Text(riderName != null ? 'For $riderName: a woman driver' : 'For women riders: ride with a woman driver',
-                        style: t.bodySmall.copyWith(color: TtColors.navy700)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: TtSpacing.m),
-          TtSegmented<WomenDriverPref>(
-            options: WomenDriverPref.values,
-            selected: value,
-            labelOf: (v) => switch (v) {
-              WomenDriverPref.none => 'Any driver',
-              WomenDriverPref.preferred => 'Preferred',
-              WomenDriverPref.only => 'Women only',
-            },
-            onChanged: onChanged,
+            ),
           ),
           if (on) ...[
-            const SizedBox(height: TtSpacing.s),
-            Text(
-              value == WomenDriverPref.only
-                  ? 'Only women drivers get your request. It can take a little longer to find one.'
-                  : 'We ask women drivers first. If none is near, the nearest driver can take it.',
-              style: t.bodySmall.copyWith(color: TtColors.navy700),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const SizedBox(width: 58),
+                _PinkChoice(
+                  label: 'Women first',
+                  selected: value == WomenDriverPref.preferred,
+                  onTap: () => onChanged(WomenDriverPref.preferred),
+                ),
+                const SizedBox(width: TtSpacing.s),
+                _PinkChoice(
+                  label: 'Women only',
+                  selected: value == WomenDriverPref.only,
+                  onTap: () => onChanged(WomenDriverPref.only),
+                ),
+              ],
             ),
           ],
         ],
       ),
     );
   }
+}
+
+class _PinkChoice extends StatelessWidget {
+  const _PinkChoice({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        selected: selected,
+        button: true,
+        child: Material(
+          color: selected ? TtColors.butterfly600 : TtColors.surface,
+          shape: StadiumBorder(side: BorderSide(color: selected ? TtColors.butterfly600 : TtColors.butterfly100)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: context.type.bodySmallMedium
+                    .copyWith(fontSize: 13, color: selected ? TtColors.surface : TtColors.butterfly600),
+              ),
+            ),
+          ),
+        ),
+      );
 }
 
 /// Live API: fares are loading, or failed with [error] (e.g. "Tamil Taxi isn't in this area yet") and a Retry.
@@ -436,9 +495,9 @@ class _QuotesPending extends StatelessWidget {
       return SkeletonShimmer(
         child: Column(
           children: [
-            for (var i = 0; i < 4; i++) ...const [
-              SkeletonBox(height: 64),
-              SizedBox(height: TtSpacing.xs),
+            for (var i = 0; i < 5; i++) ...const [
+              SkeletonBox(height: 60),
+              SizedBox(height: 2),
             ],
           ],
         ),

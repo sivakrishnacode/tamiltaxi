@@ -1,4 +1,4 @@
-// P-10 Butterfly (women riders): Any driver / Preferred / Women only, each explained in one line.
+// P-10 Pink Taxi (women riders; code name Butterfly): off / women first / women only, each explained in one line.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
@@ -12,7 +12,7 @@ const _out = String.fromEnvironment('OUT');
 const _outRider = String.fromEnvironment('OUT_RIDER');
 
 void main() {
-  testWidgets('Butterfly switches between any driver, preferred and women only', (tester) async {
+  testWidgets('Pink Taxi switches between any driver, women first and women only', (tester) async {
     await loadTestFonts();
     usePhone(tester, height: 400);
     var value = WomenDriverPref.none;
@@ -24,25 +24,36 @@ void main() {
           child: StatefulBuilder(
             builder: (context, setState) => Padding(
               padding: const EdgeInsets.all(16),
-              child: ButterflyCard(value: value, onChanged: (v) => setState(() => value = v)),
+              child: PinkTaxiStrip(value: value, onChanged: (v) => setState(() => value = v)),
             ),
           ),
         ),
       ),
     ));
-    expect(find.text('Butterfly'), findsWidgets);
-    expect(find.textContaining('Only women drivers'), findsNothing);
+    expect(find.text('Pink Taxi'), findsOneWidget);
+    expect(find.text('A woman driver, for women riders'), findsOneWidget);
+    expect(find.text('Women only'), findsNothing);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(value, WomenDriverPref.preferred);
+    expect(find.text('Women drivers first, else the nearest driver'), findsOneWidget);
 
     await tester.tap(find.text('Women only'));
     await tester.pumpAndSettle();
     expect(value, WomenDriverPref.only);
-    expect(find.text('Only women drivers get your request. It can take a little longer to find one.'), findsOneWidget);
+    expect(find.text('Only women drivers. It can take a little longer'), findsOneWidget);
 
-    await tester.tap(find.text('Preferred'));
+    await tester.tap(find.text('Women first'));
     await tester.pumpAndSettle();
     expect(value, WomenDriverPref.preferred);
-    expect(find.textContaining('We ask women drivers first'), findsOneWidget);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(value, WomenDriverPref.none);
     if (_out.isNotEmpty) {
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Women only'));
       await tester.pumpAndSettle();
       await saveScreenshot(tester, _out);
