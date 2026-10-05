@@ -1499,6 +1499,54 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(recent.items.every((t: { createdAt: string }) => t.createdAt >= since)).toBe(true);
   });
 
+  it('a registered driver can book in the passenger app while their driver session still works', async () => {
+    const p = phone();
+    await http.post('/v1/auth/otp').send({ phone: p }).expect(200);
+    const first = (await http.post('/v1/auth/verify').send({ phone: p, code: '123456', app: 'driver' }).expect(200)).body;
+    const reg = (await http.post('/v1/drivers').set('Authorization', `Bearer ${first.accessToken}`)
+      .send({ name: 'Passenger Driver', workType: 'RIDES', vehicleKind: 'BIKE', vehicleModel: 'Test', vehicleColor: 'White', plate: randomPlate(), upiId: 'test@okaxis' }).expect(201)).body;
+    const driverAuth = { Authorization: `Bearer ${reg.accessToken}` };
+    await http.post('/v1/auth/otp').send({ phone: p }).expect(200);
+    const passenger = (await http.post('/v1/auth/verify').send({ phone: p, code: '123456', app: 'passenger' }).expect(200)).body;
+    const pax = { Authorization: `Bearer ${passenger.accessToken}` };
+    expect(passenger.driverId).toBeUndefined();
+    await http.get('/v1/drivers/me').set(pax).expect(403);
+    await http.get('/v1/admin/stats').set(pax).expect(403);
+    const trip = (await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'BIKE', pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(201)).body;
+    expect((await http.get('/v1/drivers/me').set(driverAuth).expect(200)).body.id).toBe(reg.driver.id);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: reg.driver.userId } })).role).toBe('DRIVER');
+    await http.post(`/v1/trips/${trip.id}/cancel`).set(pax).send({}).expect(200);
+  });
+
+  it('a driver booking in the passenger app is never offered their own trip', async () => {
+    // Arrange: only these two bike drivers are indexed; the one who books stands right at the pickup.
+    const redis = app.get(RedisService);
+    const cells = await redis.keys('h3:drv:BIKE:*');
+    if (cells.length) await redis.del(...cells);
+    const self = await onlineDriver('BIKE', { lat: GANDHIPURAM.lat, lng: GANDHIPURAM.lng });
+    const other = await onlineDriver('BIKE', { lat: 11.0188, lng: 76.973 });
+    const selfId = (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${self}`).expect(200)).body.id as string;
+    const p = (await prisma.user.findFirstOrThrow({ where: { driver: { id: selfId } } })).phone.slice(3);
+    await http.post('/v1/auth/otp').send({ phone: p }).expect(200);
+    const pax = { Authorization: `Bearer ${(await http.post('/v1/auth/verify').send({ phone: p, code: '123456', app: 'passenger' }).expect(200)).body.accessToken}` };
+    try {
+      // Act: they book a bike; matching runs until the other driver takes it.
+      const trip = (await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'BIKE', pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(201)).body;
+      let accepted = false;
+      for (let i = 0; i < 40 && !accepted; i++) {
+        const offer = await http.get('/v1/trips/offer').set('Authorization', `Bearer ${self}`);
+        expect(offer.status === 200 ? offer.body?.trip?.id : undefined).not.toBe(trip.id);
+        accepted = (await http.post(`/v1/trips/${trip.id}/accept`).set('Authorization', `Bearer ${other}`)).status === 200;
+        if (!accepted) await new Promise((r) => setTimeout(r, 250));
+      }
+      // Assert: the nearer driver (themselves) was skipped; the other one has the trip.
+      expect(accepted).toBe(true);
+      await http.post(`/v1/trips/${trip.id}/cancel`).set(pax).send({}).expect(200);
+    } finally {
+      for (const d of [self, other]) await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${d}`);
+    }
+  }, 30_000);
+
   it('an admin who also drives: the driver app gets a DRIVER token, the panel an ADMIN one', async () => {
     // A driver made an admin (same as an ADMIN_PHONES number that registered a vehicle).
     const p = phone();

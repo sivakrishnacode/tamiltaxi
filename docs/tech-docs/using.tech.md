@@ -34,6 +34,9 @@ were applied, and unfinished changes were completed. Detailed checks and task co
 [claude-completion-2026-10-03.md](claude-completion-2026-10-03.md).
 
 - Auth verification sends `app: passenger|driver|admin`; maps/places/fare quotes require an authenticated caller; rate cards remain public.
+  The token carries that `app`. A passenger-app token always acts as PASSENGER, even for an account that also drives
+  or administers, so one phone can drive and book rides (fixed 5 Oct 2026; tokens issued before then follow the
+  account's role until the next sign-in). Dispatch never offers a driver a trip they booked themselves.
   Admin place proxy/reverse calls forward the token, autocomplete starts at 4 trimmed characters, and changing an
   account's role/block state invalidates cached authorization for existing sessions immediately.
 - Driver daily selfie: `POST /drivers/me/selfie-check` (`file`) matches the identity-check reference through Didit;

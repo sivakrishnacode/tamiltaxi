@@ -12,4 +12,6 @@ export interface JwtPayload {
   readonly sub: string;
   readonly role: Role;
   readonly driverId?: string;
+  /** Explicit app context; absent on legacy tokens and registration tokens. */
+  readonly app?: 'passenger' | 'driver' | 'admin';
 }

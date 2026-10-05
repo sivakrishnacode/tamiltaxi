@@ -4,6 +4,11 @@ import type { RedisService } from '../redis/redis.service.js';
 import { accessKey, blockedFlagKey, effectiveAccess, UserAccessService } from './user-access.service.js';
 
 describe('effectiveAccess', () => {
+  it('keeps explicit passenger-app tokens as passengers, without driver or admin access', () => {
+    for (const role of [Role.PASSENGER, Role.DRIVER, Role.ADMIN]) {
+      expect(effectiveAccess({ role: Role.PASSENGER, app: 'passenger' }, { role, driverId: 'd1' })).toEqual({ role: Role.PASSENGER });
+    }
+  });
   it("an admin's token keeps the app it signed in to; DRIVER needs a driver profile", () => {
     const admin = { role: Role.ADMIN, driverId: 'd1' };
     expect(effectiveAccess({ role: Role.ADMIN }, admin)).toEqual({ role: Role.ADMIN, driverId: 'd1' });

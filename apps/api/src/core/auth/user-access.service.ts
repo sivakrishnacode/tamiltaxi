@@ -23,10 +23,11 @@ export const BLOCKED_MESSAGE = 'Your account is blocked. Contact support.';
 /**
  * What a token may do now. Its role is the app it signed in to ([loginRole]), checked against the account: an
  * admin's token keeps the app's role (ADMIN in the panel, DRIVER in the driver app with a driver profile, else
- * PASSENGER); anyone else gets the account's current role, so a demoted admin's panel token stops at once and a new
- * driver's old passenger token becomes a driver one.
+ * PASSENGER). An explicit passenger-app token stays a passenger token even when the account also drives.
+ * Legacy tokens follow the account's current role, so registration and admin demotion still apply immediately.
  */
-export function effectiveAccess(token: Pick<JwtPayload, 'role'>, account: Account): Pick<AuthUser, 'role' | 'driverId'> {
+export function effectiveAccess(token: Pick<JwtPayload, 'role' | 'app'>, account: Account): Pick<AuthUser, 'role' | 'driverId'> {
+  if (token.app === 'passenger') return { role: Role.PASSENGER };
   const driverId = account.driverId ?? undefined;
   if (account.role !== Role.ADMIN) return { role: account.role, driverId: account.role === Role.PASSENGER ? undefined : driverId };
   if (token.role === Role.ADMIN) return { role: Role.ADMIN, driverId };

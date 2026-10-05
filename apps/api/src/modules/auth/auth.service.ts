@@ -23,14 +23,16 @@ export interface LoginResult {
  * The role a login's token carries. ADMIN only for the admin panel ([app] `admin`), or, for older clients that name
  * no app, when the account has no driver profile. An admin signing in to the driver app is their DRIVER self (with a
  * driver profile; else a PASSENGER, who can register one), to the passenger app a PASSENGER: one phone can be an
- * admin and a driver. [promote]: an ADMIN_PHONES number on an admin login becomes ADMIN in the database.
+ * admin and a driver. Every explicit passenger login acts as PASSENGER, including registered drivers.
+ * [promote]: an ADMIN_PHONES number on an admin login becomes ADMIN in the database.
  */
 export function loginRole(p: { app?: LoginApp; role: Role; isAdminPhone: boolean; hasDriver: boolean }): { role: Role; promote: boolean } {
+  if (p.app === 'passenger') return { role: Role.PASSENGER, promote: false };
   const isAdminLogin = p.app === 'admin' || (p.app === undefined && !p.hasDriver);
   const promote = p.isAdminPhone && isAdminLogin && p.role !== Role.ADMIN;
   const role = promote ? Role.ADMIN : p.role;
   if (role !== Role.ADMIN || isAdminLogin) return { role, promote };
-  return { role: p.app !== 'passenger' && p.hasDriver ? Role.DRIVER : Role.PASSENGER, promote };
+  return { role: p.hasDriver ? Role.DRIVER : Role.PASSENGER, promote };
 }
 
 /** Phone + OTP sign-in for both apps and the admin panel; issues JWTs. */
@@ -56,9 +58,9 @@ export class AuthService {
     const created = existing ?? (await this.prisma.user.create({ data: { phone }, include: { driver: true } }));
     const { role, promote } = loginRole({ app: params.app, role: created.role, isAdminPhone: this.env.adminPhones.includes(phone), hasDriver: !!created.driver });
     const user = promote ? await this.prisma.user.update({ where: { id: created.id }, data: { role: Role.ADMIN }, include: { driver: true } }) : created;
-    // A passenger token never acts as the driver profile (an admin in the passenger app).
+    // A passenger token never acts as the account's driver profile.
     const driverId = role === Role.PASSENGER ? undefined : user.driver?.id;
-    const accessToken = await this.issueToken({ sub: user.id, role, driverId });
+    const accessToken = await this.issueToken({ sub: user.id, role, driverId, app: params.app });
     return { accessToken, isNewUser: !existing || !existing.name, user, driverId };
   }
 

@@ -285,13 +285,15 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
     // From when the search started (booking, or a scheduled trip's start), not from when it was booked.
     const radiusKm = searchRadiusAt(Date.now() - trip.searchFrom.getTime(), s);
     const kinds: VehicleKind[] = [trip.vehicleKind, ...trip.alsoKinds.filter((k) => k !== trip.vehicleKind)];
-    const [perKind, declined] = await Promise.all([
+    const [perKind, declined, own] = await Promise.all([
       Promise.all(kinds.map((kind) => this.tripDrivers.nearby({ kind, ...pickup, radiusKm, limit: s.maxCandidates * 2 }))),
       this.redis.sunion(declinedKey(trip.id), excludedKey(trip.id)),
+      // A driver booking in the passenger app is never offered their own trip.
+      this.prisma.driver.findUnique({ where: { userId: trip.passengerId }, select: { id: true } }),
     ]);
     // Paused drivers (too many cancellations) are offline anyway; this covers an index entry left behind.
     const paused = await this.blocks.pausedAmong(perKind.flat().map((d) => d.driverId));
-    const inRange = perKind.flat().filter((d) => !declined.includes(d.driverId) && !paused.has(d.driverId));
+    const inRange = perKind.flat().filter((d) => !declined.includes(d.driverId) && !paused.has(d.driverId) && d.driverId !== own?.id);
     // Drivers' booking preferences (pickup distance, trip length, go-to destination): only trips that fit.
     const nearby = await this.fittingPrefs(inRange, trip);
     // One ETA lookup for every candidate (per-cell cache, then a single Route Matrix call for the misses).

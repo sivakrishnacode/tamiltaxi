@@ -24,9 +24,9 @@ describe('loginRole', () => {
     expect(loginRole({ role: Role.DRIVER, isAdminPhone: true, hasDriver: true })).toEqual({ role: Role.DRIVER, promote: false });
   });
 
-  it('everyone else keeps their role', () => {
+  it('drivers can sign in as passengers without changing their account role', () => {
     expect(loginRole({ app: 'passenger', role: Role.PASSENGER, isAdminPhone: false, hasDriver: false })).toEqual({ role: Role.PASSENGER, promote: false });
-    expect(loginRole({ app: 'passenger', role: Role.DRIVER, isAdminPhone: false, hasDriver: true })).toEqual({ role: Role.DRIVER, promote: false });
+    expect(loginRole({ app: 'passenger', role: Role.DRIVER, isAdminPhone: false, hasDriver: true })).toEqual({ role: Role.PASSENGER, promote: false });
     expect(loginRole({ role: Role.DRIVER, isAdminPhone: false, hasDriver: true })).toEqual({ role: Role.DRIVER, promote: false });
   });
 });
