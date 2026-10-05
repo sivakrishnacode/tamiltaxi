@@ -347,6 +347,10 @@ class LiveJobs {
   Future<LiveTripUpdate> complete(String tripId, {String? otp, LatLng? at, String? farReason}) async =>
       LiveTrips._update(_map(await api.post('/trips/$tripId/complete', {'otp': ?otp, ..._position(at, farReason)})));
 
+  /// After the trip: "Received cash" / "Received on UPI" (D-19 / D-22b), shown on the rider's receipt and in earnings.
+  /// Sending it again is harmless; a later answer corrects an earlier one.
+  Future<void> recordPayment(String tripId, PaymentMode mode) => api.post('/trips/$tripId/payment', {'mode': enumToApi(mode)}, true);
+
   /// Cancels with a reason [code] (D-16) and an optional [note].
   Future<LiveTripUpdate> cancel(String tripId, {CancelCode code = CancelCode.other, String? note}) async =>
       LiveTrips._update(_map(await api.post('/trips/$tripId/cancel', {'code': code.api, 'note': ?note})));

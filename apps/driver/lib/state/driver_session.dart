@@ -740,11 +740,19 @@ class DriverSessionController extends Notifier<DriverSessionState> {
   // ------------------------------------------------------------------ finish
   /// D-19 / D-22b "Received cash" / "Received on UPI": today's earnings and rides go up by the fare and
   /// the driver is back online (mock: the next request arrives in 8 s; live: the API already recorded
-  /// the fare, so earnings are reloaded).
+  /// the fare, so earnings are reloaded). Live, [mode] is stored on the trip first (the rider's receipt
+  /// and the earnings list show it): offline, this throws and the driver taps again; a refusal from the
+  /// API (the trip changed meanwhile) can't be fixed by tapping again, so the driver moves on.
   Future<void> collectPayment(PaymentMode mode) async {
     final job = state.job;
     if (job == null) return;
     if (_live) {
+      try {
+        await _jobs.recordPayment(job.id, mode);
+      } on ApiException {
+        // Nothing to retry.
+      }
+      if (!ref.mounted || state.job?.id != job.id) return;
       _unwatchJob();
       ref.read(realtimeProvider).leaveTrip(job.id);
       state = state.copyWith(

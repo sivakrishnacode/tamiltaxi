@@ -14,6 +14,7 @@ import { DispatchService, type OfferDetails } from './dispatch.service.js';
 import { OtpDto } from './dto/otp.dto.js';
 import { CompleteTripDto, PositionCheckDto } from './dto/position-check.dto.js';
 import { RateTripDto } from './dto/rate-trip.dto.js';
+import { RecordPaymentDto } from './dto/record-payment.dto.js';
 import { type ChatMessage, TripChatService } from './trip-chat.service.js';
 import { TripsService, type VehicleAlternative } from './trips.service.js';
 
@@ -148,6 +149,14 @@ export class TripsController {
   @HttpCode(200)
   complete(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: CompleteTripDto): Promise<Trip> {
     return this.trips.complete(TripsController.driverId(user), id, body);
+  }
+
+  /** Driver, after the trip: "Received cash" / "Received on UPI" (D-19 / D-22b). */
+  @Roles(Role.DRIVER)
+  @Post(':id/payment')
+  @HttpCode(200)
+  payment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: RecordPaymentDto): Promise<Trip> {
+    return this.trips.recordPayment(TripsController.driverId(user), id, body.mode);
   }
 
   private static driverId(user: AuthUser): string {

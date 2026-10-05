@@ -6,7 +6,7 @@ import { JobsService } from '../../core/jobs/jobs.service.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
 import type { Prisma, Trip } from '../../generated/prisma/client.js';
-import { CancelCode, CancelFault, CancelledBy, DriverStatus, DueStatus, Gender, RideMode, TripKind, TripStatus, type VehicleKind, WomenDriverPref } from '../../generated/prisma/enums.js';
+import { CancelCode, CancelFault, CancelledBy, DriverStatus, DueStatus, Gender, type PaymentMode, RideMode, TripKind, TripStatus, type VehicleKind, WomenDriverPref } from '../../generated/prisma/enums.js';
 import { DriverLocationService } from '../drivers/driver-location.service.js';
 import { TripDriversService } from '../drivers/trip-drivers.service.js';
 import { MAX_RIDER_NOT_WOMAN } from '../drivers/women-drivers.js';
@@ -660,6 +660,18 @@ export class TripsService {
     // Night ride: "Did you reach safely?" a few minutes from now (safety module).
     await this.safety.rideCompleted(updated).catch((e: Error) => this.logger.warn(`Arrival check for ${tripId} not scheduled: ${e.message}`));
     return updated;
+  }
+
+  /**
+   * How the rider paid the driver ("Received cash" / "Received on UPI", D-19 / D-22b), stored on the finished trip for
+   * the rider's receipt and the driver's earnings. Only the trip's driver, only once it is completed or delivered;
+   * sending it again is harmless and a later answer corrects a wrong tap. Nothing is pushed: no money moves here.
+   */
+  async recordPayment(driverId: string, tripId: string, mode: PaymentMode): Promise<Trip> {
+    const trip = await this.driverTrip(driverId, tripId);
+    if (trip.status !== TripStatus.COMPLETED && trip.status !== TripStatus.DELIVERED) throw new BadRequestException('End the trip before collecting the payment');
+    if (trip.paymentMode !== mode) await this.prisma.trip.update({ where: { id: tripId }, data: { paymentMode: mode } });
+    return this.current(tripId);
   }
 
   /** [trip]'s fare with the rental / round-trip settlement for the recorded [path] (`{}` when nothing is added). */

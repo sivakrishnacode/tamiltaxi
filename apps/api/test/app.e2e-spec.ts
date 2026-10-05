@@ -947,6 +947,33 @@ describe('Tamil Taxi API (e2e)', () => {
     return { trip, driver, driverId, pax };
   }
 
+  it('the driver records how the rider paid: receipt and earnings say UPI', async () => {
+    const { trip, driver, pax } = await assignedBikeTrip({ lat: 11.0185, lng: 76.9727 });
+    const pay = (mode: string, as = driver) => http.post(`/v1/trips/${trip.id}/payment`).set(as).send({ mode });
+    // Not before the trip has ended; not by the rider, another driver, or with a made-up mode.
+    expect((await pay('UPI').expect(400)).body.message).toBe('End the trip before collecting the payment');
+    await http.post(`/v1/trips/${trip.id}/arrived`).set(driver).expect(200);
+    await http.post(`/v1/trips/${trip.id}/start`).set(driver).send({ otp: trip.otp }).expect(200);
+    await http.post('/v1/drivers/me/location').set(driver).send({ lat: BROOKEFIELDS.lat, lng: BROOKEFIELDS.lng }).expect(204);
+    await http.post(`/v1/trips/${trip.id}/complete`).set(driver).send({}).expect(200);
+    await pay('UPI', pax).expect(403);
+    const other = await onlineDriver('BIKE', { lat: 11.0185, lng: 76.9727 });
+    await pay('UPI', { Authorization: `Bearer ${other}` }).expect(404);
+    await pay('CARD').expect(400);
+    expect((await prisma.trip.findUniqueOrThrow({ where: { id: trip.id } })).paymentMode).toBe('CASH');
+
+    // "Received on UPI", tapped twice: stored once, and the rider's receipt and the driver's earnings say UPI.
+    const [first, again] = await Promise.all([pay('UPI'), pay('UPI')]);
+    expect([first.status, again.status]).toEqual([200, 200]);
+    expect(first.body).toMatchObject({ id: trip.id, status: 'COMPLETED', paymentMode: 'UPI', otp: '' });
+    expect((await http.get(`/v1/trips/${trip.id}`).set(pax).expect(200)).body.paymentMode).toBe('UPI');
+    const earnings = (await http.get('/v1/drivers/me/earnings?period=today').set(driver).expect(200)).body;
+    expect(earnings.trips.find((t: { id: string }) => t.id === trip.id)).toMatchObject({ paymentMode: 'UPI' });
+    // A wrong tap can be corrected.
+    expect((await pay('CASH').expect(200)).body.paymentMode).toBe('CASH');
+    for (const d of [driver, { Authorization: `Bearer ${other}` }]) await http.post('/v1/drivers/me/offline').set(d);
+  }, 30_000);
+
   it('no-show: the driver may cancel without fault only after waiting at the pickup', async () => {
     const jobs = app.get(JobsService);
     const { trip, driver, pax } = await assignedBikeTrip({ lat: 11.0185, lng: 76.9727 });

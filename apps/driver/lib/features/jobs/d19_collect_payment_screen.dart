@@ -9,6 +9,7 @@ import '../../common/showcase.dart';
 import '../../router/routes.dart';
 import '../../state/driver_account.dart';
 import '../../state/driver_session.dart';
+import '../../state/live_helpers.dart';
 import '../home/widgets/navy_header.dart';
 import 'widgets/job_common.dart';
 import 'widgets/rate_customer_sheet.dart';
@@ -54,7 +55,14 @@ class _D19CollectPaymentScreenState extends ConsumerState<D19CollectPaymentScree
     }
     if (widget.showcase) return showTtSnack(context, kPreviewNote);
     setState(() => _busy = true);
-    await ref.read(driverSessionProvider.notifier).collectPayment(mode);
+    try {
+      await ref.read(driverSessionProvider.notifier).collectPayment(mode);
+    } on Exception catch (e) {
+      // Offline: the payment method wasn't saved; stay here so the driver can tap again.
+      if (!mounted) return;
+      setState(() => _busy = false);
+      return showTtSnack(context, userMessage(e));
+    }
     if (!mounted) return;
     showTtSnack(context, '${formatInr(_job.fare)} added. You keep 100%.', success: true);
     context.go(Routes.home);

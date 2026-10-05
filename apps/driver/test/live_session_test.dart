@@ -350,7 +350,43 @@ void main() {
         'start:9999',
         'start:1234',
         'complete',
+        'payment:cash',
       ]);
+    },
+  );
+
+  test(
+    '"Received on UPI" is stored on the trip; offline keeps the driver on D-19, a refusal moves on',
+    () async {
+      Future<void> toCollect(String id) async {
+        jobs.offersCtl.add(liveOffer(id));
+        await pumpEventQueue();
+        await session().acceptRequest();
+        await session().arrivedAtPickup();
+        await session().startTrip(otp: '1234');
+        await session().endRide();
+        expect(state().phase, JobPhase.collect);
+      }
+
+      await session().goOnline();
+      await toCollect('t1');
+      jobs.paymentError = const OfflineException();
+      await expectLater(session().collectPayment(PaymentMode.upi), throwsA(isA<OfflineException>()));
+      expect(state().job?.id, 't1');
+      expect(state().phase, JobPhase.collect);
+      expect(state().todayRides, 0);
+      await session().collectPayment(PaymentMode.upi);
+      expect(state().job, isNull);
+      expect(state().todayRides, 1);
+      expect(jobs.calls.where((c) => c.startsWith('payment:')), ['payment:upi', 'payment:upi']);
+
+      // The server refuses (the trip changed meanwhile): nothing to retry, the driver is back online.
+      await toCollect('t2');
+      jobs.paymentError = const ApiException(400, 'End the trip before collecting the payment');
+      await session().collectPayment(PaymentMode.cash);
+      expect(state().job, isNull);
+      expect(state().online, isTrue);
+      expect(state().todayRides, 2);
     },
   );
 

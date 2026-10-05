@@ -180,6 +180,17 @@ class FakeJobs extends LiveJobs {
     return liveUpdate(tripId, 'COMPLETED');
   }
 
+  /// Thrown by the next [recordPayment] (once), e.g. [OfflineException].
+  Object? paymentError;
+
+  @override
+  Future<void> recordPayment(String tripId, PaymentMode mode) async {
+    calls.add('payment:${mode.name}');
+    final error = paymentError;
+    paymentError = null;
+    if (error != null) throw error;
+  }
+
   @override
   Future<LiveTripUpdate> cancel(String tripId, {CancelCode code = CancelCode.other, String? note}) async {
     calls.add('cancel:${code.api}');

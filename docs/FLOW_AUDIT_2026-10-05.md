@@ -2,7 +2,7 @@
 
 Reviewed the passenger app, driver app, shared data package, API, admin panel, and public website. This was an audit; application code was not changed.
 
-**Status (5 Oct 2026):** findings 1–3 are fixed in the API (see each finding). Finding 4 is open.
+**Status (5 Oct 2026):** all four findings are fixed (see each finding).
 
 ## Findings
 
@@ -59,6 +59,8 @@ In live mode, `collectPayment(PaymentMode mode)` ignores `mode` and clears only 
 **Impact:** a driver selecting “Received on UPI” still gets cash-labelled trip history. The passenger receipt (`apps/passenger/lib/features/activity/p22_trip_details_screen.dart:98`) and driver earnings detail (`apps/driver/lib/features/earnings/d23b_trip_detail_sheet.dart:55`) display that stored method.
 
 **Suggested fix:** add an authenticated, idempotent payment-collection update for the assigned driver and persist the selected method before closing the collection screen.
+
+**Fixed (5 Oct 2026):** `POST /trips/:id/payment {mode}` stores `Trip.paymentMode` for the trip's driver once it is completed or delivered (400 before; 403 for riders, 404 for other drivers; repeats are harmless and a later answer corrects a wrong tap). The driver app's `collectPayment` sends it (`LiveJobs.recordPayment`, retried once on a dropped connection) before clearing the job: offline it throws and D-19 stays open with a message so the driver can tap again; an API refusal moves on. Covered by an e2e test (receipt and earnings say UPI) and a driver session test.
 
 ## Verification performed
 
