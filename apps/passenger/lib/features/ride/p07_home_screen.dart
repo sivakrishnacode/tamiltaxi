@@ -464,56 +464,94 @@ class _PickupPill extends StatelessWidget {
   }
 }
 
-/// Saved places as one-line pills ("Home", "Work", "Shop") and "+ Add", scrolling sideways when there are many.
+/// Saved places as one-line pills: up to three share the row evenly with a round "+" at the end; more scroll sideways.
+/// With none saved, one "Add home, work and more" pill.
 class _SavedPlacesRow extends StatelessWidget {
   const _SavedPlacesRow({required this.places, required this.onPlace, this.onAdd});
   final List<SavedPlace> places;
   final ValueChanged<SavedPlace> onPlace;
 
-  /// Null hides the "+ Add" pill (P-07b).
+  /// Null hides the "+" (P-07b).
   final VoidCallback? onAdd;
+
+  static IconData _icon(SavedPlace p) => switch (p.kind) {
+        SavedPlaceKind.home => Symbols.home_rounded,
+        SavedPlaceKind.work => Symbols.work_rounded,
+        SavedPlaceKind.other => Symbols.star_rounded,
+      };
 
   @override
   Widget build(BuildContext context) {
-    if (places.isEmpty && onAdd == null) return const SizedBox.shrink();
+    final add = onAdd;
+    if (places.isEmpty) {
+      if (add == null) return const SizedBox.shrink();
+      return _Pill(
+        icon: Symbols.add_rounded,
+        label: 'Add home, work and more',
+        semantics: 'Add a saved place',
+        onTap: add,
+        accent: true,
+        expand: true,
+      );
+    }
+    final pills = [
+      for (final p in places)
+        _Pill(icon: _icon(p), label: p.label, semantics: '${p.label}, ${p.place.name}', onTap: () => onPlace(p), expand: true),
+    ];
+    final plus = add == null
+        ? null
+        : _Pill(icon: Symbols.add_rounded, label: null, semantics: 'Add a saved place', onTap: add, accent: true);
+    if (places.length <= 3) {
+      return Row(
+        children: [
+          for (var i = 0; i < pills.length; i++) ...[
+            if (i > 0) const SizedBox(width: TtSpacing.s),
+            Expanded(child: pills[i]),
+          ],
+          if (plus != null) ...[const SizedBox(width: TtSpacing.s), plus],
+        ],
+      );
+    }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       clipBehavior: Clip.none,
       child: Row(
         children: [
           for (final p in places) ...[
-            _Pill(
-              icon: switch (p.kind) {
-                SavedPlaceKind.home => Symbols.home_rounded,
-                SavedPlaceKind.work => Symbols.work_rounded,
-                SavedPlaceKind.other => Symbols.star_rounded,
-              },
-              label: p.label,
-              semantics: '${p.label}, ${p.place.name}',
-              onTap: () => onPlace(p),
-            ),
+            _Pill(icon: _icon(p), label: p.label, semantics: '${p.label}, ${p.place.name}', onTap: () => onPlace(p)),
             const SizedBox(width: TtSpacing.s),
           ],
-          if (onAdd != null) _Pill(icon: Symbols.add_rounded, label: 'Add', semantics: 'Add a saved place', onTap: onAdd!, accent: true),
+          ?plus,
         ],
       ),
     );
   }
 }
 
+/// A 36 dp pill: icon and label ([label] null: a round icon-only "+"); [expand] fills its slot with the content
+/// centred.
 class _Pill extends StatelessWidget {
-  const _Pill({required this.icon, required this.label, required this.semantics, required this.onTap, this.accent = false});
+  const _Pill({
+    required this.icon,
+    required this.label,
+    required this.semantics,
+    required this.onTap,
+    this.accent = false,
+    this.expand = false,
+  });
   final IconData icon;
-  final String label;
+  final String? label;
   final String semantics;
   final VoidCallback onTap;
 
   /// "+ Add": coral text.
   final bool accent;
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
     final t = context.type;
+    final text = label;
     return Semantics(
       button: true,
       label: semantics,
@@ -526,13 +564,24 @@ class _Pill extends StatelessWidget {
           onTap: onTap,
           child: Container(
             height: 36,
-            padding: const EdgeInsets.only(left: 10, right: 14),
+            width: text == null ? 44 : null,
+            padding: text == null ? null : const EdgeInsets.only(left: 10, right: 14),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, size: 18, color: TtColors.coral600, fill: accent ? 0 : 1),
-                const SizedBox(width: 6),
-                Text(label, style: t.bodySmallMedium.copyWith(color: accent ? TtColors.coral600 : TtColors.navy900)),
+                if (text != null) ...[
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      text,
+                      style: t.bodySmallMedium.copyWith(color: accent ? TtColors.coral600 : TtColors.navy900),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
