@@ -22,6 +22,7 @@ class MapBottomSheet extends StatelessWidget {
     this.controller,
     this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
     this.footer,
+    this.snap = false,
   });
 
   /// Build the sheet's children; they are placed in a ListView using [ScrollController].
@@ -35,6 +36,19 @@ class MapBottomSheet extends StatelessWidget {
   /// Shown after the children, edge to edge and pinned to the sheet's bottom edge (outside [padding]).
   final Widget? footer;
 
+  /// Stops like Rapido's sheet: let go and it settles at [minSize], [initialSize] or [maxSize] (the next one in the
+  /// drag's direction, or the nearest), never in between.
+  final bool snap;
+
+  /// One list per size, so every rebuild hands the sheet the same list. Flutter re-snaps whenever `snapSizes` is a
+  /// different object, so a new list per build re-snapped mid-drag and could leave the sheet stuck open (why
+  /// snapping was off before).
+  static final _snapLists = <double, List<double>>{};
+
+  List<double>? get _snapSizes => !snap || initialSize <= minSize || initialSize >= maxSize
+      ? null
+      : _snapLists.putIfAbsent(initialSize, () => List.unmodifiable([initialSize]));
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -42,9 +56,9 @@ class MapBottomSheet extends StatelessWidget {
       initialChildSize: initialSize,
       minChildSize: minSize,
       maxChildSize: maxSize,
-      // Free dragging: snapping rebuilt its size list on every parent rebuild, which could
-      // interrupt a drag and leave the sheet stuck open.
-      snap: false,
+      snap: snap,
+      snapSizes: _snapSizes,
+      snapAnimationDuration: snap ? const Duration(milliseconds: 240) : null,
       builder: (context, scroll) => DecoratedBox(
         decoration: const BoxDecoration(
           color: TtColors.surface,

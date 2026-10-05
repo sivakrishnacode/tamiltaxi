@@ -304,6 +304,8 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
                   key: ValueKey(tripActive),
                   initialSize: sheetSize,
                   minSize: tripActive ? 0.3 : 0.34,
+                  // Settles at down / middle / up like Rapido's, never half way.
+                  snap: true,
                   footer: tripActive ? null : const HomeFooter(),
                   builder: (context) => tripActive ? _activeSheet(profile) : _bookingSheet(profile),
                 ),
