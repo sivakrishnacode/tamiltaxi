@@ -1171,7 +1171,7 @@ tier per city (City › Fares).
 - Home sheet stops (5 Oct 2026, like Rapido's): `MapBottomSheet(snap: true)` settles at down (0.34), middle (0.58)
   or up (0.92) when let go, never half way; a short drag springs back, a long one goes to the next stop (240 ms).
   The snap list is cached per size, so parent rebuilds hand the sheet the same list (a new list each build made
-  Flutter re-snap mid-drag, why it was off before). PP-03 snaps too: the map (drop card), the form or full height (`snapSizes: [_startSize]`; the keyboard's `animateTo` moves don't snap).
+  Flutter re-snap mid-drag, why it was off before). While the sheet moves (drag and snap, until 150 ms without a new extent) the map's floating controls (pickup pill, SOS, locate-me) fade and lift a little and can't be tapped, then come back, like Rapido's (`_FadeWhileMoving`, no motion with reduced animations). PP-03 snaps too: the map (drop card), the form or full height (`snapSizes: [_startSize]`; the keyboard's `animateTo` moves don't snap).
 - P-34 Rent a cab: pickup, package chips (with the Mini "from" price), When? (Now / Schedule: at least 30 min ahead,
   up to 7 days), then Mini / Sedan / SUV with the package price and the rates past it.
 - P-35 Outstation: One way / Round trip, From → To (P-35b: search any town, `scope=outstation`; "Popular from here"

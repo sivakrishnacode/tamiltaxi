@@ -47,6 +47,10 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
   final ValueNotifier<double?> _paddedExtent = ValueNotifier(null);
   Timer? _padTimer;
 
+  /// The sheet is being dragged or is settling: the map's floating controls fade away, like Rapido's.
+  final ValueNotifier<bool> _sheetMoving = ValueNotifier(false);
+  Timer? _restTimer;
+
   final _map = TtMapController();
 
   /// Re-reads the location when the passenger comes back (e.g. from the system settings after S-05).
@@ -72,6 +76,8 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
     _sheetExtent.dispose();
     _paddedExtent.dispose();
     _padTimer?.cancel();
+    _sheetMoving.dispose();
+    _restTimer?.cancel();
     _map.dispose();
     super.dispose();
   }
@@ -244,7 +250,9 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
+                      _FadeWhileMoving(
+                        moving: _sheetMoving,
+                        child: Row(
                         children: [
                           Flexible(
                             child: Align(
@@ -262,6 +270,7 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
                           // A quiet white map button before a trip; the trip screens keep the big red SOS.
                           SosButton(size: 44, quiet: true, onPressed: () => context.push(Routes.sos)),
                         ],
+                        ),
                       ),
                       if (!widget.showcase) _LocationBanners(outsideArea: _outsideArea, onFix: _fixLocation),
                     ],
@@ -277,11 +286,14 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
                     if (e >= 0.8) return const SizedBox.shrink();
                     return Positioned(right: TtSpacing.l, top: c.maxHeight * (1 - e) - 64, child: child!);
                   },
-                  child: MapCircleButton(
-                    icon: Symbols.my_location_rounded,
-                    tooltip: 'Recentre map',
-                    busy: _locating,
-                    onPressed: _recentre,
+                  child: _FadeWhileMoving(
+                    moving: _sheetMoving,
+                    child: MapCircleButton(
+                      icon: Symbols.my_location_rounded,
+                      tooltip: 'Recentre map',
+                      busy: _locating,
+                      onPressed: _recentre,
+                    ),
                   ),
                 ),
               if (tripActive)
@@ -294,6 +306,12 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
               NotificationListener<DraggableScrollableNotification>(
                 onNotification: (n) {
                   _sheetExtent.value = n.extent;
+                  // Moving until no new extent for 150 ms (the drag and the snap after it).
+                  _sheetMoving.value = true;
+                  _restTimer?.cancel();
+                  _restTimer = Timer(const Duration(milliseconds: 150), () {
+                    if (mounted) _sheetMoving.value = false;
+                  });
                   _padTimer?.cancel();
                   _padTimer = Timer(const Duration(milliseconds: 180), () {
                     if (mounted) _paddedExtent.value = (n.extent * 100).round() / 100;
@@ -462,6 +480,33 @@ class _PickupPill extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The map's floating controls while the sheet moves (like Rapido's): they fade and lift a little, can't be tapped,
+/// and come back once the sheet rests. No motion when the phone asks for less.
+class _FadeWhileMoving extends StatelessWidget {
+  const _FadeWhileMoving({required this.moving, required this.child});
+  final ValueNotifier<bool> moving;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.disableAnimationsOf(context);
+    final duration = still ? Duration.zero : const Duration(milliseconds: 180);
+    return ValueListenableBuilder<bool>(
+      valueListenable: moving,
+      builder: (context, isMoving, child) => IgnorePointer(
+        ignoring: isMoving,
+        child: AnimatedSlide(
+          offset: isMoving && !still ? const Offset(0, -0.2) : Offset.zero,
+          duration: duration,
+          curve: Curves.easeOutCubic,
+          child: AnimatedOpacity(opacity: isMoving ? 0 : 1, duration: duration, curve: Curves.easeOut, child: child),
+        ),
+      ),
+      child: child,
     );
   }
 }
