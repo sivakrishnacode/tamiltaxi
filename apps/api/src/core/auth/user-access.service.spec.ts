@@ -23,7 +23,7 @@ describe('effectiveAccess', () => {
 });
 
 describe('UserAccessService', () => {
-  function setup(row: { role: Role; isBlocked: boolean; driver: { id: string } | null } | null) {
+  function setup(row: { role: Role; isBlocked: boolean; deletedAt?: Date | null; driver: { id: string } | null } | null) {
     const store = new Map<string, string>();
     const redis = {
       mget: async (...keys: string[]) => keys.map((k) => store.get(k) ?? null),
@@ -55,5 +55,12 @@ describe('UserAccessService', () => {
     await expect(inDb.access.resolve(token)).rejects.toMatchObject({ status: 403 });
     expect(inDb.store.has(accessKey('u1'))).toBe(false);
     await expect(setup(null).access.resolve(token)).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('rejects a retained deleted row after Redis state is lost and never caches it', async () => {
+    const deleted = setup({ role: Role.DRIVER, isBlocked: false, deletedAt: new Date(), driver: { id: 'd1' } });
+    await expect(deleted.access.resolve(token)).rejects.toMatchObject({ status: 401 });
+    expect(deleted.store.has(accessKey('u1'))).toBe(false);
+    expect(deleted.findUnique).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ deletedAt: true }) }));
   });
 });

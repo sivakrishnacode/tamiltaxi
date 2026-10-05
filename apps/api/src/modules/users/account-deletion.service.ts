@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
+import { accessKey } from '../../core/auth/user-access.service.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -144,6 +145,7 @@ export class AccountDeletionService {
     });
 
     // Every session ends now (JwtAuthGuard checks this flag on each call).
+    await this.redis.del(accessKey(userId));
     await this.redis.set(`user:blocked:${userId}`, '1');
     if (driverId) {
       await this.drivers.goOffline(driverId);

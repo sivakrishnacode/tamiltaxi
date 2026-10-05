@@ -73,7 +73,7 @@ export class AdminUsersService {
   /** Updates a user; blocking also takes effect immediately for existing tokens (Redis flag). */
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     const user = await this.prisma.user.update({
-      where: { id },
+      where: { id, deletedAt: null },
       data: { ...dto, blockedReason: dto.isBlocked === false ? null : dto.blockedReason },
     });
     if (user.isBlocked) await this.redis.set(`user:blocked:${id}`, '1');

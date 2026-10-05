@@ -60,8 +60,8 @@ export class UserAccessService {
   }
 
   private async load(userId: string): Promise<Account> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, isBlocked: true, driver: { select: { id: true } } } });
-    if (!user) throw new UnauthorizedException('Your account no longer exists. Please sign in again.');
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, isBlocked: true, deletedAt: true, driver: { select: { id: true } } } });
+    if (!user || user.deletedAt) throw new UnauthorizedException('Your account no longer exists. Please sign in again.');
     // Blocked in the database but the Redis flag is gone (e.g. Redis was flushed): still blocked, nothing cached.
     if (user.isBlocked) throw new ForbiddenException(BLOCKED_MESSAGE);
     const account = { role: user.role, driverId: user.driver?.id ?? null };

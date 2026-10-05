@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/core/prisma/prisma.service.js';
 import { RedisService } from '../src/core/redis/redis.service.js';
+import { accessKey, blockedFlagKey } from '../src/core/auth/user-access.service.js';
 import { FileStorageService } from '../src/core/storage/file-storage.service.js';
 import { DiditClient } from '../src/modules/kyc/didit.client.js';
 import { TripEventsService } from '../src/modules/realtime/trip-events.service.js';
@@ -423,6 +424,11 @@ describe('Tamil Taxi features (e2e)', () => {
 
       // Signed out everywhere at once.
       await http.get('/v1/me').set(rider.auth).expect(403);
+      expect(await redis.get(accessKey(rider.userId))).toBeNull();
+      // The retained row cannot be unblocked or edited, and losing Redis state cannot restore its old token.
+      await http.patch(`/v1/admin/users/${rider.userId}`).set(await adminAuth()).send({ isBlocked: false }).expect(404);
+      await redis.del(blockedFlagKey(rider.userId), accessKey(rider.userId));
+      await http.get('/v1/me').set(rider.auth).expect(401);
       const user = await prisma.user.findUniqueOrThrow({ where: { id: rider.userId } });
       expect(user).toMatchObject({ name: null, email: null, gender: null, phone: `deleted:${rider.userId}`, identityStatus: 'NOT_STARTED' });
       expect(user.deletedAt).not.toBeNull();

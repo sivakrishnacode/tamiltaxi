@@ -43,7 +43,9 @@ were applied, and unfinished changes were completed. Detailed checks and task co
   The driver app has no Delete account (owner, 3 Oct 2026): a driver's records are kept at least 6 months for police
   enquiries, so drivers raise a "Delete my account" ticket (Account › Help & support) and support deletes the account
   after that. The rider app keeps Account › Delete account. The legal text (website and both apps) says so.
-  Scheduled trips are cancelled. Account identifiers, saved places, contacts, devices and driver KYC/photos are removed;
+  Scheduled trips are cancelled. Old tokens stay rejected even if Redis loses the block flag (the retained row has
+  `deletedAt`, checked when the account is read from the database), and admin edits of a deleted user return 404.
+  Account identifiers, saved places, contacts, devices and driver KYC/photos are removed;
   historical trip addresses/routes remain. S3 must permit `s3:DeleteObject` for the KYC prefix to remove stored files.
 - Images: `POST|GET /trips/:id/parcel-photo`, `POST|GET /trips/:id/delivery-photo`, and
   `POST|GET /tickets/:id/attachment` use authenticated access and multipart field `file`. Apps pick compressed images
