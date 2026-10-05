@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
+import '../../common/device_location.dart';
 import '../../router/routes.dart';
 import '../../state/ride_flow.dart';
 
@@ -34,6 +35,9 @@ class _P09PinOnMapScreenState extends ConsumerState<P09PinOnMapScreen> {
   late Place _place = _initial;
   late LatLng _centre = _initial.location;
   bool _locating = false;
+
+  /// "Locate me" is waiting for the phone's position (the button spins).
+  bool _findingMe = false;
   Timer? _debounce;
   int _request = 0;
 
@@ -64,8 +68,11 @@ class _P09PinOnMapScreenState extends ConsumerState<P09PinOnMapScreen> {
     super.dispose();
   }
 
-  void _onMove(TtCamera camera, bool hasGesture) {
-    _centre = camera.center;
+  void _onMove(TtCamera camera, bool hasGesture) => _lookUp(camera.center);
+
+  /// The pin's address, once the map has stopped at [centre] for a moment.
+  void _lookUp(LatLng centre) {
+    _centre = centre;
     _debounce?.cancel();
     if (!_locating) setState(() => _locating = true);
     _debounce = Timer(const Duration(milliseconds: 350), _geocode);
@@ -88,8 +95,39 @@ class _P09PinOnMapScreenState extends ConsumerState<P09PinOnMapScreen> {
     });
   }
 
-  void _recentre() {
-    _map.move(_initial.location, _zoom);
+  /// Locate me: the pin jumps to where the phone was last seen, then to the fresh fix as it comes (GPS can take ~10 s
+  /// indoors) while the button spins; the address card follows. It used to go back to where the pin started, so
+  /// after a drag it went to the old pickup, and on an untouched map it did nothing.
+  Future<void> _recentre() async {
+    if (_findingMe) return;
+    final known = ref.read(deviceLocationProvider);
+    if (known != null) _pinAt(known);
+    setState(() => _findingMe = true);
+    final follow = ref.listenManual<LatLng?>(deviceLocationProvider, (_, next) {
+      if (next != null && mounted) _pinAt(next);
+    });
+    final LocateResult r;
+    try {
+      r = await ref.read(deviceLocationProvider.notifier).locate();
+    } finally {
+      follow.close();
+      if (mounted) setState(() => _findingMe = false);
+    }
+    if (!mounted) return;
+    switch (r) {
+      case LocateResult.denied:
+        showTtSnack(context, 'Allow location access for Tamil Taxi to find where you are.');
+      case LocateResult.unavailable:
+        showTtSnack(context, "Couldn't find your location right now. Check that location is on, then try again.");
+      case LocateResult.inArea || LocateResult.outsideArea:
+        break;
+    }
+  }
+
+  /// Moves the map, and with it the pin, to [at] and looks up its address.
+  void _pinAt(LatLng at) {
+    _map.move(at, _zoom);
+    _lookUp(at);
   }
 
   void _confirm() {
@@ -210,7 +248,8 @@ class _P09PinOnMapScreenState extends ConsumerState<P09PinOnMapScreen> {
                   bottom: TtSpacing.xl,
                   child: MapCircleButton(
                     icon: Symbols.my_location_rounded,
-                    tooltip: 'Recentre map',
+                    tooltip: 'Locate me',
+                    busy: _findingMe,
                     onPressed: _recentre,
                   ),
                 ),

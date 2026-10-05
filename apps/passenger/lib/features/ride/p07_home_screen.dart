@@ -55,6 +55,9 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
   /// Live API: the last located point was outside the service area (banner).
   bool _outsideArea = false;
 
+  /// "Locate me" is waiting for the phone's position (the button spins).
+  bool _locating = false;
+
   static final LatLng _pickup = Seed.gandhipuram.location;
 
   /// Camera centre sits south of the pickup so the pickup shows above the sheet. On the Google engine the
@@ -113,26 +116,53 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
     }
   }
 
-  /// Locate me: asks for permission if needed, then centres on the phone's location.
+  /// Locate me: the map moves at once to where the phone was last seen, then follows the fresh fix as it comes (GPS
+  /// can take ~10 s indoors) while the button spins. Centres on the phone, not on a pickup chosen elsewhere. Asks for
+  /// permission if needed and says so when the location can't be found.
   Future<void> _recentre() async {
-    final r = await ref.read(deviceLocationProvider.notifier).locate();
+    if (_locating) return;
+    final live = ref.read(isLiveApiProvider);
+    // Demo: the seeded pickup stands in for the phone outside the demo city.
+    final known = live ? ref.read(deviceLocationProvider) : null;
+    _moveTo(_cameraFor(known ?? ref.read(rideFlowProvider).pickup.location));
+    setState(() => _locating = true);
+    final follow = live
+        ? ref.listenManual<LatLng?>(deviceLocationProvider, (_, next) {
+            if (next != null && mounted) _moveTo(_cameraFor(next));
+          })
+        : null;
+    final LocateResult r;
+    try {
+      r = await ref.read(deviceLocationProvider.notifier).locate();
+    } finally {
+      follow?.close();
+      if (mounted) setState(() => _locating = false);
+    }
     if (!mounted) return;
     switch (r) {
       case LocateResult.inArea:
-        _moveToPickup(r);
+        if (live) {
+          setState(() => _outsideArea = false);
+        } else {
+          _moveTo(_cameraFor(ref.read(rideFlowProvider).pickup.location));
+        }
       case LocateResult.outsideArea:
-        if (!ref.read(isLiveApiProvider)) _moveTo(_camera);
+        if (live) {
+          setState(() => _outsideArea = true);
+        } else {
+          _moveTo(_camera);
+        }
         showTtSnack(
           context,
-          ref.read(isLiveApiProvider)
+          live
               ? "Tamil Taxi isn't in your area yet. Choose a pickup in ${ref.read(serviceCitiesLabelProvider)}."
               : "You're outside ${Seed.demoCity.name}. The demo keeps ${Seed.gandhipuram.name} as pickup.",
         );
       case LocateResult.denied:
         // Live: the banner explains and its button fixes it; the demo keeps S-05.
-        if (!ref.read(isLiveApiProvider)) context.push(Routes.locationDenied);
+        if (!live) context.push(Routes.locationDenied);
       case LocateResult.unavailable:
-        _moveTo(_cameraFor(ref.read(rideFlowProvider).pickup.location));
+        showTtSnack(context, "Couldn't find your location right now. Check that location is on, then try again.");
     }
   }
 
@@ -250,6 +280,7 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
                   child: MapCircleButton(
                     icon: Symbols.my_location_rounded,
                     tooltip: 'Recentre map',
+                    busy: _locating,
                     onPressed: _recentre,
                   ),
                 ),

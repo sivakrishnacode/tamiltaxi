@@ -350,14 +350,23 @@ class DemandLabel extends StatelessWidget {
       );
 }
 
-/// Round white floating button used over maps (back, recentre, share).
+/// Round white floating button used over maps (back, recentre, share). [busy] swaps the icon for a small spinner
+/// (e.g. while "Locate me" waits for a GPS fix).
 class MapCircleButton extends StatelessWidget {
-  const MapCircleButton({super.key, required this.icon, required this.onPressed, required this.tooltip, this.size = 48});
+  const MapCircleButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+    this.size = 48,
+    this.busy = false,
+  });
 
   final IconData icon;
   final VoidCallback onPressed;
   final String tooltip;
   final double size;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) => Tooltip(
@@ -370,7 +379,19 @@ class MapCircleButton extends StatelessWidget {
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: onPressed,
-            child: SizedBox(width: size, height: size, child: Icon(icon, color: TtColors.navy900)),
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: busy
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.4, color: TtColors.coral600),
+                      ),
+                    )
+                  : Icon(icon, color: TtColors.navy900),
+            ),
           ),
         ),
       );
