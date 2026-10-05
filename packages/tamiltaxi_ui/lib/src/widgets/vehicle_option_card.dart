@@ -8,10 +8,10 @@ import '../theme/tt_tokens.dart';
 /// Badge style on a vehicle card: "Lowest" / "Best value" = coral, "Comfort" / "Fastest" = navy.
 enum VehicleBadgeTone { coral, navy }
 
-/// Vehicle option card: the vehicle's picture ([art]) or a symbol tile, name + capacity + badges,
-/// "3 min away · Drop 9:24 PM", fare.
-/// Selected = coral-50 fill + coral-100 border. Disabled shows [disabledReason] in grey. [fastest] adds a
-/// "Fastest" chip (earliest drop of the list).
+/// One row of a ride / goods vehicle list, like Rapido's and Uber's: the vehicle's miniature ([art]) or a symbol tile,
+/// name + capacity + badge, "3 min away · Drop 9:24 PM" and the fare. 64 dp tall with no box of its own: only the
+/// [selected] row gets a white fill and a coral outline. [onInfo] adds an ⓘ before the selected row's fare (P-10:
+/// fare details). Disabled shows [disabledReason] in grey. [fastest] adds a "Fastest" chip (earliest drop of the list).
 class VehicleOptionCard extends StatelessWidget {
   const VehicleOptionCard({
     super.key,
@@ -27,11 +27,12 @@ class VehicleOptionCard extends StatelessWidget {
     this.capacity,
     this.fastest = false,
     this.art,
+    this.onInfo,
   });
 
   final IconData icon;
 
-  /// The vehicle's picture (e.g. [VehicleArt]); when set it replaces the coral symbol tile, like Rapido's list.
+  /// The vehicle's picture (e.g. [VehicleArt]); when set it replaces the coral symbol tile.
   final Widget? art;
   final String name;
 
@@ -52,6 +53,9 @@ class VehicleOptionCard extends StatelessWidget {
   final String? disabledReason;
   final VoidCallback? onTap;
 
+  /// "Fare details" ⓘ before the fare, shown on the selected row only.
+  final VoidCallback? onInfo;
+
   bool get _disabled => disabledReason != null;
 
   /// "3" from "3 seats" / "1 seat"; null for other capacities.
@@ -61,7 +65,9 @@ class VehicleOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.type;
     final fg = _disabled ? TtColors.navy500 : TtColors.navy900;
+    final info = onInfo;
     return Semantics(
+      container: true,
       selected: selected,
       enabled: !_disabled,
       button: true,
@@ -72,84 +78,94 @@ class VehicleOptionCard extends StatelessWidget {
         _disabled ? disabledReason! : subtitle,
         formatInr(fare),
       ].join(', '),
-      excludeSemantics: true,
       child: Opacity(
         opacity: _disabled ? 0.6 : 1,
         child: Material(
-          color: selected ? TtColors.coral50 : (_disabled ? TtColors.background : TtColors.surface),
+          color: selected ? TtColors.surface : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: TtRadii.cardRadius,
-            side: BorderSide(color: selected ? TtColors.coral100 : TtColors.divider, width: selected ? 1.5 : 1),
+            side: BorderSide(color: selected ? TtColors.coral500 : Colors.transparent, width: 1.5),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: _disabled ? null : onTap,
             child: Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               child: Row(
                 children: [
-                  if (art != null)
-                    SizedBox(width: 72, height: 52, child: Center(child: art))
-                  else
-                    Container(
-                      width: 56,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: selected ? TtColors.surface : (_disabled ? TtColors.inputBg : TtColors.coral50),
-                        borderRadius: TtRadii.cardRadius,
-                      ),
-                      child: Icon(icon, size: 32, color: _disabled ? TtColors.navy500 : TtColors.coral500, fill: 1),
-                    ),
+                  ExcludeSemantics(
+                    child: art != null
+                        ? SizedBox(width: 56, height: 40, child: Center(child: art))
+                        : Container(
+                            width: 56,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: _disabled ? TtColors.inputBg : TtColors.coral50,
+                              borderRadius: const BorderRadius.all(Radius.circular(10)),
+                            ),
+                            child: Icon(icon, size: 24, color: _disabled ? TtColors.navy500 : TtColors.coral500, fill: 1),
+                          ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(name,
-                                  style: t.bodySemibold.copyWith(fontSize: 17, color: fg),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
-                            ),
-                            // Seats as "👤 3" (like Rapido) so a long name ("Auto Priority") keeps its room; other
-                            // capacities ("Up to 500 kg") shrink with ellipsis. Screen readers get the full label.
-                            if (capacity != null) ...[
-                              const SizedBox(width: 6),
-                              Icon(Symbols.person_rounded, size: 16, color: TtColors.navy500, fill: 1),
-                              if (_seats != null)
-                                Text(_seats!, style: t.caption.copyWith(color: TtColors.navy500), maxLines: 1)
-                              else
-                                Flexible(
-                                  child: Text(capacity!,
-                                      style: t.caption.copyWith(color: TtColors.navy500),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
-                                ),
+                    child: ExcludeSemantics(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(name,
+                                    style: t.listTitle.copyWith(color: fg), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                              // Seats as "👤 3" (like Rapido) so a long name ("Auto Priority") keeps its room; other
+                              // capacities ("Up to 500 kg") shrink with ellipsis. Screen readers get the full label.
+                              if (capacity != null) ...[
+                                const SizedBox(width: 6),
+                                const Icon(Symbols.person_rounded, size: 14, color: TtColors.navy500, fill: 1),
+                                if (_seats != null)
+                                  Text(_seats!, style: t.caption.copyWith(color: TtColors.navy500), maxLines: 1)
+                                else
+                                  Flexible(
+                                    child: Text(capacity!,
+                                        style: t.caption.copyWith(color: TtColors.navy500),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                              ],
+                              if (fastest && !_disabled) ...[
+                                const SizedBox(width: 6),
+                                const _Badge(label: 'Fastest', tone: VehicleBadgeTone.navy, icon: Symbols.bolt_rounded),
+                              ] else if (badge != null && !_disabled) ...[
+                                const SizedBox(width: 6),
+                                _Badge(label: badge!, tone: badgeTone),
+                              ],
                             ],
-                            if (fastest && !_disabled) ...[
-                              const SizedBox(width: 8),
-                              const _Badge(label: 'Fastest', tone: VehicleBadgeTone.navy, icon: Symbols.bolt_rounded),
-                            ] else if (badge != null && !_disabled) ...[
-                              const SizedBox(width: 8),
-                              _Badge(label: badge!, tone: badgeTone),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _disabled ? disabledReason! : subtitle,
-                          style: t.bodySmall.copyWith(color: _disabled ? TtColors.navy500 : TtColors.navy700),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _disabled ? disabledReason! : subtitle,
+                            style: t.listMeta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(formatInr(fare), style: TtTextStyles.tabular(t.h2.copyWith(color: fg))),
-                  const SizedBox(width: 6),
+                  if (selected && info != null && !_disabled)
+                    IconButton(
+                      tooltip: 'Fare details',
+                      onPressed: info,
+                      icon: const Icon(Symbols.info_rounded, size: 18, color: TtColors.navy500),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(width: 32, height: 40),
+                    ),
+                  ExcludeSemantics(child: Text(formatInr(fare), style: t.price.copyWith(color: fg))),
+                  const SizedBox(width: 4),
                 ],
               ),
             ),
@@ -168,7 +184,7 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
         decoration: BoxDecoration(
           color: tone == VehicleBadgeTone.coral ? TtColors.coral600 : TtColors.navy900,
           borderRadius: TtRadii.pillRadius,
@@ -177,10 +193,13 @@ class _Badge extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 13, color: Colors.white, fill: 1),
+              Icon(icon, size: 12, color: Colors.white, fill: 1),
               const SizedBox(width: 2),
             ],
-            Text(label, style: context.type.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: context.type.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11),
+            ),
           ],
         ),
       );

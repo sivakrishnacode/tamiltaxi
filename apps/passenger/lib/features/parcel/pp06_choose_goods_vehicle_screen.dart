@@ -130,7 +130,7 @@ class _PP06ChooseGoodsVehicleScreenState extends ConsumerState<PP06ChooseGoodsVe
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('Choose a vehicle', style: t.h1, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text('Choose a vehicle', style: t.bodySemibold, maxLines: 1, overflow: TextOverflow.ellipsis),
                           if (s.outstation) ...[
                             const SizedBox(height: 2),
                             Text(
@@ -140,7 +140,7 @@ class _PP06ChooseGoodsVehicleScreenState extends ConsumerState<PP06ChooseGoodsVe
                               style: t.bodySmall.copyWith(color: TtColors.navy500),
                             ),
                           ],
-                          const SizedBox(height: 12),
+                          const SizedBox(height: TtSpacing.s),
                           if (!quotesReady)
                             s.pickup.isUnknownPickup
                                 ? _QuotesPending(
@@ -163,7 +163,7 @@ class _PP06ChooseGoodsVehicleScreenState extends ConsumerState<PP06ChooseGoodsVe
                               disabledReason: s.fits(q.vehicle) ? null : 'Too small for ${s.details.weight.label}',
                               onTap: () => ctrl.selectVehicle(q.vehicle.kind),
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: TtSpacing.xs),
                           ],
                           _DetailsRow(
                             details: s.details,

@@ -12,8 +12,9 @@ import '../../state/ride_flow.dart';
 import 'p10b_who_is_riding_sheet.dart';
 import 'p11_fare_details_sheet.dart';
 
-/// P-10 Choose vehicle: route map, Bike / Auto / Cab cards ("3 min away · Drop 9:24 PM", Fastest), payment note,
-/// Butterfly (women riders: women drivers preferred / only) and "Book Bike · ₹38".
+/// P-10 Choose vehicle: route map, a slim "Choose a ride · For me" row, one 64 dp row per tier ("3 min away · Drop
+/// 9:24 PM", Fastest; only the selected one outlined, its ⓘ opens fare details), Butterfly (women riders: women
+/// drivers preferred / only), then "Cash / UPI" and "Book Bike · ₹38" pinned at the bottom.
 class P10ChooseVehicleScreen extends ConsumerStatefulWidget {
   const P10ChooseVehicleScreen({super.key, this.showcase = false});
 
@@ -172,37 +173,25 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                           child: ListView(
                             padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l),
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(child: Text('Choose a ride', style: t.h1)),
-                                  TextButton(
-                                    onPressed: () => P11FareDetailsSheet.show(context),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: TtColors.coral600,
-                                      minimumSize: const Size(48, 48),
+                              // One slim row (like Uber's "Choose a trip"): the title and who's riding. Fare details open
+                              // from the ⓘ on the selected ride.
+                              SizedBox(
+                                height: 44,
+                                child: Row(
+                                  children: [
+                                    Expanded(child: Text('Choose a ride', style: t.bodySemibold)),
+                                    _RiderChip(
+                                      rider: state.rider,
+                                      onTap: () async {
+                                        final me = ref.read(currentProfileProvider).firstName;
+                                        final choice = await P10bWhoIsRidingSheet.show(context, me: me, current: state.rider);
+                                        if (choice != null) flow.setRider(choice.rider);
+                                      },
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Fare details',
-                                          style: t.bodySemibold.copyWith(color: TtColors.coral600),
-                                        ),
-                                        const Icon(Symbols.chevron_right_rounded, size: 20),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                              _RiderRow(
-                                rider: state.rider,
-                                onTap: () async {
-                                  final me = ref.read(currentProfileProvider).firstName;
-                                  final choice = await P10bWhoIsRidingSheet.show(context, me: me, current: state.rider);
-                                  if (choice != null) flow.setRider(choice.rider);
-                                },
-                              ),
-                              const SizedBox(height: TtSpacing.s),
+                              const SizedBox(height: TtSpacing.xs),
                               if (!quotesReady)
                                 noPickup
                                     ? const _QuotesPending(error: kChoosePickupForFares, onRetry: null)
@@ -223,55 +212,10 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                                       : VehicleBadgeTone.coral,
                                   selected: q.vehicle.kind == state.vehicle,
                                   onTap: () => flow.selectVehicle(q.vehicle.kind),
+                                  onInfo: () => P11FareDetailsSheet.show(context),
                                 ),
-                                const SizedBox(height: TtSpacing.s),
+                                const SizedBox(height: TtSpacing.xs),
                               ],
-                              const Divider(height: TtSpacing.l),
-                              Row(
-                                children: [
-                                  const Icon(Symbols.payments_rounded, color: TtColors.navy900),
-                                  const SizedBox(width: TtSpacing.m),
-                                  // Short and not flexible: two Flexibles split the row in half, which cut the chip to
-                                  // "Pay your driv…" on a 390 px phone.
-                                  Text('Cash / UPI', style: t.bodyMedium),
-                                  const SizedBox(width: TtSpacing.s),
-                                  Expanded(
-                                    child: Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Material(
-                                        color: TtColors.inputBg,
-                                        shape: const StadiumBorder(),
-                                        clipBehavior: Clip.antiAlias,
-                                        child: InkWell(
-                                          onTap: () => showTtSnack(
-                                            context,
-                                            'Pay your driver by cash or UPI when the ride ends. Tamil Taxi takes 0% of it.',
-                                          ),
-                                          child: Container(
-                                            constraints: const BoxConstraints(minHeight: 40),
-                                            padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(Symbols.info_rounded, size: 18, color: TtColors.navy700),
-                                                const SizedBox(width: 6),
-                                                Flexible(
-                                                  child: Text(
-                                                    'Pay driver directly',
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: t.bodySmall.copyWith(color: TtColors.navy700),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                               if (flow.canUseButterfly) ...[
                                 const SizedBox(height: TtSpacing.m),
                                 ButterflyCard(value: womenDriver, onChanged: flow.setWomenDriver, riderName: state.rider?.firstName),
@@ -280,13 +224,9 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                             ],
                           ),
                         ),
+                        if (!noPickup) const _PayNote(),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            TtSpacing.l,
-                            TtSpacing.s,
-                            TtSpacing.l,
-                            TtSpacing.l,
-                          ),
+                          padding: EdgeInsets.fromLTRB(TtSpacing.l, noPickup ? TtSpacing.s : 0, TtSpacing.l, TtSpacing.l),
                           child: noPickup
                               ? TtButton(label: 'Choose your pickup', onPressed: () => context.push(Routes.pinPickupOnMap))
                               : TtButton(
@@ -319,9 +259,9 @@ VehicleKind? _fastestKind(List<FareQuote> quotes) {
   return known[0].at < known[1].at ? known[0].kind : null;
 }
 
-/// "Riding: Me" / "Riding: Anjali" chip that opens P-10b "Who's riding?".
-class _RiderRow extends StatelessWidget {
-  const _RiderRow({required this.rider, required this.onTap});
+/// "For me" / "For Anjali" chip that opens P-10b "Who's riding?".
+class _RiderChip extends StatelessWidget {
+  const _RiderChip({required this.rider, required this.onTap});
   final OtherRider? rider;
   final VoidCallback onTap;
 
@@ -329,8 +269,10 @@ class _RiderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.type;
     final r = rider;
-    return Align(
-      alignment: Alignment.centerLeft,
+    return Semantics(
+      button: true,
+      label: r == null ? 'Riding: me. Change who is riding' : 'Riding: ${r.firstName}. Change who is riding',
+      excludeSemantics: true,
       child: Material(
         color: r == null ? TtColors.inputBg : TtColors.coral50,
         shape: const StadiumBorder(),
@@ -338,27 +280,65 @@ class _RiderRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 40),
-            padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m),
+            height: 32,
+            constraints: const BoxConstraints(maxWidth: 180),
+            padding: const EdgeInsets.only(left: 10, right: 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(r == null ? Symbols.person_rounded : Symbols.group_rounded,
-                    size: 18, color: r == null ? TtColors.navy700 : TtColors.coral600, fill: 1),
-                const SizedBox(width: 6),
+                    size: 16, color: r == null ? TtColors.navy700 : TtColors.coral600, fill: 1),
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(
-                    r == null ? 'Riding: Me' : 'Riding: ${r.firstName}',
-                    style: t.bodySmallMedium.copyWith(color: r == null ? TtColors.navy700 : TtColors.coral700),
+                    r == null ? 'For me' : 'For ${r.firstName}',
+                    style: t.bodySmallMedium.copyWith(fontSize: 13, color: r == null ? TtColors.navy700 : TtColors.coral700),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (r?.isWoman ?? false) ...[const SizedBox(width: 4), const ButterflyMark(size: 16)],
-                const Icon(Symbols.expand_more_rounded, size: 18, color: TtColors.navy500),
+                if (r?.isWoman ?? false) ...[const SizedBox(width: 4), const ButterflyMark(size: 14)],
+                const Icon(Symbols.expand_more_rounded, size: 16, color: TtColors.navy500),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Above Book: how the ride is paid ("Cash / UPI · Pay driver directly"); tap for the one-line explanation.
+class _PayNote extends StatelessWidget {
+  const _PayNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    return InkWell(
+      onTap: () => showTtSnack(context, 'Pay your driver by cash or UPI when the ride ends. Tamil Taxi takes 0% of it.'),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: TtColors.divider))),
+        child: Row(
+          children: [
+            const Icon(Symbols.payments_rounded, size: 20, color: TtColors.success),
+            const SizedBox(width: TtSpacing.s),
+            Text('Cash / UPI', style: t.bodySmallMedium),
+            const SizedBox(width: TtSpacing.m),
+            Expanded(
+              child: Text(
+                'Pay driver directly',
+                style: t.listMeta,
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Symbols.info_rounded, size: 16, color: TtColors.navy500),
+          ],
         ),
       ),
     );
@@ -456,9 +436,9 @@ class _QuotesPending extends StatelessWidget {
       return SkeletonShimmer(
         child: Column(
           children: [
-            for (var i = 0; i < 3; i++) ...const [
-              SkeletonBox(height: 72),
-              SizedBox(height: TtSpacing.s),
+            for (var i = 0; i < 4; i++) ...const [
+              SkeletonBox(height: 64),
+              SizedBox(height: TtSpacing.xs),
             ],
           ],
         ),

@@ -80,7 +80,7 @@ void main() {
     };
     expect(find.byWidgetPredicate((w) => w is Text && drops.contains(w.data)), findsWidgets);
 
-    await tester.tap(find.text('Fare details'));
+    await tester.tap(find.byTooltip('Fare details'));
     await tester.pumpAndSettle();
     expect(find.byType(P11FareDetailsSheet), findsOneWidget);
     expect(find.textContaining('38 min at 18 km/h'), findsOneWidget);

@@ -42,6 +42,9 @@ abstract final class TtTheme {
         hero: TtTextStyles.tabular(_poppins(56, 64, FontWeight.w700)),
         heroSmall: TtTextStyles.tabular(_poppins(40, 48, FontWeight.w700)),
         otp: TtTextStyles.tabular(_poppins(28, 34, FontWeight.w600)),
+        listTitle: _inter(15, 20, FontWeight.w600),
+        listMeta: _inter(13, 18, FontWeight.w400).copyWith(color: TtColors.navy500),
+        price: TtTextStyles.tabular(_inter(16, 22, FontWeight.w600)),
       );
 
   static ThemeData light() {

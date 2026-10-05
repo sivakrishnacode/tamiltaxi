@@ -20,7 +20,7 @@ const _only = String.fromEnvironment('ONLY');
 /// Screens added after the original design, opened through their real route. One with a gallery frame's ID
 /// replaces that frame (the screen as it is in the flow today).
 const extraShots = <({String id, String name, String route, String? tap})>[
-  (id: 'P-10b', name: "Who's riding (sheet)", route: Routes.chooseVehicle, tap: 'Riding: Me'),
+  (id: 'P-10b', name: "Who's riding (sheet)", route: Routes.chooseVehicle, tap: 'For me'),
   (id: 'P-26', name: 'Edit profile', route: Routes.editProfile, tap: null),
   (id: 'P-27', name: 'Saved places', route: Routes.savedPlaces, tap: null),
   (id: 'P-28', name: 'Safety preferences', route: Routes.safety, tap: null),

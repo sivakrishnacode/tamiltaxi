@@ -435,7 +435,7 @@ class ModeCabList extends StatelessWidget {
     return Column(children: [
       for (final q in list) ...[
         ModeCabCard(quote: q, selected: q.vehicle.kind == selected, onTap: () => onSelect(q.vehicle.kind)),
-        const SizedBox(height: TtSpacing.s),
+        const SizedBox(height: TtSpacing.xs),
       ],
     ]);
   }

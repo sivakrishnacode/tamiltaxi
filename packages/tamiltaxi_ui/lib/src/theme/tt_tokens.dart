@@ -54,6 +54,9 @@ class TtTextStyles {
     required this.hero,
     required this.heroSmall,
     required this.otp,
+    required this.listTitle,
+    required this.listMeta,
+    required this.price,
   });
 
   /// 28/36 Poppins Bold.
@@ -98,6 +101,16 @@ class TtTextStyles {
   /// 28/34 Poppins SemiBold, tabular: OTP digits and big counters.
   final TextStyle otp;
 
+  /// 15/20 Inter SemiBold: the name in a list row ("Bike", "Race Course"), lighter than [bodySemibold] so a list
+  /// reads like the other ride apps'.
+  final TextStyle listTitle;
+
+  /// 13/18 Inter Regular, grey: the line under a list row's name ("3 min away · Drop 6:19 PM").
+  final TextStyle listMeta;
+
+  /// 16/22 Inter SemiBold, tabular: a fare at the end of a list row ("₹68").
+  final TextStyle price;
+
   /// Adds tabular (fixed-width) figures for fares, OTPs and timers.
   static TextStyle tabular(TextStyle s) =>
       s.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
@@ -117,6 +130,9 @@ class TtTextStyles {
         hero: TextStyle.lerp(hero, other.hero, t)!,
         heroSmall: TextStyle.lerp(heroSmall, other.heroSmall, t)!,
         otp: TextStyle.lerp(otp, other.otp, t)!,
+        listTitle: TextStyle.lerp(listTitle, other.listTitle, t)!,
+        listMeta: TextStyle.lerp(listMeta, other.listMeta, t)!,
+        price: TextStyle.lerp(price, other.price, t)!,
       );
 }
 
