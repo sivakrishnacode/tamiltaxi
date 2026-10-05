@@ -1160,7 +1160,7 @@ tier per city (City › Fares).
 - Home layout since 5 Oct 2026 (lighter, like Rapido / Uber): a one-line pickup pill (44 dp, as wide as its text;
   the greeting only during a trip) and a quiet white SOS map button (`SosButton(quiet: true)`; the red SOS stays on
   the trip screens); a 52 dp search (`SearchField(large: true)`, 16 sp semibold); saved places as one-line pills
-  (up to three share the row evenly with a round "+"; more scroll sideways; none: "Add home, work and more"); the last 3 places as 56 dp `LocationRow`s (bare 20 dp icons in one 24 dp column, 15 /
+  (up to three share the row evenly as two-line grey tiles, "Home" over its place, with a square "+"; more scroll sideways as one-line pills; none: "Add home, work and more"); the last 3 places as 56 dp `LocationRow`s (bare 20 dp icons in one 24 dp column, 15 /
   13 sp, used by every place list); the "Ride safer" card moved off Home (Account › Safety has it).
 - P-34 Rent a cab: pickup, package chips (with the Mini "from" price), When? (Now / Schedule: at least 30 min ahead,
   up to 7 days), then Mini / Sedan / SUV with the package price and the rates past it.

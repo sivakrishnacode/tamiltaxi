@@ -494,13 +494,21 @@ class _SavedPlacesRow extends StatelessWidget {
         expand: true,
       );
     }
+    // Up to three: two-line tiles that also name the place ("Home" over "Saibaba Colony").
     final pills = [
       for (final p in places)
-        _Pill(icon: _icon(p), label: p.label, semantics: '${p.label}, ${p.place.name}', onTap: () => onPlace(p), expand: true),
+        _Pill(
+          icon: _icon(p),
+          label: p.label,
+          detail: p.place.name,
+          semantics: '${p.label}, ${p.place.name}',
+          onTap: () => onPlace(p),
+          expand: true,
+        ),
     ];
-    final plus = add == null
+    final plus = add == null || places.length > 3
         ? null
-        : _Pill(icon: Symbols.add_rounded, label: null, semantics: 'Add a saved place', onTap: add, accent: true);
+        : _Pill(icon: Symbols.add_rounded, label: null, semantics: 'Add a saved place', onTap: add, accent: true, tall: true);
     if (places.length <= 3) {
       return Row(
         children: [
@@ -521,65 +529,92 @@ class _SavedPlacesRow extends StatelessWidget {
             _Pill(icon: _icon(p), label: p.label, semantics: '${p.label}, ${p.place.name}', onTap: () => onPlace(p)),
             const SizedBox(width: TtSpacing.s),
           ],
-          ?plus,
+          if (add != null) _Pill(icon: Symbols.add_rounded, label: null, semantics: 'Add a saved place', onTap: add, accent: true),
         ],
       ),
     );
   }
 }
 
-/// A 36 dp pill: icon and label ([label] null: a round icon-only "+"); [expand] fills its slot with the content
-/// centred.
+/// A shortcut on the soft grey of the search field, left aligned: a 40 dp pill (icon and label), or with [detail] a
+/// 48 dp two-line tile ("Home" over "Saibaba Colony"). [label] null: an icon-only "+" (square next to tiles when
+/// [tall]). [expand] fills its slot.
 class _Pill extends StatelessWidget {
   const _Pill({
     required this.icon,
     required this.label,
     required this.semantics,
     required this.onTap,
+    this.detail,
     this.accent = false,
     this.expand = false,
+    this.tall = false,
   });
   final IconData icon;
   final String? label;
+  final String? detail;
   final String semantics;
   final VoidCallback onTap;
 
   /// "+ Add": coral text.
   final bool accent;
   final bool expand;
+  final bool tall;
 
   @override
   Widget build(BuildContext context) {
     final t = context.type;
     final text = label;
+    final more = detail;
+    final twoLine = text != null && more != null && more.isNotEmpty;
+    final h = twoLine || tall ? 48.0 : 40.0;
+    final title = text == null
+        ? null
+        : Text(
+            text,
+            style: t.bodySmallMedium.copyWith(color: accent ? TtColors.coral600 : TtColors.navy900, height: 18 / 14),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
     return Semantics(
       button: true,
       label: semantics,
       excludeSemantics: true,
       child: Material(
-        color: TtColors.surface,
-        shape: const StadiumBorder(side: BorderSide(color: TtColors.divider)),
+        color: TtColors.inputBg,
+        shape: twoLine || tall
+            ? const RoundedRectangleBorder(borderRadius: TtRadii.cardRadius)
+            : const StadiumBorder(),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Container(
-            height: 36,
-            width: text == null ? 44 : null,
-            padding: text == null ? null : const EdgeInsets.only(left: 10, right: 14),
+            height: h,
+            width: text == null ? h : null,
+            padding: text == null ? null : const EdgeInsets.only(left: 12, right: 12),
             child: Row(
               mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: text == null ? MainAxisAlignment.center : MainAxisAlignment.start,
               children: [
-                Icon(icon, size: 18, color: TtColors.coral600, fill: accent ? 0 : 1),
-                if (text != null) ...[
-                  const SizedBox(width: 6),
+                Icon(icon, size: 20, color: TtColors.coral600, fill: accent ? 0 : 1),
+                if (title != null) ...[
+                  const SizedBox(width: 8),
                   Flexible(
-                    child: Text(
-                      text,
-                      style: t.bodySmallMedium.copyWith(color: accent ? TtColors.coral600 : TtColors.navy900),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: twoLine
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              title,
+                              Text(
+                                more,
+                                style: t.caption.copyWith(color: TtColors.navy500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          )
+                        : title,
                   ),
                 ],
               ],

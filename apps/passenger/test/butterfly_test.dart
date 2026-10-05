@@ -37,12 +37,12 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(value, WomenDriverPref.preferred);
-    expect(find.text('Women drivers first, else the nearest driver'), findsOneWidget);
+    expect(find.text('Women drivers get it first'), findsOneWidget);
 
     await tester.tap(find.text('Women only'));
     await tester.pumpAndSettle();
     expect(value, WomenDriverPref.only);
-    expect(find.text('Only women drivers. It can take a little longer'), findsOneWidget);
+    expect(find.text('Women only, may take longer'), findsOneWidget);
 
     await tester.tap(find.text('Women first'));
     await tester.pumpAndSettle();

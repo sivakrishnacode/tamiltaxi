@@ -368,8 +368,8 @@ class PinkTaxiStrip extends StatelessWidget {
     final on = value.isOn;
     final subtitle = switch (value) {
       WomenDriverPref.none => riderName != null ? 'A woman driver for $riderName' : 'A woman driver, for women riders',
-      WomenDriverPref.preferred => 'Women drivers first, else the nearest driver',
-      WomenDriverPref.only => 'Only women drivers. It can take a little longer',
+      WomenDriverPref.preferred => 'Women drivers get it first',
+      WomenDriverPref.only => 'Women only, may take longer',
     };
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
