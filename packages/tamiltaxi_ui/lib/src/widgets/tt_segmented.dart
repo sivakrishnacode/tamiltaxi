@@ -12,6 +12,7 @@ class TtSegmented<T> extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     this.dark = false,
+    this.compact = false,
   });
 
   final List<T> options;
@@ -21,6 +22,9 @@ class TtSegmented<T> extends StatelessWidget {
 
   /// Navy-700 track with a white thumb (driver app header).
   final bool dark;
+
+  /// 36 dp segments with 14 sp labels (PP-01's "In town / To another town").
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +47,7 @@ class TtSegmented<T> extends StatelessWidget {
                   onTap: () => onChanged(o),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    height: 44,
+                    height: compact ? 36 : 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: o == selected ? TtColors.surface : Colors.transparent,
@@ -54,7 +58,7 @@ class TtSegmented<T> extends StatelessWidget {
                       labelOf(o),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: t.bodyMedium.copyWith(
+                      style: (compact ? t.bodySmallMedium : t.bodyMedium).copyWith(
                         color: o == selected ? TtColors.navy900 : (dark ? Colors.white70 : TtColors.navy500),
                         fontWeight: o == selected ? FontWeight.w600 : FontWeight.w500,
                       ),
