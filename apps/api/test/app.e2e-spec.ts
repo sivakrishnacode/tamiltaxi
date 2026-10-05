@@ -13,6 +13,7 @@ import { RedisService } from '../src/core/redis/redis.service.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
 import { SettingsService } from '../src/modules/settings/settings.service.js';
 import { DriverBlocksService } from '../src/modules/trips/driver-blocks.service.js';
+import { TripsService } from '../src/modules/trips/trips.service.js';
 import { statsKey } from '../src/modules/trips/driver-rank.js';
 import { DEMAND_RES, DemandService, SURGE_CELLS_KEY } from '../src/modules/geo/demand.service.js';
 import { cellAt } from '../src/modules/geo/h3.util.js';
@@ -1546,6 +1547,28 @@ describe('Tamil Taxi API (e2e)', () => {
       for (const d of [self, other]) await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${d}`);
     }
   }, 30_000);
+
+  it('scheduled dispatch waits for an active ride and serializes overlapping scheduled trips', async () => {
+    const pax = { Authorization: `Bearer ${await login()}` };
+    const body = { kind: 'RIDE', vehicleKind: 'SEDAN', rideMode: 'RENTAL', rentalPackageId: '1h', pickup: GANDHIPURAM,
+      scheduledAt: new Date(Date.now() + 2 * 3_600_000).toISOString() };
+    const first = (await http.post('/v1/trips').set(pax).send(body).expect(201)).body;
+    const second = (await http.post('/v1/trips').set(pax).send(body).expect(201)).body;
+    const immediate = (await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'BIKE', pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(201)).body;
+    const trips = app.get(TripsService);
+    const jobs = app.get(JobsService);
+    await Promise.all([trips.startScheduled(first.id), trips.startScheduled(second.id)]);
+    for (const id of [first.id, second.id]) {
+      expect((await prisma.trip.findUniqueOrThrow({ where: { id } })).status).toBe('SCHEDULED');
+      expect(await jobs.scheduledAt('trip.scheduled-dispatch', id)).not.toBeNull();
+    }
+    await http.post(`/v1/trips/${immediate.id}/cancel`).set(pax).send({}).expect(200);
+    await Promise.all([trips.startScheduled(first.id), trips.startScheduled(second.id)]);
+    const states = await prisma.trip.findMany({ where: { id: { in: [first.id, second.id] } }, select: { status: true } });
+    expect(states.filter((t) => t.status === 'SEARCHING')).toHaveLength(1);
+    expect(states.filter((t) => t.status === 'SCHEDULED')).toHaveLength(1);
+    for (const id of [first.id, second.id]) await http.post(`/v1/trips/${id}/cancel`).set(pax).send({}).expect(200);
+  });
 
   it('an admin who also drives: the driver app gets a DRIVER token, the panel an ADMIN one', async () => {
     // A driver made an admin (same as an ADMIN_PHONES number that registered a vehicle).

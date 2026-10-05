@@ -1119,7 +1119,9 @@ tier per city (City › Fares).
   `scheduledDispatchLeadMin` (30) before the pickup time. A driver who accepts early only has to set off in time
   (`setOffAt`: the "not moving" checks and the not-started cap count from pickup time − ETA − 5 min); arriving early,
   the no-show wait and any waiting charge start at the pickup time. Cancelling a scheduled trip is free and drops
-  its job.
+  its job. The start takes the rider's booking lock: while the rider has a trip searching or under way (or is
+  booking one), the scheduled trip stays `SCHEDULED` and checks again every minute, so a rider never has two trips
+  searching at once.
 - Quotes: `POST /fares/quote` with `rideMode` (+ `rentalPackageId`, or `drop`, `roundTrip`, `scheduledAt`,
   `returnAt`) returns the three cab tiers, each with `modeTerms`. Booking takes the same fields. No "Book any" for
   these trips. The driver's offer push says "rental" / "outstation" and the pickup time ("· Tue 6:00 am").

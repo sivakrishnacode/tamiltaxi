@@ -52,6 +52,8 @@ const MAX_ALSO_KINDS = 3;
 const IN_PROGRESS = [TripStatus.SEARCHING, TripStatus.DRIVER_ASSIGNED, TripStatus.DRIVER_ARRIVED, TripStatus.IN_PROGRESS, TripStatus.PICKED_UP] as const;
 /** How long one booking may hold the rider's booking lock. */
 const BOOKING_LOCK_S = 15;
+/** Keep an overlapping scheduled booking pending, checking again once a minute. */
+const SCHEDULED_RECHECK_MS = 60_000;
 
 /** Another vehicle a searching passenger could add: free drivers of it are within the maximum search radius. */
 export interface VehicleAlternative {
@@ -267,18 +269,32 @@ export class TripsService {
   /**
    * A SCHEDULED trip's time has come (job `trip.scheduled-dispatch`): it starts looking for a driver now (the search
    * radius widens from here), and the passenger sees "Finding your driver". A cancelled or already started trip is
-   * left alone.
+   * left alone. When the passenger is already on a trip or making a booking, dispatch waits and checks again.
    */
   async startScheduled(tripId: string): Promise<void> {
-    const { count } = await this.prisma.trip.updateMany({
-      where: { id: tripId, status: TripStatus.SCHEDULED },
-      data: { status: TripStatus.SEARCHING, searchFrom: new Date() },
-    });
-    if (count === 0) return;
-    const trip = await this.prisma.trip.findUniqueOrThrow({ where: { id: tripId } });
-    await this.demand.recordRequest({ lat: trip.pickupLat, lng: trip.pickupLng }, trip.passengerId);
-    await this.dispatch.start(trip);
-    await this.publish(tripId, 'SYSTEM');
+    const scheduled = await this.prisma.trip.findUnique({ where: { id: tripId } });
+    if (!scheduled || scheduled.status !== TripStatus.SCHEDULED) return;
+    const lock = `trips:booking:${scheduled.passengerId}`;
+    if ((await this.redis.set(lock, '1', 'EX', BOOKING_LOCK_S, 'NX')) !== 'OK') return this.deferScheduled(tripId);
+    try {
+      const open = await this.prisma.trip.findFirst({ where: { passengerId: scheduled.passengerId, status: { in: [...IN_PROGRESS] } }, select: { id: true } });
+      if (open) return await this.deferScheduled(tripId);
+      const { count } = await this.prisma.trip.updateMany({
+        where: { id: tripId, status: TripStatus.SCHEDULED },
+        data: { status: TripStatus.SEARCHING, searchFrom: new Date() },
+      });
+      if (count === 0) return;
+      const trip = await this.prisma.trip.findUniqueOrThrow({ where: { id: tripId } });
+      await this.demand.recordRequest({ lat: trip.pickupLat, lng: trip.pickupLng }, trip.passengerId);
+      await this.dispatch.start(trip);
+      await this.publish(tripId, 'SYSTEM');
+    } finally {
+      await this.redis.del(lock);
+    }
+  }
+
+  private deferScheduled(tripId: string): Promise<void> {
+    return this.jobs.schedule(TRIP_JOBS.scheduledDispatch, tripId, Date.now() + SCHEDULED_RECHECK_MS);
   }
 
   /** The passenger's trips booked for later (soonest first). */
