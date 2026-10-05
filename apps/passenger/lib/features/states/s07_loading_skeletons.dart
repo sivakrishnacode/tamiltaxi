@@ -61,30 +61,25 @@ class S07aHomeSkeletonScreen extends StatelessWidget {
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(TtSpacing.l, TtSpacing.m, TtSpacing.l, 0),
+                    // Home's top row: the one-line pickup pill on the left, the SOS map button on the right.
                     child: SkeletonShimmer(
-                      child: Container(
-                        height: 56,
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        decoration: const BoxDecoration(
-                          color: TtColors.surface,
-                          borderRadius: TtRadii.pillRadius,
-                          boxShadow: TtShadows.soft,
-                        ),
-                        child: const Row(
-                          children: [
-                            SkeletonBox(width: 44, height: 44, circle: true),
-                            SizedBox(width: TtSpacing.m),
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SkeletonBox(width: 90, height: 10),
-                                SizedBox(height: TtSpacing.s),
-                                SkeletonBox(width: 60, height: 10),
-                              ],
+                      child: Row(
+                        children: [
+                          Container(
+                            height: 44,
+                            width: 200,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            alignment: Alignment.centerLeft,
+                            decoration: const BoxDecoration(
+                              color: TtColors.surface,
+                              borderRadius: TtRadii.pillRadius,
+                              boxShadow: TtShadows.soft,
                             ),
-                          ],
-                        ),
+                            child: const SkeletonBox(width: 140, height: 12),
+                          ),
+                          const Spacer(),
+                          const SkeletonBox(width: 44, height: 44, circle: true),
+                        ],
                       ),
                     ),
                   ),
@@ -121,7 +116,7 @@ class S07aHomeSkeletonScreen extends StatelessWidget {
   }
 }
 
-/// The Home bottom-sheet content in skeleton form (search, saved places, 2 recent rows, promo).
+/// The Home bottom-sheet content in skeleton form (search, saved-place pills, 3 recent rows, 4 tiles).
 /// P-07 shows it while recent destinations load.
 class S07aHomeSheetSkeleton extends StatelessWidget {
   const S07aHomeSheetSkeleton({super.key});
@@ -129,18 +124,18 @@ class S07aHomeSheetSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget row() => const Padding(
-      padding: EdgeInsets.symmetric(vertical: TtSpacing.m),
+      padding: EdgeInsets.symmetric(vertical: 11),
       child: Row(
         children: [
-          SkeletonBox(width: 40, height: 40, circle: true),
-          SizedBox(width: TtSpacing.m),
+          SkeletonBox(width: 20, height: 20, circle: true),
+          SizedBox(width: 18),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FractionallySizedBox(widthFactor: 0.6, child: SkeletonBox(height: 12)),
+                FractionallySizedBox(widthFactor: 0.5, child: SkeletonBox(height: 12)),
                 SizedBox(height: TtSpacing.s),
-                FractionallySizedBox(widthFactor: 0.4, child: SkeletonBox(height: 10)),
+                FractionallySizedBox(widthFactor: 0.7, child: SkeletonBox(height: 10)),
               ],
             ),
           ),
@@ -151,22 +146,33 @@ class S07aHomeSheetSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SkeletonBox(height: 56, radius: TtRadii.card),
+          const SkeletonBox(height: 52, radius: TtRadii.card),
+          const SizedBox(height: TtSpacing.m),
+          const Row(
+            children: [
+              SkeletonBox(width: 84, height: 36, radius: TtRadii.pill),
+              SizedBox(width: TtSpacing.s),
+              SkeletonBox(width: 84, height: 36, radius: TtRadii.pill),
+              SizedBox(width: TtSpacing.s),
+              SkeletonBox(width: 72, height: 36, radius: TtRadii.pill),
+            ],
+          ),
+          const SizedBox(height: TtSpacing.xs),
+          row(),
+          row(),
+          row(),
           const SizedBox(height: TtSpacing.l),
           const Row(
             children: [
-              Expanded(flex: 2, child: SkeletonBox(height: 56, radius: TtRadii.card)),
+              Expanded(child: SkeletonBox(height: 64, radius: TtRadii.card)),
               SizedBox(width: TtSpacing.s),
-              Expanded(flex: 2, child: SkeletonBox(height: 56, radius: TtRadii.card)),
+              Expanded(child: SkeletonBox(height: 64, radius: TtRadii.card)),
               SizedBox(width: TtSpacing.s),
-              Expanded(child: SkeletonBox(height: 56, radius: TtRadii.card)),
+              Expanded(child: SkeletonBox(height: 64, radius: TtRadii.card)),
+              SizedBox(width: TtSpacing.s),
+              Expanded(child: SkeletonBox(height: 64, radius: TtRadii.card)),
             ],
           ),
-          const SizedBox(height: TtSpacing.s),
-          row(),
-          row(),
-          const SizedBox(height: TtSpacing.s),
-          const SkeletonBox(height: 72, radius: TtRadii.card),
         ],
       ),
     );

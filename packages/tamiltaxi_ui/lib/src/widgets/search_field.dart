@@ -34,14 +34,14 @@ class SearchField extends StatelessWidget {
   final Color leadingColor;
   final bool showMic;
 
-  /// Large variant (P-07): 56px tall, H2-sized hint.
+  /// Large variant (P-07 Home): 52 dp tall, 16 sp semibold hint in ink, like the other ride apps' "Where to?".
   final bool large;
   final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     final t = context.type;
-    final style = large ? t.h2.copyWith(fontWeight: FontWeight.w500) : t.body;
+    final style = large ? t.bodySemibold : t.body;
     return Semantics(
       button: readOnly,
       label: readOnly ? hint : null,
@@ -56,8 +56,8 @@ class SearchField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: style.copyWith(color: large ? TtColors.navy900 : TtColors.navy500),
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: large ? 16 : 12),
-          prefixIcon: Icon(leadingIcon, color: leadingColor, fill: 1, size: large ? 28 : 24),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: large ? 14 : 12),
+          prefixIcon: Icon(leadingIcon, color: leadingColor, fill: 1, size: large ? 22 : 24),
           suffixIcon: showMic
               ? IconButton(
                   tooltip: 'Voice search',

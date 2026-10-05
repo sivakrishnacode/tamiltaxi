@@ -19,7 +19,6 @@ import '../../state/ride_flow.dart';
 import '../states/s05_location_denied_screen.dart';
 import '../states/s07_loading_skeletons.dart';
 import '../states/s08_service_unavailable_screen.dart';
-import 'widgets/dashed_border.dart';
 import 'widgets/upcoming_trip_card.dart';
 
 /// P-07 Home (Ride tab): full map around the pickup with nearby vehicles, a top pill with the greeting and where
@@ -217,17 +216,21 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
                     children: [
                       Row(
                         children: [
-                          Expanded(
-                            child: _HelloPill(
-                              greeting: _greeting(),
-                              name: profile.name == kPlaceholderName ? '' : profile.firstName,
-                              // During a trip the pickup is the trip's, so it isn't offered for change here.
-                              pickup: tripActive ? null : ride.pickup,
-                              onPickup: tripActive || widget.showcase ? null : () => context.push(Routes.pinPickupOnMap),
+                          Flexible(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: _PickupPill(
+                                greeting: _greeting(),
+                                name: profile.name == kPlaceholderName ? '' : profile.firstName,
+                                // During a trip the pickup is the trip's, so it isn't offered for change here.
+                                pickup: tripActive ? null : ride.pickup,
+                                onPickup: tripActive || widget.showcase ? null : () => context.push(Routes.pinPickupOnMap),
+                              ),
                             ),
                           ),
                           const SizedBox(width: TtSpacing.s),
-                          SosButton(size: 52, onPressed: () => context.push(Routes.sos)),
+                          // A quiet white map button before a trip; the trip screens keep the big red SOS.
+                          SosButton(size: 44, quiet: true, onPressed: () => context.push(Routes.sos)),
                         ],
                       ),
                       if (!widget.showcase) _LocationBanners(outsideArea: _outsideArea, onFix: _fixLocation),
@@ -300,21 +303,20 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
               readOnly: true,
               onTap: () => context.push(Routes.search),
             ),
-            const SizedBox(height: TtSpacing.l),
+            const SizedBox(height: TtSpacing.m),
             _SavedPlacesRow(
               places: profile.savedPlaces,
               onPlace: (p) => _chooseDrop(p.place),
               onAdd: () => context.push(Routes.savedPlaceEditor()),
             ),
-            const SizedBox(height: TtSpacing.s),
+            const SizedBox(height: TtSpacing.xs),
             // The last few places first, in view when Home opens: one tap to the fares (P-10). Search has the rest.
             for (var i = 0; i < places.length && i < 3; i++) ...[
-              if (i > 0) const Divider(height: 1, indent: 52),
+              if (i > 0) const Divider(height: 1, indent: 38),
               LocationRow(
                 kind: LocationRowKind.recent,
                 title: places[i].name,
                 subtitle: places[i].address,
-                showChevron: true,
                 onTap: () => _chooseDrop(places[i]),
               ),
             ],
@@ -325,9 +327,10 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
             _MoreWaysRow(
               onRental: () => context.push(Routes.rental),
               onOutstation: () => context.push(Routes.outstation),
+              onParcel: () => context.go(Routes.parcel),
+              onMovers: () => context.go(Routes.shifting),
             ),
-            const SizedBox(height: TtSpacing.l),
-            _SafetyCard(onTap: widget.showcase ? null : () => context.push(Routes.safety)),
+            const SizedBox(height: TtSpacing.s),
           ],
         ),
       ),
@@ -338,7 +341,7 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
     void blocked() => showTtSnack(context, 'You can book another ride after this trip ends.');
     return [
       SearchField(hint: 'Where are you going?', large: true, readOnly: true, showMic: false, onTap: blocked),
-      const SizedBox(height: TtSpacing.l),
+      const SizedBox(height: TtSpacing.m),
       _SavedPlacesRow(places: profile.savedPlaces, onPlace: (_) => blocked()),
       const SizedBox(height: TtSpacing.l),
       Container(
@@ -361,11 +364,11 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
   }
 }
 
-/// Top pill: "Good morning, Priya" over where the ride starts ("Mahaganapathi Nagar, Vellalore"); tap to move the
-/// pickup on the map (P-09). No avatar: riders have no photo, and initials only took room. During a trip ([pickup]
-/// null) it is the greeting alone.
-class _HelloPill extends StatelessWidget {
-  const _HelloPill({required this.greeting, required this.name, required this.pickup, this.onPickup});
+/// Top pill: where the ride starts ("Mahaganapathi Nagar, Vellalore") with a green pin, one line and only as wide as
+/// its text; tap to move the pickup on the map (P-09). During a trip ([pickup] null) it shows the greeting instead
+/// ("Good evening, Priya"). Screen readers hear the greeting too.
+class _PickupPill extends StatelessWidget {
+  const _PickupPill({required this.greeting, required this.name, required this.pickup, this.onPickup});
 
   /// "Good morning".
   final String greeting;
@@ -404,41 +407,24 @@ class _HelloPill extends StatelessWidget {
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onPickup,
-          child: SizedBox(
-            height: 52,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 12, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (where == null)
-                          Text(hello, style: t.bodySemibold, maxLines: 1, overflow: TextOverflow.ellipsis)
-                        else ...[
-                          Text(hello, style: t.caption.copyWith(color: TtColors.navy500), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: 1),
-                          Row(
-                            children: [
-                              const Icon(Symbols.location_on_rounded, fill: 1, size: 16, color: TtColors.success),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(where, style: t.bodySemibold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (onPickup != null) ...[
-                    const SizedBox(width: 6),
-                    const Icon(Symbols.expand_more_rounded, size: 22, color: TtColors.navy500),
-                  ],
+          child: Container(
+            height: 44,
+            padding: EdgeInsets.only(left: 14, right: onPickup == null ? 16 : 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (where != null) ...[
+                  const Icon(Symbols.location_on_rounded, fill: 1, size: 18, color: TtColors.success),
+                  const SizedBox(width: 6),
                 ],
-              ),
+                Flexible(
+                  child: Text(where ?? hello, style: t.listTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+                if (onPickup != null) ...[
+                  const SizedBox(width: 2),
+                  const Icon(Symbols.expand_more_rounded, size: 20, color: TtColors.navy500),
+                ],
+              ],
             ),
           ),
         ),
@@ -447,132 +433,77 @@ class _HelloPill extends StatelessWidget {
   }
 }
 
-/// Home / Work shortcuts and a dashed "+ Add" tile.
+/// Saved places as one-line pills ("Home", "Work", "Shop") and "+ Add", scrolling sideways when there are many.
 class _SavedPlacesRow extends StatelessWidget {
   const _SavedPlacesRow({required this.places, required this.onPlace, this.onAdd});
   final List<SavedPlace> places;
   final ValueChanged<SavedPlace> onPlace;
 
-  /// Null hides the "+ Add" tile (P-07b).
+  /// Null hides the "+ Add" pill (P-07b).
   final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
-    final t = context.type;
-    final shown = places.take(2).toList();
-    return SizedBox(
-      height: 58,
+    if (places.isEmpty && onAdd == null) return const SizedBox.shrink();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
       child: Row(
         children: [
-          for (final p in shown) ...[
-            Expanded(
-              child: TtCard(
-                padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m),
-                onTap: () => onPlace(p),
-                child: SizedBox(
-                  height: 56,
-                  child: Row(
-                    children: [
-                      Icon(switch (p.kind) {
-                        SavedPlaceKind.home => Symbols.home_rounded,
-                        SavedPlaceKind.work => Symbols.work_rounded,
-                        SavedPlaceKind.other => Symbols.star_rounded,
-                      }, color: TtColors.coral600),
-                      const SizedBox(width: TtSpacing.m),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(p.label, style: t.bodySemibold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            Text(
-                              p.place.name,
-                              style: t.bodySmall.copyWith(color: TtColors.navy500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          for (final p in places) ...[
+            _Pill(
+              icon: switch (p.kind) {
+                SavedPlaceKind.home => Symbols.home_rounded,
+                SavedPlaceKind.work => Symbols.work_rounded,
+                SavedPlaceKind.other => Symbols.star_rounded,
+              },
+              label: p.label,
+              semantics: '${p.label}, ${p.place.name}',
+              onTap: () => onPlace(p),
             ),
-            if (onAdd != null || p != shown.last) const SizedBox(width: TtSpacing.s),
+            const SizedBox(width: TtSpacing.s),
           ],
-          if (onAdd != null)
-            DashedBorder(
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: TtRadii.cardRadius,
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: onAdd,
-                  child: SizedBox(
-                    height: 58,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Symbols.add_rounded, color: TtColors.coral600, size: 22),
-                          const SizedBox(width: TtSpacing.xs),
-                          Text('Add', style: t.bodySemibold.copyWith(color: TtColors.coral600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          if (onAdd != null) _Pill(icon: Symbols.add_rounded, label: 'Add', semantics: 'Add a saved place', onTap: onAdd!, accent: true),
         ],
       ),
     );
   }
 }
 
-/// "Ride safer" card: emergency contacts and auto-share, opening Account › Safety.
-class _SafetyCard extends StatelessWidget {
-  const _SafetyCard({required this.onTap});
-  final VoidCallback? onTap;
+class _Pill extends StatelessWidget {
+  const _Pill({required this.icon, required this.label, required this.semantics, required this.onTap, this.accent = false});
+  final IconData icon;
+  final String label;
+  final String semantics;
+  final VoidCallback onTap;
+
+  /// "+ Add": coral text.
+  final bool accent;
 
   @override
   Widget build(BuildContext context) {
     final t = context.type;
-    return Material(
-      color: TtColors.coral50,
-      borderRadius: TtRadii.cardRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(TtSpacing.l, TtSpacing.l, TtSpacing.m, TtSpacing.l),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(color: TtColors.surface, shape: BoxShape.circle),
-                child: const Icon(Symbols.shield_person_rounded, color: TtColors.coral600),
-              ),
-              const SizedBox(width: TtSpacing.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Ride safer', style: t.bodySemibold),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Add emergency contacts and share every trip with them live.',
-                      style: t.bodySmall.copyWith(color: TtColors.navy700),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Symbols.chevron_right_rounded, color: TtColors.navy500),
-            ],
+    return Semantics(
+      button: true,
+      label: semantics,
+      excludeSemantics: true,
+      child: Material(
+        color: TtColors.surface,
+        shape: const StadiumBorder(side: BorderSide(color: TtColors.divider)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.only(left: 10, right: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 18, color: TtColors.coral600, fill: accent ? 0 : 1),
+                const SizedBox(width: 6),
+                Text(label, style: t.bodySmallMedium.copyWith(color: accent ? TtColors.coral600 : TtColors.navy900)),
+              ],
+            ),
           ),
         ),
       ),
@@ -745,15 +676,18 @@ class _LocationBanners extends ConsumerWidget {
   }
 }
 
-/// "More ways to travel": a cab by the hour (P-34) or to another town (P-35), side by side.
+/// "More ways to travel": four tiles like Rapido's Explore row: a cab by the hour (P-34), to another town (P-35),
+/// a parcel (PP-01) and Packers & Movers (PH-01).
 class _MoreWaysRow extends ConsumerWidget {
-  const _MoreWaysRow({required this.onRental, required this.onOutstation});
+  const _MoreWaysRow({required this.onRental, required this.onOutstation, required this.onParcel, required this.onMovers});
   final VoidCallback onRental;
   final VoidCallback onOutstation;
+  final VoidCallback onParcel;
+  final VoidCallback onMovers;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // The pickup city's cheapest rental (its own prices, else the built-in ones).
+    // The pickup city's cheapest rental (its own prices, else the built-in ones), for screen readers.
     final pricing = watchPricing(ref, ref.watch(rideFlowProvider.select((s) => s.pickup.location)));
     final from = RideModeRates.rentalTerms(VehicleKind.cab, '1h', pricing: pricing)?.price;
     final t = context.type;
@@ -762,55 +696,44 @@ class _MoreWaysRow extends ConsumerWidget {
       children: [
         Text('MORE WAYS TO TRAVEL', style: t.overline),
         const SizedBox(height: TtSpacing.s),
-        // Same height side by side, whatever the subtitles wrap to.
-        IntrinsicHeight(
-          child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: _WayTile(
                 title: 'Rental',
-                subtitle: from == null ? 'By the hour' : 'By the hour · from ${formatInr(from)}',
+                hint: from == null ? 'By the hour' : 'By the hour, from ${formatInr(from)}',
                 kind: VehicleKind.sedan,
-                tint: TtColors.coral50,
-                edge: TtColors.coral100,
                 onTap: onRental,
               ),
             ),
             const SizedBox(width: TtSpacing.s),
             Expanded(
-              child: _WayTile(
-                title: 'Outstation',
-                subtitle: 'One way or round trip',
-                kind: VehicleKind.suv,
-                tint: TtColors.skyTint,
-                edge: TtColors.sky100,
-                onTap: onOutstation,
-              ),
+              child: _WayTile(title: 'Outstation', hint: 'One way or round trip', kind: VehicleKind.suv, onTap: onOutstation),
+            ),
+            const SizedBox(width: TtSpacing.s),
+            Expanded(
+              child: _WayTile(title: 'Parcel', hint: 'Send goods across town', kind: VehicleKind.goodsBike, onTap: onParcel),
+            ),
+            const SizedBox(width: TtSpacing.s),
+            Expanded(
+              child: _WayTile(title: 'Packers & Movers', hint: 'House shifting', kind: VehicleKind.truck, onTap: onMovers),
             ),
           ],
-          ),
         ),
       ],
     );
   }
 }
 
-/// A tinted tile (so it stands apart from the sheet): the title and what it is on the left, the car on the right.
+/// A grey tile with the vehicle's miniature and the name under it.
 class _WayTile extends StatelessWidget {
-  const _WayTile({
-    required this.title,
-    required this.subtitle,
-    required this.kind,
-    required this.tint,
-    required this.edge,
-    required this.onTap,
-  });
+  const _WayTile({required this.title, required this.hint, required this.kind, required this.onTap});
   final String title;
-  final String subtitle;
+
+  /// What it is, for screen readers ("By the hour, from ₹249").
+  final String hint;
   final VehicleKind kind;
-  final Color tint;
-  final Color edge;
   final VoidCallback onTap;
 
   @override
@@ -818,34 +741,28 @@ class _WayTile extends StatelessWidget {
     final t = context.type;
     return Semantics(
       button: true,
-      label: '$title, $subtitle',
+      label: '$title, $hint',
       excludeSemantics: true,
-      child: Material(
-        color: tint,
-        shape: RoundedRectangleBorder(borderRadius: TtRadii.cardRadius, side: BorderSide(color: edge)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(title, style: t.bodySemibold),
-                      const SizedBox(height: 2),
-                      Text(subtitle, style: t.caption.copyWith(color: TtColors.navy700), maxLines: 2),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 4),
-                VehicleArt(kind, width: 62, height: 38),
-              ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: TtRadii.cardRadius,
+        child: Column(
+          children: [
+            Container(
+              height: 64,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(color: TtColors.inputBg, borderRadius: TtRadii.cardRadius),
+              child: VehicleArt(kind),
             ),
-          ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: t.caption.copyWith(color: TtColors.navy900, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

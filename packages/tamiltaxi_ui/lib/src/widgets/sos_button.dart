@@ -4,12 +4,15 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../theme/tt_colors.dart';
 import '../theme/tt_tokens.dart';
 
-/// SOS button: always a filled #DC2626 circle with a white icon and the label "SOS".
+/// SOS button: a filled #DC2626 circle with a white icon and the label "SOS" (trip screens). [quiet] is the Home
+/// form before a trip: a white map button with the red icon, like the other map buttons, so it is there without
+/// shouting.
 class SosButton extends StatelessWidget {
-  const SosButton({super.key, required this.onPressed, this.size = 64});
+  const SosButton({super.key, required this.onPressed, this.size = 64, this.quiet = false});
 
   final VoidCallback onPressed;
   final double size;
+  final bool quiet;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +20,7 @@ class SosButton extends StatelessWidget {
       button: true,
       label: 'SOS emergency help',
       excludeSemantics: true,
-      child: Material(
+      child: quiet ? _quiet() : Material(
         key: const ValueKey('sos-button'),
         color: TtColors.sos,
         shape: const CircleBorder(),
@@ -49,4 +52,21 @@ class SosButton extends StatelessWidget {
       ),
     );
   }
+
+  Widget _quiet() => Material(
+        key: const ValueKey('sos-button'),
+        color: TtColors.surface,
+        shape: const CircleBorder(),
+        elevation: 3,
+        shadowColor: TtColors.shadow,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Icon(Symbols.e911_emergency_rounded, fill: 1, color: TtColors.sos, size: size * 0.5),
+          ),
+        ),
+      );
 }

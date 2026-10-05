@@ -8,7 +8,8 @@ import 'location_markers.dart';
 
 enum LocationRowKind { pickup, drop, recent, saved, landmark, search }
 
-/// One place row: leading icon + title + subtitle, optional trailing text (distance) and chevron.
+/// One place row (56 dp): a bare leading icon in a 24 dp column, title 15 sp + grey subtitle 13 sp, optional trailing
+/// text (distance) and chevron.
 class LocationRow extends StatelessWidget {
   const LocationRow({
     super.key,
@@ -36,34 +37,40 @@ class LocationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.type;
-    final Widget leading = switch (kind) {
-      LocationRowKind.pickup => const SizedBox(width: 40, child: Center(child: PickupDot(size: 12))),
-      LocationRowKind.drop => const SizedBox(width: 40, child: Center(child: DropPin())),
-      LocationRowKind.recent => _circle(icon ?? Symbols.history_rounded, TtColors.inputBg, TtColors.navy700),
-      LocationRowKind.saved ||
-      LocationRowKind.landmark =>
-        _circle(icon ?? Symbols.star_rounded, TtColors.coral50, TtColors.coral600),
-      LocationRowKind.search => _circle(icon ?? Symbols.location_on_rounded, TtColors.inputBg, TtColors.navy700),
-    };
+    // Bare icons in one 24 dp column (like Rapido's lists), so every kind's text lines up.
+    final Widget leading = SizedBox(
+      width: 24,
+      child: Center(
+        child: switch (kind) {
+          LocationRowKind.pickup => const PickupDot(size: 10),
+          LocationRowKind.drop => const DropPin(size: 20),
+          LocationRowKind.recent => Icon(icon ?? Symbols.history_rounded, color: TtColors.navy500, size: 20),
+          LocationRowKind.saved ||
+          LocationRowKind.landmark =>
+            Icon(icon ?? Symbols.star_rounded, color: TtColors.coral600, size: 20, fill: 1),
+          LocationRowKind.search => Icon(icon ?? Symbols.location_on_rounded, color: TtColors.navy500, size: 20),
+        },
+      ),
+    );
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: dense ? 8 : 12),
+          padding: EdgeInsets.symmetric(vertical: dense ? 6 : 8),
           child: Row(
             children: [
               leading,
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: t.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(title, style: t.listTitle.copyWith(fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
                     if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: t.bodySmall.copyWith(color: TtColors.navy500),
+                        style: t.listMeta,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -84,11 +91,4 @@ class LocationRow extends StatelessWidget {
       ),
     );
   }
-
-  Widget _circle(IconData icon, Color bg, Color fg) => Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-        child: Icon(icon, color: fg, size: 22),
-      );
 }
