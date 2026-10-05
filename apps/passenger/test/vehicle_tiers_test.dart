@@ -1,9 +1,11 @@
 // P-10 lists every ride tier (Bike, Scooty, Auto, Auto Priority, Mini, Sedan, SUV) with its picture and the demo
 // fares, the same numbers the API quotes for the demo route.
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_passenger/features/ride/p07_home_screen.dart';
 import 'package:tamiltaxi_passenger/router/routes.dart';
+import 'package:tamiltaxi_passenger/state/ride_flow.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
 import 'support/harness.dart';
@@ -18,13 +20,13 @@ void main() {
       expect(find.text(name, skipOffstage: false), findsWidgets, reason: name);
       expect(find.text(formatInr(fare), skipOffstage: false), findsWidgets, reason: '$name $fare');
     }
-    // One picture per tier row (the Pink Taxi strip has its own pink car).
+    // One picture per tier row, plus Book Any's auto and car (the Pink Taxi strip has its own pink car).
     expect(
       find.descendant(
         of: find.byType(VehicleOptionCard, skipOffstage: false),
         matching: find.byType(VehicleArt, skipOffstage: false),
       ),
-      findsNWidgets(7),
+      findsNWidgets(9),
     );
     expect(Seed.rideVehicles.map((v) => v.kind), [
       VehicleKind.bike,
@@ -52,6 +54,28 @@ void main() {
     expect(markers(MapVehicleType.auto), findsNWidgets(2));
     expect(markers(MapVehicleType.bike), findsNothing);
 
+  });
+
+  testWidgets('Book Any: one row for Auto, Mini, Sedan or SUV; booking adds the others to the search', (tester) async {
+    final container = await pumpRoute(tester, Routes.chooseVehicle);
+    await tester.pump(const Duration(seconds: 1));
+    // Demo fares: Auto ₹66 … SUV ₹210.
+    expect(find.text('Book Any'), findsOneWidget);
+    expect(find.text('Auto, Mini, Sedan or SUV'), findsOneWidget);
+    expect(find.text('₹66–₹210'), findsOneWidget);
+    await tester.tap(find.text('Book Any'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Book Any · ₹66–₹210'), findsOneWidget);
+    final flow = container.read(rideFlowProvider);
+    expect(flow.bookAny, isTrue);
+    expect(flow.vehicle, VehicleKind.auto);
+    await container.read(rideFlowProvider.notifier).book();
+    expect(container.read(rideFlowProvider).alsoVehicles, [VehicleKind.cab, VehicleKind.sedan, VehicleKind.suv]);
+    await container.read(rideFlowProvider.notifier).cancelSearch();
+    // Choosing one vehicle again leaves Book Any.
+    container.read(rideFlowProvider.notifier).selectVehicle(VehicleKind.bike);
+    expect(container.read(rideFlowProvider).bookAny, isFalse);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('Home shows free vehicles of every kind around the pickup', (tester) async {

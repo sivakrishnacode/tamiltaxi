@@ -29,6 +29,7 @@ class VehicleOptionCard extends StatelessWidget {
     this.art,
     this.onInfo,
     this.accent = TtColors.coral500,
+    this.fareText,
   });
 
   final IconData icon;
@@ -60,10 +61,13 @@ class VehicleOptionCard extends StatelessWidget {
   /// The selected row's outline (Pink Taxi: pink).
   final Color accent;
 
+  /// Shown instead of [fare], e.g. a range for Book Any ("₹130–₹420").
+  final String? fareText;
+
   bool get _disabled => disabledReason != null;
 
-  /// "3" from "3 seats" / "1 seat"; null for other capacities.
-  String? get _seats => RegExp(r'^(\d+) seats?$').firstMatch(capacity ?? '')?.group(1);
+  /// "3" from "3 seats" / "1 seat" ("3–6" from "3–6 seats"); null for other capacities.
+  String? get _seats => RegExp(r'^(\d+(?:–\d+)?) seats?$').firstMatch(capacity ?? '')?.group(1);
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +84,7 @@ class VehicleOptionCard extends StatelessWidget {
         ?capacity,
         if (fastest && !_disabled) 'Fastest',
         _disabled ? disabledReason! : subtitle,
-        formatInr(fare),
+        fareText ?? formatInr(fare),
       ].join(', '),
       child: Opacity(
         opacity: _disabled ? 0.6 : 1,
@@ -168,7 +172,7 @@ class VehicleOptionCard extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints.tightFor(width: 32, height: 40),
                     ),
-                  ExcludeSemantics(child: Text(formatInr(fare), style: t.price.copyWith(color: fg))),
+                  ExcludeSemantics(child: Text(fareText ?? formatInr(fare), style: t.price.copyWith(color: fg))),
                   const SizedBox(width: 4),
                 ],
               ),

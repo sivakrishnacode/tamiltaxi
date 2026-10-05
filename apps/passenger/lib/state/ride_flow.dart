@@ -77,6 +77,7 @@ class RideFlowState {
     this.alternatives = const [],
     this.arrivedAt,
     this.mode,
+    this.bookAny = false,
   });
 
   /// Rental or outstation booking (P-34 / P-35); null for a local ride.
@@ -146,6 +147,10 @@ class RideFlowState {
   /// Live API, while searching: other vehicles with drivers in range that could be added (cheapest first).
   final List<VehicleAlternative> alternatives;
 
+  /// P-10 "Book Any" is chosen: the booking asks Auto, Mini, Sedan and SUV drivers at once ([vehicle] is the cheapest
+  /// of them; the others go into [alsoVehicles] right after booking).
+  final bool bookAny;
+
   /// When the driver marked "Arrived" (starts the free waiting minutes, P-15).
   final DateTime? arrivedAt;
 
@@ -214,6 +219,7 @@ class RideFlowState {
     List<VehicleAlternative>? alternatives,
     Object? arrivedAt = _keep,
     Object? mode = _keep,
+    bool? bookAny,
   }) => RideFlowState(
     pickup: pickup ?? this.pickup,
     drop: drop ?? this.drop,
@@ -239,6 +245,7 @@ class RideFlowState {
     alternatives: alternatives ?? this.alternatives,
     arrivedAt: identical(arrivedAt, _keep) ? this.arrivedAt : arrivedAt as DateTime?,
     mode: identical(mode, _keep) ? this.mode : mode as ModeRequest?,
+    bookAny: bookAny ?? this.bookAny,
   );
 }
 
@@ -355,7 +362,29 @@ class RideFlowController extends Notifier<RideFlowState> {
     if (hadQuotes) unawaited(loadQuotes());
   }
 
-  void selectVehicle(VehicleKind v) => state = state.copyWith(vehicle: v);
+  void selectVehicle(VehicleKind v) => state = state.copyWith(vehicle: v, bookAny: false);
+
+  /// "Book Any" (like Ola / Namma Yatri): the nearest Auto, Mini, Sedan or SUV driver takes the ride, at that
+  /// vehicle's fare.
+  static const bookAnyKinds = [VehicleKind.auto, VehicleKind.cab, VehicleKind.sedan, VehicleKind.suv];
+
+  /// Book Any's vehicles with a fare on this route, cheapest first (empty for rentals and outstation).
+  List<FareQuote> get bookAnyQuotes => state.mode != null
+      ? const []
+      : ([for (final q in state.quotes) if (bookAnyKinds.contains(q.vehicle.kind)) q]
+        ..sort((a, b) => a.total.compareTo(b.total)));
+
+  /// P-10: choose Book Any. The cheapest of its vehicles is the one booked; the others are added at once.
+  void selectBookAny() {
+    final quotes = bookAnyQuotes;
+    if (quotes.length < 2) return;
+    state = state.copyWith(vehicle: quotes.first.vehicle.kind, bookAny: true);
+  }
+
+  /// The Book Any vehicles besides the booked one.
+  List<VehicleKind> get _bookAnyRest => state.bookAny
+      ? [for (final q in bookAnyQuotes) if (q.vehicle.kind != state.vehicle) q.vehicle.kind]
+      : const [];
 
   /// P-34 Rental / P-35 Outstation: books the cab tiers with [m] (a Sedan to start with); fares reload.
   void startMode(ModeRequest m) {
@@ -534,6 +563,7 @@ class RideFlowController extends Notifier<RideFlowState> {
       driverCancelledOnce: false,
       chat: ref.read(rideRepositoryProvider).chatSeed(),
       arrivedAt: null,
+      alsoVehicles: _bookAnyRest,
     );
     _search(_t(SimTimings.findDriver));
     return null;
@@ -619,7 +649,9 @@ class RideFlowController extends Notifier<RideFlowState> {
             rider: state.rider,
             mode: state.mode,
           );
+      final rest = _bookAnyRest;
       _startFollowing(update, restoring: false);
+      if (rest.isNotEmpty) unawaited(_addBookAny(update.trip.id, rest));
       return null;
     } catch (e) {
       state = state.copyWith(busy: false);
@@ -881,6 +913,20 @@ class RideFlowController extends Notifier<RideFlowState> {
       state = state.copyWith(alternatives: [for (final a in list) if (!state.alsoVehicles.contains(a.vehicle)) a]);
     } catch (e) {
       debugPrint('Alternatives: $e');
+    }
+  }
+
+  /// Book Any, right after booking: the other vehicles join the search one by one (the API caps a trip at three
+  /// extra). Quiet on errors: the booked vehicle's search goes on regardless.
+  Future<void> _addBookAny(String tripId, List<VehicleKind> kinds) async {
+    for (final k in kinds) {
+      if (state.tripId != tripId || state.phase != RidePhase.searching) return;
+      try {
+        final update = await ref.read(liveTripsProvider).addVehicle(tripId, k);
+        if (state.tripId == tripId) state = state.copyWith(alsoVehicles: update.alsoVehicles);
+      } catch (e) {
+        debugPrint('Book Any: $e');
+      }
     }
   }
 

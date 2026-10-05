@@ -77,6 +77,8 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
     final route = noPickup ? const <LatLng>[] : state.routeOrDefault;
     final womenDriver = flow.womenDriver;
     final fastest = _fastestKind(state.quotes);
+    final anyQuotes = flow.bookAnyQuotes;
+    final anyRange = anyQuotes.isEmpty ? '' : '${formatInr(anyQuotes.first.total)}–${formatInr(anyQuotes.last.total)}';
     final now = TtClock.now();
     String subtitleOf(FareQuote q) {
       final eta = q.pickupEtaMin;
@@ -205,7 +207,28 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                                 noPickup
                                     ? const _QuotesPending(error: kChoosePickupForFares, onRetry: null)
                                     : _QuotesPending(error: state.quotesError, onRetry: flow.loadQuotes)
-                              else
+                              else ...[
+                              // Book Any (like Ola): the nearest Auto, Mini, Sedan or SUV, at that vehicle's fare.
+                              if (anyQuotes.length >= 2) ...[
+                                VehicleOptionCard(
+                                  icon: Symbols.local_taxi_rounded,
+                                  art: _BookAnyArt(pink: womenDriver.isOn),
+                                  name: 'Book Any',
+                                  subtitle: _vehicleList(anyQuotes),
+                                  capacity: _seatRange(anyQuotes),
+                                  fare: anyQuotes.first.total,
+                                  fareText: anyRange,
+                                  accent: womenDriver.isOn ? TtColors.butterfly600 : TtColors.coral500,
+                                  selected: state.bookAny,
+                                  onTap: flow.selectBookAny,
+                                  onInfo: () => showTtSnack(
+                                    context,
+                                    'Book Any asks the nearest ${_vehicleList(anyQuotes)} drivers at once. '
+                                    'You pay the fare of the one that comes.',
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                              ],
                               for (final q in state.quotes) ...[
                                 VehicleOptionCard(
                                   icon: q.vehicle.kind.icon,
@@ -220,11 +243,12 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                                   badgeTone: q.vehicle.badge == 'Comfort' || q.vehicle.badge == 'Fastest'
                                       ? VehicleBadgeTone.navy
                                       : VehicleBadgeTone.coral,
-                                  selected: q.vehicle.kind == state.vehicle,
+                                  selected: !state.bookAny && q.vehicle.kind == state.vehicle,
                                   onTap: () => flow.selectVehicle(q.vehicle.kind),
                                   onInfo: () => P11FareDetailsSheet.show(context),
                                 ),
                                 const SizedBox(height: 2),
+                              ],
                               ],
                               const SizedBox(height: TtSpacing.s),
                             ],
@@ -236,7 +260,11 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                           child: noPickup
                               ? TtButton(label: 'Choose your pickup', onPressed: () => context.push(Routes.pinPickupOnMap))
                               : TtButton(
-                                  label: quotesReady ? 'Book ${quote.vehicle.name} · ${formatInr(quote.total)}' : 'Book',
+                                  label: !quotesReady
+                                      ? 'Book'
+                                      : state.bookAny && anyQuotes.length >= 2
+                                          ? 'Book Any · $anyRange'
+                                          : 'Book ${quote.vehicle.name} · ${formatInr(quote.total)}',
                                   loading: state.busy,
                                   onPressed: quotesReady && !state.busy ? _book : null,
                                 ),
@@ -252,6 +280,41 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
       ),
     );
   }
+}
+
+/// "Auto, Mini, Sedan or SUV".
+String _vehicleList(List<FareQuote> quotes) {
+  final names = [for (final q in quotes) q.vehicle.name];
+  return names.length < 2 ? names.join() : '${names.sublist(0, names.length - 1).join(', ')} or ${names.last}';
+}
+
+/// "3–6 seats" across Book Any's vehicles.
+String? _seatRange(List<FareQuote> quotes) {
+  final seats = [
+    for (final q in quotes)
+      if (RegExp(r'^(\d+) seats?$').firstMatch(q.vehicle.capacityLabel)?.group(1) case final n?) int.parse(n),
+  ]..sort();
+  if (seats.isEmpty) return null;
+  return seats.first == seats.last ? '${seats.first} seats' : '${seats.first}–${seats.last} seats';
+}
+
+/// Book Any's picture: an auto behind a car, in the same miniature style.
+class _BookAnyArt extends StatelessWidget {
+  const _BookAnyArt({this.pink = false});
+  final bool pink;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 56,
+        height: 40,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(left: -6, top: -4, child: VehicleArt(VehicleKind.auto, width: 40, height: 29, pink: pink)),
+            Positioned(right: -6, bottom: -2, child: VehicleArt(VehicleKind.cab, width: 46, height: 33, pink: pink)),
+          ],
+        ),
+      );
 }
 
 /// The vehicle with the earliest drop (pickup ETA + ride time); null on a tie or when fewer than two are known.
