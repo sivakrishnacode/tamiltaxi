@@ -23,6 +23,7 @@ class MapBottomSheet extends StatelessWidget {
     this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
     this.footer,
     this.snap = false,
+    this.snapSizes,
   });
 
   /// Build the sheet's children; they are placed in a ListView using [ScrollController].
@@ -36,18 +37,25 @@ class MapBottomSheet extends StatelessWidget {
   /// Shown after the children, edge to edge and pinned to the sheet's bottom edge (outside [padding]).
   final Widget? footer;
 
-  /// Stops like Rapido's sheet: let go and it settles at [minSize], [initialSize] or [maxSize] (the next one in the
-  /// drag's direction, or the nearest), never in between.
+  /// Stops like Rapido's sheet: let go and it settles at [minSize], a stop in between ([snapSizes], else
+  /// [initialSize]) or [maxSize], never half way.
   final bool snap;
 
-  /// One list per size, so every rebuild hands the sheet the same list. Flutter re-snaps whenever `snapSizes` is a
-  /// different object, so a new list per build re-snapped mid-drag and could leave the sheet stuck open (why
-  /// snapping was off before).
-  static final _snapLists = <double, List<double>>{};
+  /// The stops between [minSize] and [maxSize] (default: [initialSize]). Any list will do: it is swapped for a
+  /// cached one with the same values.
+  final List<double>? snapSizes;
 
-  List<double>? get _snapSizes => !snap || initialSize <= minSize || initialSize >= maxSize
-      ? null
-      : _snapLists.putIfAbsent(initialSize, () => List.unmodifiable([initialSize]));
+  /// One list per set of values, so every rebuild hands the sheet the same list. Flutter re-snaps whenever
+  /// `snapSizes` is a different object, so a new list per build re-snapped mid-drag and could leave the sheet stuck
+  /// open (why snapping was off before).
+  static final _snapLists = <String, List<double>>{};
+
+  List<double>? get _snapSizes {
+    if (!snap) return null;
+    final inside = [for (final v in snapSizes ?? [initialSize]) if (v > minSize && v < maxSize) v]..sort();
+    if (inside.isEmpty) return null;
+    return _snapLists.putIfAbsent(inside.map((v) => v.toStringAsFixed(4)).join(','), () => List.unmodifiable(inside));
+  }
 
   @override
   Widget build(BuildContext context) {

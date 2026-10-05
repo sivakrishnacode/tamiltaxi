@@ -321,6 +321,10 @@ class _PP03DropDetailsScreenState extends ConsumerState<PP03DropDetailsScreen> {
                         initialSize: firstSize,
                         minSize: minSize,
                         maxSize: 1,
+                        // Settles at the map (drop card), the form or full height, never half way. The keyboard's
+                        // moves (animateTo) don't snap.
+                        snap: true,
+                        snapSizes: [_startSize],
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         builder: (context) => [_form(t, firstName)],
                       ),
