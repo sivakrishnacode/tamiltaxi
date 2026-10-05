@@ -12,7 +12,7 @@ export const CANCEL_CODE_LABEL = {
   PASSENGER_ASKED_TO_CANCEL: "Passenger asked the driver to cancel",
   VEHICLE_ISSUE: "Vehicle problem",
   TOO_FAR: "Pickup too far",
-  BUTTERFLY_MISMATCH: "Butterfly rider is not a woman",
+  BUTTERFLY_MISMATCH: "Pink Taxi rider is not a woman",
   NO_DRIVERS: "No drivers available",
   DRIVER_NOT_MOVING: "Driver was not moving",
   STUCK: "Trip ran far too long",

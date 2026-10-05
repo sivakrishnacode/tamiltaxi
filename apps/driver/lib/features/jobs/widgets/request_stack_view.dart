@@ -14,7 +14,7 @@ typedef StackEntry = ({RideRequest request, DateTime expiresAt});
 /// the card carries a tag with the same icon, so the rail can be read at a glance.
 enum RequestPerk {
   /// Butterfly: a woman rider asked for a woman driver (first or only). The rail shows the butterfly on pink.
-  butterfly('Butterfly', Symbols.female_rounded, TtColors.butterfly600, TtColors.butterfly50),
+  butterfly('Pink Taxi', Symbols.female_rounded, TtColors.butterfly600, TtColors.butterfly50),
 
   /// House shifting: a goods truck with helpers for a slot (the card has a band with the home and the team).
   shifting('Packers & Movers', Symbols.home_rounded, TtColors.coral700, TtColors.coral50),
@@ -585,7 +585,7 @@ class _ButterflyBand extends StatelessWidget {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const ButterflyMark(size: 18, color: TtColors.surface, accent: TtColors.butterfly100),
             const SizedBox(width: 4),
-            Text('Butterfly', style: t.caption.copyWith(color: TtColors.surface, fontWeight: FontWeight.w700)),
+            Text('Pink Taxi', style: t.caption.copyWith(color: TtColors.surface, fontWeight: FontWeight.w700)),
           ]),
         ),
         const SizedBox(width: TtSpacing.s),

@@ -142,7 +142,7 @@ void main() {
     Finder inCard(String id, Finder f) => find.descendant(of: find.byKey(ValueKey('card-$id')), matching: f);
     expect(inCard('only', find.text('Women drivers only')), findsOneWidget);
     expect(inCard('pref', find.text('Women drivers first')), findsOneWidget);
-    expect(inCard('plain', find.text('Butterfly')), findsNothing);
+    expect(inCard('plain', find.text('Pink Taxi')), findsNothing);
     expect(find.descendant(of: find.byKey(const ValueKey('rail-only')), matching: find.byType(ButterflyMark)), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('rail-pref')), matching: find.byType(ButterflyMark)), findsOneWidget);
     expect(find.descendant(of: find.byKey(const ValueKey('rail-plain')), matching: find.byType(ButterflyMark)), findsNothing);

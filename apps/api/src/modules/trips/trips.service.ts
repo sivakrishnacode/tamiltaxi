@@ -182,10 +182,10 @@ export class TripsService {
       : (await this.prisma.user.findUnique({ where: { id: passengerId }, select: { gender: true } }))?.gender === Gender.FEMALE;
     const womenDriver = dto.womenDriver ?? WomenDriverPref.NONE;
     if (womenDriver !== WomenDriverPref.NONE) {
-      if (isGoods) throw new BadRequestException('Butterfly is for rides only');
+      if (isGoods) throw new BadRequestException('Pink Taxi is for rides only');
       if (!riderIsWoman) {
         throw new BadRequestException(
-          dto.rider ? 'Butterfly is for women riders' : 'Butterfly is for women riders. Set your gender in Profile to use it',
+          dto.rider ? 'Pink Taxi is for women riders' : 'Pink Taxi is for women riders. Set your gender in Profile to use it',
         );
       }
       if (dto.rider) await this.checkButterflyForOthers(passengerId);
@@ -313,7 +313,7 @@ export class TripsService {
       where: { passengerId, riderName: { not: null }, cancelCode: CancelCode.BUTTERFLY_MISMATCH },
     });
     if (reports >= MAX_RIDER_NOT_WOMAN) {
-      throw new ForbiddenException('Butterfly for someone else is off for your account after reports from drivers. Contact support.');
+      throw new ForbiddenException('Pink Taxi for someone else is off for your account after reports from drivers. Contact support.');
     }
   }
 

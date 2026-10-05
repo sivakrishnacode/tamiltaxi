@@ -18,7 +18,7 @@ class ButterflyMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         image: true,
-        label: 'Butterfly',
+        label: 'Pink Taxi',
         child: SizedBox.square(dimension: size, child: CustomPaint(painter: _ButterflyPainter(color, accent))),
       );
 }

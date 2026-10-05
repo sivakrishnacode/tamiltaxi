@@ -156,7 +156,7 @@ export default async function TripPage({ params }: PageProps<"/trips/[id]">) {
                 )}
                 {t.womenDriver && t.womenDriver !== "NONE" && (
                   <span className="mt-1 inline-block rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700">
-                    Butterfly · {t.womenDriver === "ONLY" ? "women drivers only" : "women preferred"}
+                    Pink Taxi · {t.womenDriver === "ONLY" ? "women drivers only" : "women preferred"}
                   </span>
                 )}
               </Field>
@@ -223,7 +223,7 @@ export default async function TripPage({ params }: PageProps<"/trips/[id]">) {
                 {t.cancelReason && <span className="block">Note: {t.cancelReason}</span>}
                 {t.cancelCode === "BUTTERFLY_MISMATCH" &&
                   (t.riderName
-                    ? " (reported by the driver; 2 reports turn off Butterfly-for-others on this account)"
+                    ? " (reported by the driver; 2 reports turn off Pink Taxi for others on this account)"
                     : " (reported by the driver)")}
               </p>
             )}

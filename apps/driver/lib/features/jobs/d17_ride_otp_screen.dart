@@ -89,8 +89,8 @@ class _D17RideOtpScreenState extends ConsumerState<D17RideOtpScreen>
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => TtDialog(
-        title: 'Cancel this Butterfly ride?',
-        message: "Butterfly rides are for women riders. If the rider isn't a woman you can cancel. It won't count against you.",
+        title: 'Cancel this Pink Taxi ride?',
+        message: "Pink Taxi rides are for women riders. If the rider isn't a woman you can cancel. It won't count against you.",
         icon: Symbols.cancel_rounded,
         destructive: true,
         actions: [

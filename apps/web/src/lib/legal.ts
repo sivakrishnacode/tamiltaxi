@@ -76,7 +76,7 @@ export const privacy: LegalDoc = {
       heading: "What the other person on your trip sees",
       paragraphs: [
         "Your driver sees your name, phone number, pickup and drop, and whether you are verified. If you ask for a " +
-          "woman driver (Butterfly), your driver sees that it is a Butterfly ride.",
+          "woman driver (Pink Taxi), your driver sees that it is a Pink Taxi ride.",
         "Riders see their driver's name, photo, rating, phone number, vehicle, number plate and UPI ID, and the " +
           "driver's location during the trip. Phone numbers are shared so that you can call each other about the " +
           "current trip.",

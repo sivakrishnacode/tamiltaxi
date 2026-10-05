@@ -83,7 +83,7 @@ const _privacy = [
     'What drivers see',
     'Your name, phone number, pickup and drop, and whether you are verified. Numbers are shared so you and your '
         'driver can call each other about the current trip. Your gender is never shown; if you ask for a woman '
-        'driver (Butterfly), your driver sees that it is a Butterfly ride.',
+        'driver (Pink Taxi), your driver sees that it is a Pink Taxi ride.',
   ),
   _Section(
     'Sharing',

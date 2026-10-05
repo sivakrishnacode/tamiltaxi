@@ -85,7 +85,7 @@ const riderFeatures: Feature[] = [
   { icon: Wallet, title: "Pay your driver directly", body: "Cash or UPI, straight to the driver. We never hold your money." },
   { icon: Share2, title: "Share your trip", body: "Send a live link so family can follow along until you arrive." },
   { icon: Siren, title: "SOS and safety checks", body: "One-tap SOS, and a \"Did you reach safely?\" check after night rides." },
-  { icon: Heart, title: "Butterfly", body: "Ask for a woman driver when you book.", tone: "butterfly" },
+  { icon: Heart, title: "Pink Taxi", body: "Women riders can ask for a woman driver when they book.", tone: "butterfly" },
 ];
 
 const driverFeatures: Feature[] = [

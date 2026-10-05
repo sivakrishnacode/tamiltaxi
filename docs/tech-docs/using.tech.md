@@ -564,15 +564,17 @@ Never commit real `.env` files.
      `c` cancel after accept judged DRIVER), 8-day TTL, read for all candidates in one pipeline (7 HGETALL + 2 GET
      each). The Butterfly head start and `assignBatch` work on the ranking minutes. The trip is re-read (still
      SEARCHING) in `offerNext` right before each offer, after the slow ETA/ranking step, so no extra check was needed.
-     **Butterfly (27 Sep 2026):** `Trip.womenDriver` (`NONE` / `PREFERRED` / `ONLY`, booking field `womenDriver`,
+     **Butterfly (27 Sep 2026), called Pink Taxi in every app since 5 Oct 2026** (riders, drivers, admin, website
+     and API messages; code keeps `Butterfly*` / `womenDriver`): `Trip.womenDriver` (`NONE` / `PREFERRED` / `ONLY`, booking field `womenDriver`,
      women riders only: the passenger's `gender` must be `FEMALE`, rides only). `ONLY` keeps women drivers
      (driver `user.gender = FEMALE`) and never falls back; `PREFERRED` ranks men as if 8 min further
      (`PREFERRED_HEAD_START_MIN`, `drivers/women-drivers.ts`), so men still get it when no woman is near.
-     Apps: P-10 Butterfly card (`ButterflyMark` in tamiltaxi_ui, pink `TtColors.butterfly*`) with Any driver /
-     Preferred / Women only, shown only when the profile gender is female; Safety preferences "Prefer women
+     Apps: P-10 Pink Taxi strip (`PinkTaxiStrip`, `ButterflyMark` in tamiltaxi_ui, pink `TtColors.butterfly*`):
+     a switch, then Women first / Women only, and pink vehicles in the list; before 5 Oct a larger Butterfly card
+     with Any driver / Preferred / Women only. Shown only when the rider is a woman; Safety preferences "Prefer women
      driver" is its default. "Women only" re-quotes with `womenOnly`. The driver request card (30 Sep 2026) has a
      pink band on every Butterfly trip, PREFERRED and ONLY (`RideRequest.womenDriver`, `isButterfly`;
-     `isWomenOnly` = ONLY): a pink border, a filled "Butterfly" badge with the `ButterflyMark` and "Women drivers
+     `isWomenOnly` = ONLY): a pink border, a filled "Pink Taxi" badge with the `ButterflyMark` and "Women drivers
      only" / "Women drivers first", and the butterfly on a pink circle in the rail (the first `RequestPerk`). The
      overlay carries `womenDriver` too.
      **"Who's riding?" (28 Sep 2026):** booking field `rider: { name, phone, isWoman }` (rides only) stores

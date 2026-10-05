@@ -104,7 +104,7 @@ class _P10bWhoIsRidingSheetState extends State<P10bWhoIsRidingSheet> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text("She's a woman", style: t.bodyMedium),
-                  Text('Lets you choose Butterfly (women drivers) for her',
+                  Text('Lets you book a Pink Taxi (women drivers) for her',
                       style: t.bodySmall.copyWith(color: TtColors.navy500)),
                 ]),
               ),
