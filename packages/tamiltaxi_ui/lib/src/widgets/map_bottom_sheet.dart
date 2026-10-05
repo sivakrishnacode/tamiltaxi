@@ -32,7 +32,7 @@ class MapBottomSheet extends StatelessWidget {
   final DraggableScrollableController? controller;
   final EdgeInsets padding;
 
-  /// Shown after the children, edge to edge and down to the sheet's bottom (outside [padding]).
+  /// Shown after the children, edge to edge and pinned to the sheet's bottom edge (outside [padding]).
   final Widget? footer;
 
   @override
@@ -57,18 +57,19 @@ class MapBottomSheet extends StatelessWidget {
                 padding: padding,
                 children: [const SheetHandle(), ...builder(context)],
               )
-            : ListView(
+            : CustomScrollView(
                 controller: scroll,
-                padding: EdgeInsets.only(top: padding.top),
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, padding.bottom),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [const SheetHandle(), ...builder(context)],
-                    ),
+                slivers: [
+                  SliverPadding(
+                    padding: padding,
+                    sliver: SliverList.list(children: [const SheetHandle(), ...builder(context)]),
                   ),
-                  footer!,
+                  // The footer sits on the sheet's bottom edge: when the content is shorter than the open sheet, the
+                  // free space goes above the picture instead of a blank band under it.
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [footer!]),
+                  ),
                 ],
               ),
       ),
