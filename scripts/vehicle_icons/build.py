@@ -1,100 +1,121 @@
-"""Builds the apps' vehicle illustrations from the owner's renders in docs/design/vechile/.
+"""Builds the apps' vehicle miniatures from two ChatGPT sprite sheets in docs/design/vechile/.
 
     python3 scripts/vehicle_icons/build.py            # writes packages/tamiltaxi_ui/assets/vehicles/<kind>.webp
-    python3 scripts/vehicle_icons/build.py --preview  # also build/vehicle_icons/preview.png (light + dark cards)
+    python3 scripts/vehicle_icons/build.py --preview  # also build/vehicle_icons/preview.png (light + dark rows)
 
-Each render is a transparent PNG, or an RGB one with the transparency checkerboard painted in (pickup, truck), which
-checker_cutout.py removes first. The script trims it to the vehicle, paints a plain dark badge over a real car
-maker's logo (the repo is public: no trademarks in the app), and saves a small WebP (alpha kept) for
-`VehicleArt` in packages/tamiltaxi_ui. Renders that aren't listed here (van, MPV, luxury, roof-sign taxi) are kept
-for tiers that may come later.
+The sheets are transparent 1536 x 1024 PNGs, two rows of vehicles, made with the ChatGPT image model from the brief
+in prompt.md (soft 3D, front three-quarter view, white with one coral accent, no logos or text). The folder is kept
+local (git-ignored) like the earlier renders. ChatGPT draws the fronts pointing left; every app in the market shows
+them pointing right, so each vehicle is mirrored (the set has no text, so that is safe).
+
+Each vehicle is found by the empty columns around it (they can spill across the grid cells), trimmed, mirrored and
+placed on one 336 x 240 canvas (the 56 x 40 dp list box at 6x, sharp up to the 96 dp driver cards) with one wheel
+baseline, a size per class (two-wheelers smaller than cars) and the same soft ground shadow.
 """
 import os
 import sys
 
-from PIL import Image, ImageDraw
-
-from checker_cutout import cutout
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, 'docs', 'design', 'vechile')
 OUT = os.path.join(ROOT, 'packages', 'tamiltaxi_ui', 'assets', 'vehicles')
 
-# Asset name (the VehicleKind's file) → (render, logos to cover as (centre x, centre y, rx, ry) in render px).
-VEHICLES = {
-    'bike': ('Modern White, Yellow, and Black Street Motorcycle.png', []),
-    'scooty': ('White and Yellow Modern Scooter Cutout.png', []),
-    'auto': ('Yellow-and-Black Tuk-Tuk Render.png', []),
-    'auto_priority': ('Premium Yellow Electric Tuk-Tuk.png', []),
-    'mini': ('White Compact Taxi Car Render.png', []),
-    'sedan': ('White Sedan Taxi Cutout.png', [(1302, 584, 31, 27)]),
-    'suv': ('White SUV Taxi with Yellow Stripe.png', []),
-    'three_wheeler': ('Yellow Cargo Tuk-Tuk Delivery Vehicle.png', []),
-    'mini_truck': ('White and Yellow Mini Cargo Truck.png', []),
-    'pickup': ('White Pickup Truck with Yellow Stripes (checker).png', []),
-    'truck': ('White and Yellow Box Truck (checker).png', []),
+# Sheet → asset names in reading order (row by row, left to right as ChatGPT drew them).
+SHEETS = {
+    'Tamil Taxi passenger vehicles (ChatGPT).png': ['bike', 'scooty', 'auto', 'mini', 'sedan', 'suv'],
+    'Tamil Taxi goods vehicles (ChatGPT).png': ['goods_bike', 'three_wheeler', 'mini_truck', 'pickup', 'truck'],
+}
+ROWS = 2
+
+CW, CH, BASE = 336, 240, 220  # canvas and the line the wheels stand on, px
+# Largest box (w, h) each vehicle may fill on the canvas, so the list reads at a real-world-ish scale.
+FIT = {
+    'bike': (264, 188), 'scooty': (240, 188), 'auto': (244, 204), 'mini': (300, 180), 'sedan': (324, 176),
+    'suv': (320, 192), 'goods_bike': (268, 192), 'three_wheeler': (284, 204), 'mini_truck': (312, 196),
+    'pickup': (324, 188), 'truck': (324, 208),
 }
 
-# Checkerboard renders: what checker_cutout needs per render, in render px.
-CHECKER = {
-    'pickup': {
-        'windows': [
-            [(893, 252), (1256, 247), (1352, 446), (942, 456)],  # windshield
-            [(712, 237), (842, 236), (884, 424), (700, 422)],  # door window
-        ],
-        'holes': [[(591, 148), (992, 148), (992, 232), (626, 232), (606, 342), (591, 342)]],  # inside the roll bar
-    },
-    'truck': {},
-}
 
-WIDTH = 360  # px; cards draw them at up to ~96 logical px wide, so this is enough for 3x screens
-
-
-def cover_logo(im, cx, cy, rx, ry):
-    """A plain dark badge in a thin chrome ring (like the other renders' blank badges), drawn 4x and scaled down."""
-    k = 4
-    pad = 4
-    box = (cx - rx - pad, cy - ry - pad, cx + rx + pad, cy + ry + pad)
-    w, h = box[2] - box[0], box[3] - box[1]
-    layer = Image.new('RGBA', (w * k, h * k), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
-    o = pad * k
-    d.ellipse((o, o, o + 2 * rx * k, o + 2 * ry * k), fill=(196, 200, 206, 255))
-    t = 3 * k
-    d.ellipse((o + t, o + t, o + 2 * rx * k - t, o + 2 * ry * k - t), fill=(26, 29, 34, 255))
-    layer = layer.resize((w, h), Image.LANCZOS)
-    im.alpha_composite(layer, (box[0], box[1]))
+def vehicles_in(sheet):
+    """The vehicles of a sheet as trimmed RGBA images, row by row, split at empty columns."""
+    alpha = sheet.getchannel('A').point(lambda a: 255 if a > 24 else 0)
+    band_h = sheet.height // ROWS
+    found = []
+    for r in range(ROWS):
+        band = alpha.crop((0, r * band_h, sheet.width, (r + 1) * band_h))
+        filled = [band.crop((x, 0, x + 1, band_h)).getbbox() is not None for x in range(sheet.width)]
+        x = 0
+        while x < sheet.width:
+            if filled[x]:
+                start = x
+                while x < sheet.width and any(filled[x:x + 12]):  # a gap under 12 px is inside one vehicle
+                    x += 1
+                if x - start > 60:
+                    box = (start, r * band_h, x, (r + 1) * band_h)
+                    v = sheet.crop(box)
+                    found.append(v.crop(v.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()))
+            x += 1
+    return found
 
 
-def build(name, render, logos):
-    path = os.path.join(SRC, render)
-    im = cutout(path, **CHECKER[name]) if name in CHECKER else Image.open(path).convert('RGBA')
-    for logo in logos:
-        cover_logo(im, *logo)
-    bbox = im.getchannel('A').point(lambda a: 255 if a > 8 else 0).getbbox()
-    im = im.crop(bbox)
-    im = im.resize((WIDTH, round(im.height * WIDTH / im.width)), Image.LANCZOS)
+def place(v, max_w, max_h):
+    """Mirrored vehicle on the canvas: scaled into its class box, centred, wheels on BASE, soft shadow under it."""
+    v = ImageOps.mirror(v)
+    s = min(max_w / v.width, max_h / v.height)
+    v = v.resize((round(v.width * s), round(v.height * s)), Image.LANCZOS)
+    canvas = Image.new('RGBA', (CW, CH), (0, 0, 0, 0))
+    shade = Image.new('L', (CW, CH), 0)
+    w = v.width * 0.84
+    ImageDraw.Draw(shade).ellipse(((CW - w) / 2, BASE - 10, (CW + w) / 2, BASE + 12), fill=64)
+    shadow = Image.new('RGBA', (CW, CH), (30, 41, 59, 0))  # navy900
+    shadow.putalpha(shade.filter(ImageFilter.GaussianBlur(8)))
+    canvas.alpha_composite(shadow)
+    canvas.alpha_composite(v, ((CW - v.width) // 2, BASE - v.height + 6))
+    return canvas
+
+
+def with_bolt(auto):
+    """Auto Priority: the auto with a small navy bolt badge at its top left."""
+    im = auto.copy()
+    k = 4  # drawn large and scaled down for smooth edges
+    badge = Image.new('RGBA', (32 * k, 32 * k), (0, 0, 0, 0))
+    d = ImageDraw.Draw(badge)
+    d.ellipse((0, 0, 32 * k - 1, 32 * k - 1), fill=(30, 41, 59, 255))
+    bolt = [(18, 5), (8, 18), (15, 18), (13, 27), (24, 13), (17, 13), (19, 5)]
+    d.polygon([(x * k, y * k) for x, y in bolt], fill=(255, 255, 255, 255))
+    badge = badge.resize((32 * 2, 32 * 2), Image.LANCZOS)
+    im.alpha_composite(badge, (28, 12))
+    return im
+
+
+def save(name, im):
     path = os.path.join(OUT, f'{name}.webp')
-    im.save(path, 'WEBP', quality=88, method=6)
-    return im, os.path.getsize(path)
+    im.save(path, 'WEBP', quality=90, method=6)
+    print(f'{name}: {im.width}x{im.height}, {os.path.getsize(path) // 1024} KB')
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
     built = {}
-    for name, (render, logos) in VEHICLES.items():
-        im, size = build(name, render, logos)
-        built[name] = im
-        print(f'{name}: {im.size[0]}x{im.size[1]}, {size // 1024} KB')
+    for file, names in SHEETS.items():
+        sheet = Image.open(os.path.join(SRC, file)).convert('RGBA')
+        found = vehicles_in(sheet)
+        if len(found) != len(names):
+            sys.exit(f'{file}: found {len(found)} vehicles, expected {len(names)}')
+        for name, v in zip(names, found):
+            built[name] = place(v, *FIT[name])
+    built['auto_priority'] = with_bolt(built['auto'])
+    for name, im in built.items():
+        save(name, im)
     if '--preview' in sys.argv:
         out = os.path.join(ROOT, 'build', 'vehicle_icons')
         os.makedirs(out, exist_ok=True)
-        cw, ch = 400, 280
-        sheet = Image.new('RGBA', (cw * len(built), ch * 2), (0, 0, 0, 255))
+        sheet = Image.new('RGBA', (CW * len(built), CH * 2), (255, 255, 255, 255))
+        sheet.paste(Image.new('RGBA', (CW * len(built), CH), (22, 29, 39, 255)), (0, CH))
         for i, im in enumerate(built.values()):
-            for j, bg in enumerate(((255, 241, 236, 255), (30, 41, 59, 255))):
-                sheet.paste(Image.new('RGBA', (cw, ch), bg), (i * cw, j * ch))
-                sheet.alpha_composite(im, (i * cw + (cw - im.width) // 2, j * ch + (ch - im.height) // 2))
+            sheet.alpha_composite(im, (i * CW, 0))
+            sheet.alpha_composite(im, (i * CW, CH))
         sheet.save(os.path.join(out, 'preview.png'))
 
 

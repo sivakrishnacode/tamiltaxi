@@ -34,7 +34,8 @@ extension VehicleKindUi on VehicleKind {
   /// The 3/4 render in `assets/vehicles/` (built by scripts/vehicle_icons/build.py); every vehicle has one. Nullable so
   /// a vehicle added later can show [icon] until its render arrives.
   String? get artAsset => switch (this) {
-        VehicleKind.bike || VehicleKind.goodsBike => 'packages/tamiltaxi_ui/assets/vehicles/bike.webp',
+        VehicleKind.bike => 'packages/tamiltaxi_ui/assets/vehicles/bike.webp',
+        VehicleKind.goodsBike => 'packages/tamiltaxi_ui/assets/vehicles/goods_bike.webp',
         VehicleKind.scooty => 'packages/tamiltaxi_ui/assets/vehicles/scooty.webp',
         VehicleKind.auto || VehicleKind.autoParcel => 'packages/tamiltaxi_ui/assets/vehicles/auto.webp',
         VehicleKind.autoPriority => 'packages/tamiltaxi_ui/assets/vehicles/auto_priority.webp',
@@ -59,10 +60,12 @@ extension VehicleKindUi on VehicleKind {
 /// Top-down marker shapes (DS-06): bike, auto, car, truck.
 enum MapVehicleType { bike, auto, car, truck }
 
-/// A vehicle's picture: its 3/4 render ([VehicleKindUi.artAsset]) fitted into [width] × [height], or, for vehicles
-/// without one, the coral symbol over a soft ground shadow. Decorative (screen readers get the name next to it).
+/// A vehicle's picture: its soft 3D miniature ([VehicleKindUi.artAsset], front three-quarter view pointing right, with
+/// its own ground shadow) fitted into [width] × [height], or, for vehicles without one, the coral symbol over a soft
+/// ground shadow. Every miniature shares one canvas, so a bike reads smaller than a car at the same size. Decorative
+/// (screen readers get the name next to it).
 class VehicleArt extends StatelessWidget {
-  const VehicleArt(this.kind, {super.key, this.width = 72, this.height = 48, this.color});
+  const VehicleArt(this.kind, {super.key, this.width = 56, this.height = 40, this.color});
 
   final VehicleKind kind;
   final double width;
