@@ -92,7 +92,6 @@ Notes:
 | P-27 | Saved places | Added after the design | [passenger/P-27.png](passenger/P-27.png) |
 | P-28 | Safety preferences | Added after the design | [passenger/P-28.png](passenger/P-28.png) |
 | P-29 | Verify identity | Added after the design | [passenger/P-29.png](passenger/P-29.png) |
-| P-30 | Contribute | Added after the design | [passenger/P-30.png](passenger/P-30.png) |
 | P-31 | About | Added after the design | [passenger/P-31.png](passenger/P-31.png) |
 | P-32 | Terms | Added after the design | [passenger/P-32.png](passenger/P-32.png) |
 | P-33 | Privacy | Added after the design | [passenger/P-33.png](passenger/P-33.png) |
@@ -187,7 +186,6 @@ Notes:
 | D-30 | UPI ID | Added after the design | [driver/D-30.png](driver/D-30.png) |
 | D-31 | Emergency contact | Added after the design | [driver/D-31.png](driver/D-31.png) |
 | D-32 | Booking preferences | Added after the design | [driver/D-32.png](driver/D-32.png) |
-| D-33 | Contribute | Added after the design | [driver/D-33.png](driver/D-33.png) |
 | D-34 | Help & support | Added after the design | [driver/D-34.png](driver/D-34.png) |
 | D-35 | Raise a ticket | Added after the design | [driver/D-35.png](driver/D-35.png) |
 | D-36 | Chat with passenger | Added after the design | [driver/D-36.png](driver/D-36.png) |

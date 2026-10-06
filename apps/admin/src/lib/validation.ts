@@ -64,13 +64,6 @@ const RULES: Record<string, (v: SettingValue) => string | null> = {
   deviationM: (v) => (inRange(v, 50, 2000, true) ? null : "Off-route distance must be 50–2,000 whole metres"),
   nightStartHour: (v) => (inRange(v, 0, 23, true) ? null : "Night starts must be an hour 0–23"),
   nightEndHour: (v) => (inRange(v, 0, 23, true) ? null : "Night ends must be an hour 0–23"),
-  contributeUpiId: (v) => (typeof v === "string" && (v.trim() === "" || /^[\w.-]{2,}@[a-z]{2,}$/i.test(v.trim())) ? null : "Enter a UPI ID like name@okaxis, or leave it empty"),
-  contributePayeeName: (v) => (typeof v === "string" && v.trim().length >= 1 && v.trim().length <= 50 ? null : "Payee name must be 1–50 characters"),
-  contributeNote: (v) => (typeof v === "string" && v.trim().length <= 300 ? null : "Message must be 300 characters or fewer"),
-  costServersInr: (v) => (inRange(v, 0, 10_000_000, true) ? null : "Enter whole rupees (0 = none)"),
-  costMapsInr: (v) => (inRange(v, 0, 10_000_000, true) ? null : "Enter whole rupees (0 = none)"),
-  costSmsInr: (v) => (inRange(v, 0, 10_000_000, true) ? null : "Enter whole rupees (0 = none)"),
-  costOtherInr: (v) => (inRange(v, 0, 10_000_000, true) ? null : "Enter whole rupees (0 = none)"),
   supportPhone: (v) => (typeof v === "string" && /^\+?[\d\s-]{8,20}$/.test(v.trim()) ? null : "Enter a phone number like +91 422 000 0000"),
 };
 

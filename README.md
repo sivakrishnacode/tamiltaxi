@@ -4,8 +4,7 @@
 
 Tamil Taxi is a full ride-hailing platform built for Coimbatore, India. It has a rider app, a driver app, a backend and an
 admin panel. Drivers keep the whole fare. There is no commission and no fee, and the running costs are paid by the
-project, with optional UPI contributions from riders and drivers. The code is open so that anyone can check it,
-improve it, or run it in their own city.
+project. The code is open so that anyone can check it, improve it, or run it in their own city.
 
 [![CI](https://github.com/sivakrishnacode/tamiltaxi/actions/workflows/ci.yml/badge.svg)](https://github.com/sivakrishnacode/tamiltaxi/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
@@ -46,7 +45,7 @@ improve it, or run it in their own city.
 **Admin panel (Next.js 16, shadcn/ui)**
 - Live map, heatmaps and a zone editor
 - KYC queue, trips, drivers, riders, SOS handling
-- Settings, including the monthly running cost shown on the Contribute page
+- Settings for pricing, dispatch, safety, driver plans and support
 
 ## Architecture
 

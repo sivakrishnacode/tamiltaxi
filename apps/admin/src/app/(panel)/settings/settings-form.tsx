@@ -153,19 +153,6 @@ const GROUPS: readonly Group[] = [
     ],
   },
   {
-    group: "Contribute",
-    description: "The Contribute page in both apps: a UPI pay button and QR code, and the monthly running cost with its breakdown.",
-    fields: [
-      { key: "contributeUpiId", label: "UPI ID", hint: "Receives contributions, e.g. name@okaxis (empty = no pay button)" },
-      { key: "contributePayeeName", label: "Payee name", hint: "Shown in the UPI app" },
-      { key: "costServersInr", label: "Servers & database", hint: "Per month; the apps show the total and this breakdown", step: "100", suffix: "₹" },
-      { key: "costMapsInr", label: "Maps", hint: "Google Maps per month", step: "100", suffix: "₹" },
-      { key: "costSmsInr", label: "SMS (OTP)", hint: "Per month", step: "100", suffix: "₹" },
-      { key: "costOtherInr", label: "Other", hint: "Domain, Play Store, tools… per month (all 0 = cost hidden)", step: "100", suffix: "₹" },
-      { key: "contributeNote", label: "Message", hint: "Shown at the top of the page" },
-    ],
-  },
-  {
     group: "Support",
     description: "Shown on the Help screens in both apps.",
     fields: [{ key: "supportPhone", label: "Support phone", hint: "Include the country code" }],

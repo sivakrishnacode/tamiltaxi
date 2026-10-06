@@ -53,7 +53,6 @@ abstract final class Routes {
   static const vehicleDetails = '/account/vehicle';
   static const upiId = '/account/upi';
   static const emergencyContact = '/account/emergency-contact';
-  static const contribute = '/account/contribute';
   static const bookingPreferences = '/account/booking-preferences';
   static const services = '/account/services';
   static const rateCard = '/account/rate-card';

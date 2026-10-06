@@ -1,9 +1,8 @@
 # CLAUDE.md — Tamil Taxi monorepo
 
 Tamil Taxi is a free ride-hailing and parcel delivery platform for Coimbatore: 0% commission and no subscription for
-drivers. The owner pays the running costs; drivers and riders can contribute by UPI (Account › Contribute). Paid
-driver plans still exist in the code but are switched off (`driverPlansEnabled`). **The repo is public, AGPL-3.0**:
-nothing personal or secret goes into tracked files.
+drivers. The owner pays the running costs. Paid driver plans still exist in the code but are switched off
+(`driverPlansEnabled`). **The repo is public, AGPL-3.0**: nothing personal or secret goes into tracked files.
 
 This file holds the working rules plus a quick map of the repo. **The full technical reference is
 [docs/tech-docs/using.tech.md](docs/tech-docs/using.tech.md)** (stack versions, env vars, endpoints, H3, FCM, AWS).
@@ -177,3 +176,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 1 Oct 2026 | `docs/design` is now screenshots of the apps: `scripts/export_design.py` command, repo map line |
 | 1 Oct 2026 | Rule: no built-in city (cities come from the database) |
 | 2 Oct 2026 | Repo map: `scripts/footer_art` removed (the home footer is a picture now) |
+| 6 Oct 2026 | Intro: the Contribute page is gone (the owner pays the running costs) |

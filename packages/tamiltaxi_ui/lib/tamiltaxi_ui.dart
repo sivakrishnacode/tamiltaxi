@@ -13,7 +13,6 @@ export 'src/vehicle_ui.dart';
 export 'src/widgets/butterfly_mark.dart';
 export 'src/widgets/choice_chips.dart';
 export 'src/widgets/commission_badge.dart';
-export 'src/widgets/contribute_view.dart';
 export 'src/widgets/countdown_ring.dart';
 export 'src/widgets/driver_info_card.dart';
 export 'src/widgets/empty_state.dart';

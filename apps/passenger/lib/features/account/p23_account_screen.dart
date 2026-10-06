@@ -160,17 +160,6 @@ class P23AccountScreen extends ConsumerWidget {
                 TtListGroup(
                   children: [
                     TtListTile(
-                      icon: Symbols.volunteer_activism_rounded,
-                      title: 'Contribute',
-                      subtitle: 'Tamil Taxi is free. Help keep it running',
-                      onTap: () => context.push(Routes.contribute),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TtListGroup(
-                  children: [
-                    TtListTile(
                       icon: Symbols.support_agent_rounded,
                       title: 'Help & support',
                       onTap: () => context.push(Routes.help()),

@@ -895,15 +895,6 @@ export interface Settings {
   readonly driverAutoApprove: boolean;
   /** Drivers take a daily selfie (matched to their verified face) before going online. */
   readonly dailySelfieCheckEnabled: boolean;
-  /** Contribute page (both apps). */
-  readonly contributeUpiId: string;
-  readonly contributePayeeName: string;
-  readonly contributeNote: string;
-  /** Monthly running cost in rupees; the apps show the total and the non-zero parts. */
-  readonly costServersInr: number;
-  readonly costMapsInr: number;
-  readonly costSmsInr: number;
-  readonly costOtherInr: number;
 }
 
 /** Settings as returned by the API: the known keys plus anything newer (rendered in "Other"). */

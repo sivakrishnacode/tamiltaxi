@@ -131,7 +131,7 @@ class LegalScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(TtSpacing.l, TtSpacing.s, TtSpacing.l, TtSpacing.xxl),
           children: [
-            Text('Last updated 3 October 2026', style: t.caption),
+            Text('Last updated 6 October 2026', style: t.caption),
             const SizedBox(height: TtSpacing.m),
             Text(
               isPrivacy

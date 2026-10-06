@@ -1719,10 +1719,10 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(compact.body.compacted).toBe(true);
   });
 
-  it('serves the public app config: plans off, contribute page without a cost until one is set', async () => {
+  it('serves the public app config: plans off, no contribute page', async () => {
     const res = await http.get('/v1/app-config').expect(200);
     expect(res.body.driverPlansEnabled).toBe(false);
-    expect(res.body.contribute).toMatchObject({ upiId: '', payeeName: 'Tamil Taxi', monthlyCost: null });
+    expect(res.body).not.toHaveProperty('contribute');
   });
 
   it('starts a free trial and lists daily/weekly/monthly plans', async () => {

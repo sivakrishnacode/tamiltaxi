@@ -17,8 +17,7 @@ class LegalScreen extends StatelessWidget {
   static const _terms = <(String, String)>[
     (
       'Free to use',
-      'Tamil Taxi charges no commission and no subscription for any vehicle type. It runs on voluntary contributions '
-          'from drivers and riders (Account › Contribute); contributing is never required to get requests.',
+      'Tamil Taxi charges no commission and no subscription for any vehicle type.',
     ),
     (
       'You keep 100% of fares',
@@ -106,7 +105,7 @@ class LegalScreen extends StatelessWidget {
           children: [
             Text(privacy ? 'Tamil Taxi Driver Privacy Policy' : 'Tamil Taxi Driver Terms of Service', style: t.h1),
             const SizedBox(height: TtSpacing.xs),
-            Text('Last updated 3 October 2026', style: t.caption.copyWith(color: TtColors.navy500)),
+            Text('Last updated 6 October 2026', style: t.caption.copyWith(color: TtColors.navy500)),
             for (final (title, body) in sections) ...[
               const SizedBox(height: TtSpacing.xl),
               Text(title, style: t.h2),

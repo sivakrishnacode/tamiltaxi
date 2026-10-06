@@ -257,8 +257,7 @@ export default function Home() {
             <h3 className="mt-4 text-lg font-semibold">Who pays for it?</h3>
             <p className="mt-2 text-navy-500">
               Tamil Taxi runs on one small server, and the project pays the running costs so drivers and riders
-              don&apos;t have to. If it helps you, you can chip in by UPI from Account › Contribute in either app.
-              It&apos;s never required.
+              don&apos;t have to.
             </p>
           </div>
           <div className="rounded-2xl border border-divider p-6 sm:p-8">

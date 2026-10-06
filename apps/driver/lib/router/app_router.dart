@@ -4,7 +4,6 @@ import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 
 import '../common/driver_shell.dart';
 import '../features/account/booking_preferences_screen.dart';
-import '../features/account/contribute_screen.dart';
 import '../features/account/d26_account_screen.dart';
 import '../features/account/driver_emergency_contact_screen.dart';
 import '../features/account/driver_help_screen.dart';
@@ -194,10 +193,6 @@ GoRouter createDriverRouter({
                   builder: (_, _) => const VehicleDetailsScreen(),
                 ),
                 GoRoute(path: 'upi', builder: (_, _) => const UpiIdScreen()),
-                GoRoute(
-                  path: 'contribute',
-                  builder: (_, _) => const ContributeScreen(),
-                ),
                 GoRoute(
                   path: 'booking-preferences',
                   builder: (_, _) => const BookingPreferencesScreen(),

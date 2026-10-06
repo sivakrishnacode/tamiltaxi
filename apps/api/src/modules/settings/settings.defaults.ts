@@ -123,17 +123,6 @@ export const SETTING_DEFAULTS = {
   supportPhone: '+91 422 000 0000',
   /** Paid driver plans. Off = the app is free: no plan screens, no plan check when going online. */
   driverPlansEnabled: false,
-  /** UPI ID that receives contributions (empty = the contribute page shows no pay button). */
-  contributeUpiId: '',
-  /** Name shown in the UPI app for [contributeUpiId]. */
-  contributePayeeName: 'Tamil Taxi',
-  /** Message at the top of the contribute page. */
-  contributeNote: 'Tamil Taxi is free for drivers and riders: 0% commission and no subscription. Contributions pay for the servers, maps and SMS that keep it running.',
-  /** Monthly running cost in rupees, shown on the contribute page as a total with this breakdown (all 0 = hidden). */
-  costServersInr: 0,
-  costMapsInr: 0,
-  costSmsInr: 0,
-  costOtherInr: 0,
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;

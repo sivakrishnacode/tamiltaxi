@@ -62,10 +62,6 @@ Future<void> shareText(
   }
 }
 
-/// Opens a `upi://pay` link in the phone's UPI app (GPay, PhonePe, Paytm, BHIM…).
-Future<void> openUpi(BuildContext context, Uri uri) =>
-    _open(context, uri, 'No UPI app found. Scan the QR code from another phone');
-
 Future<void> _open(BuildContext context, Uri uri, String failure) async {
   var ok = false;
   try {

@@ -15,7 +15,7 @@ import 'account_providers.dart';
 import 'services_screen.dart';
 
 /// D-26 Driver account: profile header, Documents, Vehicle details, Services, Rate card, Booking preferences, UPI ID,
-/// Emergency contact, Contribute, Help & support, Terms, Design gallery (dev builds) and Log out. No Delete account:
+/// Emergency contact, Help & support, Terms, Design gallery (dev builds) and Log out. No Delete account:
 /// a driver's records are kept at least 6 months for police enquiries, so drivers ask support to close it.
 class D26AccountScreen extends ConsumerStatefulWidget {
   const D26AccountScreen({super.key, this.showcase = false});
@@ -144,12 +144,6 @@ class _D26AccountScreenState extends ConsumerState<D26AccountScreen> {
                     if (contactAsync.hasError) ref.invalidate(driverEmergencyContactProvider);
                     context.push(Routes.emergencyContact);
                   }),
-                ),
-                TtListTile(
-                  icon: Symbols.volunteer_activism_rounded,
-                  title: 'Contribute',
-                  subtitle: 'Tamil Taxi is free. Help keep it running',
-                  onTap: act(() => context.push(Routes.contribute)),
                 ),
                 TtListTile(
                   icon: Symbols.support_agent_rounded,

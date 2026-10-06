@@ -6,46 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 
 void main() {
-  test('parses GET /app-config with the monthly cost and its breakdown', () {
-    final c = AppConfig.fromJson({
-      'driverPlansEnabled': false,
-      'supportPhone': '+91 422 111 2222',
-      'contribute': {
-        'upiId': 'tamiltaxi@okaxis',
-        'payeeName': 'Tamil Taxi',
-        'note': 'Keep Tamil Taxi free',
-        'monthlyCost': {
-          'totalInr': 6000,
-          'items': [
-            {'label': 'Servers & database', 'amountInr': 2500},
-            {'label': 'Maps', 'amountInr': 3500},
-          ],
-        },
-      },
-    });
-    expect(c.driverPlansEnabled, isFalse);
-    expect(c.contribute.canPay, isTrue);
-    expect(c.contribute.monthlyCostInr, 6000);
-    expect(c.contribute.costItems.map((i) => '${i.label}=${i.amountInr}'), ['Servers & database=2500', 'Maps=3500']);
-  });
-
-  test('no UPI ID or cost entered: no pay button, cost hidden, default name and note', () {
-    final c = AppConfig.fromJson({
-      'driverPlansEnabled': true,
-      'contribute': {'upiId': '', 'payeeName': '', 'note': '', 'monthlyCost': null},
-    });
+  test('parses GET /app-config: the plans switch and the support number', () {
+    final c = AppConfig.fromJson({'driverPlansEnabled': true, 'supportPhone': ' +91 422 111 2222 '});
     expect(c.driverPlansEnabled, isTrue);
-    expect(c.contribute.canPay, isFalse);
-    expect(c.contribute.monthlyCostInr, isNull);
-    expect(c.contribute.payeeName, 'Tamil Taxi');
-    expect(c.contribute.note, AppConfig.defaultNote);
-  });
-
-  test('UPI link encodes spaces as %20 and adds the amount only when chosen', () {
-    const info = ContributeInfo(upiId: 'tamiltaxi@okaxis', payeeName: 'Tamil Taxi Coimbatore', note: '');
-    expect(info.payUri(amountInr: 50).toString(),
-        'upi://pay?pa=tamiltaxi@okaxis&pn=Tamil%20Taxi%20Coimbatore&am=50&cu=INR&tn=Contribution%20to%20Tamil%20Taxi%20Coimbatore');
-    expect(info.payUri().queryParameters.containsKey('am'), isFalse);
+    expect(c.supportPhone, '+91 422 111 2222');
+    expect(AppConfig.fromJson(const {}).driverPlansEnabled, isFalse, reason: 'plans stay off unless the server says so');
   });
 
   test('the dispatch lead and the support number come from the server; none is made up', () {

@@ -41,7 +41,7 @@ class AboutScreen extends StatelessWidget {
           Text(
             'Tamil Taxi is a free ride and parcel app built in Tamil Nadu. Drivers pay no commission and no '
             'subscription, so they keep 100% of each fare and you pay a fair price, directly to them in cash '
-            'or UPI. Tamil Taxi runs on contributions from the people who use it.',
+            'or UPI.',
             style: t.body.copyWith(color: TtColors.navy700),
           ),
           const SizedBox(height: 24),

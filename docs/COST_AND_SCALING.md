@@ -260,10 +260,7 @@ The limits of the single server, in the order they are hit:
 - [ ] SMS provider in `OtpService.deliver`, then `OTP_DEV_MODE=false`.
 - [ ] Automated Postgres backups to S3.
 - [ ] P-10 change (§5).
-- [ ] Monthly costs entered in Admin › Settings › Contribute, so the Contribute page shows the real running cost.
 
 ### How to track real cost
 
-Each month, copy the AWS, Google Cloud and SMS invoices into Admin › Settings › Contribute (`costServersInr`,
-`costMapsInr`, `costSmsInr`, `costOtherInr`). The apps' Contribute page shows the total to riders and drivers.
-Compare the Google bill with §3 to see whether the searches-per-trip ratio holds.
+Each month, check the AWS, Google Cloud and SMS invoices. Compare the Google bill with §3 to see whether the searches-per-trip ratio holds.

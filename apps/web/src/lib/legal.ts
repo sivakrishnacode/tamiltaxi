@@ -16,7 +16,7 @@ export type LegalSection = {
 export type LegalDoc = { title: string; updated: string; intro: string; sections: readonly LegalSection[] };
 
 /** The date on both documents and on the apps' legal screens. */
-export const legalUpdated = "3 October 2026";
+export const legalUpdated = "6 October 2026";
 
 export const privacy: LegalDoc = {
   title: "Privacy policy",
@@ -170,9 +170,7 @@ export const terms: LegalDoc = {
     {
       heading: "Free to use",
       paragraphs: [
-        "Tamil Taxi takes 0% commission on rides and deliveries and charges no subscription, for any vehicle type. " +
-          "It runs on voluntary contributions from drivers and riders (Account › Contribute in the app). " +
-          "Contributing is never required to book or to get requests.",
+        "Tamil Taxi takes 0% commission on rides and deliveries and charges no subscription, for any vehicle type.",
       ],
     },
     {
