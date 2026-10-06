@@ -62,6 +62,10 @@ Examples: `feat(driver): show H3 demand hexes on home map`, `fix(api): await Pri
 - **This file:** update it when a working rule, a key command or the repo layout changes. Keep it short: details go in
   `using.tech.md`.
 - `README.md` is the user-facing intro. Update it for changes that affect setup or how to run things.
+- **[docs/tech-docs/system-design-notes.md](docs/tech-docs/system-design-notes.md)** holds system-design learnings
+  (talks, posts, competitor apps, load tests, incidents) compared with our system, plus the optimization backlog
+  (`SD-n` items with triggers). Each time we learn something about how the system should scale or behave, add a dated
+  entry and backlog items there; when an `SD-n` item ships, mark it **Done (date)**.
 
 ### 1.3 Checks before committing
 
@@ -101,6 +105,7 @@ packages/
   flutter_overlay_window/        vendored plugin for the driver floating bubble
 docs/tech-docs/using.tech.md     technical reference (source of truth)
 docs/COST_AND_SCALING.md         running cost per trip, free tiers, P-10 ETA + OSRM plans, scaling stages
+docs/tech-docs/system-design-notes.md  design learnings vs our system + optimization backlog (SD-n)
 docs/private/                    owner-only business docs (git-ignored, never publish)
 .github/                         CI workflow, issue + PR templates
 docs/design/                     screenshots of every app screen + index (scripts/export_design.py)
@@ -177,3 +182,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 1 Oct 2026 | Rule: no built-in city (cities come from the database) |
 | 2 Oct 2026 | Repo map: `scripts/footer_art` removed (the home footer is a picture now) |
 | 6 Oct 2026 | Intro: the Contribute page is gone (the owner pays the running costs) |
+| 6 Oct 2026 | Rule 1.2 and repo map: `system-design-notes.md` (design learnings + optimization backlog) |
