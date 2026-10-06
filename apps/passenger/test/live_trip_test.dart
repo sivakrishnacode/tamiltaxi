@@ -96,13 +96,6 @@ void main() {
     expect(remainingTripMinutes((progress: 0, remainingKm: 0, totalKm: 0), 12), 12);
   });
 
-  test('headingFor keeps the old heading when the driver has not moved', () {
-    const a = LatLng(11.0, 76.96);
-    expect(headingFor(null, a, 42), 42);
-    expect(headingFor(a, a, 42), 42);
-    expect(headingFor(a, const LatLng(11.01, 76.96), 42), closeTo(0, 0.5));
-  });
-
   test('late, older statuses are dropped; real backward moves are kept', () {
     expect(isStaleStatus('DRIVER_ASSIGNED', 'DRIVER_ARRIVED'), isTrue);
     expect(isStaleStatus('IN_PROGRESS', 'COMPLETED'), isTrue);

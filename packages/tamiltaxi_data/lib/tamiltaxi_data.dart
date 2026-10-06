@@ -50,4 +50,5 @@ export 'src/repositories/repositories.dart';
 export 'src/ride_modes.dart';
 export 'src/seed.dart';
 export 'src/simulation/trip_simulator.dart';
+export 'src/simulation/vehicle_glide.dart';
 export 'src/simulation/road_router.dart';

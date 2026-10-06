@@ -57,13 +57,17 @@ double headingBetween(LatLng a, LatLng b) {
 /// Snapshot of the simulated vehicle.
 @immutable
 class VehicleFix {
-  const VehicleFix({required this.position, required this.heading, required this.progress});
+  const VehicleFix({required this.position, required this.heading, required this.progress, this.target});
 
   final LatLng position;
   final double heading;
 
   /// 0..1 along the current leg.
   final double progress;
+
+  /// Live: the driver's newest GPS fix, which [position] glides towards ([VehicleGlide]); a map that follows the car
+  /// moves its camera to this once per fix instead of every frame. Null in the simulation.
+  final LatLng? target;
 }
 
 /// Drives a trip forward with timers, the way a backend would push updates, and moves the

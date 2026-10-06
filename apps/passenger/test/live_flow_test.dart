@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart' show Distance, LengthUnit;
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_passenger/router/routes.dart';
 import 'package:tamiltaxi_passenger/state/app_notice.dart';
@@ -78,6 +79,7 @@ class _FakeTrips extends LiveTrips {
     VehicleKind? vehicle,
     FareQuote quote = _quote,
     List<String> also = const [],
+    Map<String, Object>? driverLocation,
   }) {
     final trip = Trip(
       id: 'trip-1',
@@ -101,6 +103,7 @@ class _FakeTrips extends LiveTrips {
       'status': status,
       'cancelReason': ?cancelReason,
       'alsoKinds': also,
+      'driverLocation': ?driverLocation,
     });
   }
 
@@ -127,7 +130,8 @@ class _FakeTrips extends LiveTrips {
   }
 
   void push(LiveTripUpdate u) => _updates.add(u);
-  void locate(LatLng p) => _locations.add(LiveLocation('trip-1', p, DateTime.now()));
+  void locate(LatLng p, {DateTime? at, double? heading}) =>
+      _locations.add(LiveLocation('trip-1', p, at ?? DateTime.now(), heading: heading));
   void message(ChatMessage m) => _messages.add(m);
 
   @override
@@ -297,6 +301,31 @@ void main() {
     // A newer status still moves it on.
     flow().restore(trips.update('DRIVER_ARRIVED', driver: _driver));
     expect(ride().phase, RidePhase.arrived);
+  });
+
+  test("reopening the app shows the driver's car at once from the trip read, before any socket fix", () async {
+    flow().setDrop(Seed.brookefields);
+    await flow().book();
+    final near = offsetPoint(Seed.gandhipuram.location, 800, 90);
+    final at = DateTime.now().subtract(const Duration(seconds: 2));
+    // The restore / poll answer (GET /trips/:id) carries the driver's last fix.
+    flow().restore(trips.update('DRIVER_ASSIGNED', driver: _driver, driverLocation: {
+      'lat': near.latitude,
+      'lng': near.longitude,
+      'at': at.millisecondsSinceEpoch,
+      'hdg': 270,
+    }));
+    await _settle();
+    expect(ride().phase, RidePhase.assigned);
+    expect(ride().approach, isNotEmpty, reason: 'the approach leg is built from that fix');
+    final car = flow().vehicle.value!;
+    expect(const Distance().as(LengthUnit.Meter, car.position, near), lessThan(60));
+    expect(ride().etaMin, inInclusiveRange(1, 4));
+
+    // A socket fix older than the one shown (a late delivery) is ignored.
+    trips.locate(offsetPoint(Seed.gandhipuram.location, 2000, 90), at: at.subtract(const Duration(seconds: 30)));
+    await _settle();
+    expect(ride().etaMin, inInclusiveRange(1, 4));
   });
 
   test('a rental asks for no pickup → drop route; restored after a restart it is still a rental', () async {

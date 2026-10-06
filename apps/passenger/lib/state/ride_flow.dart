@@ -263,13 +263,16 @@ class RideFlowState {
 class RideFlowController extends Notifier<RideFlowState> {
   final TripSimulator _sim = TripSimulator(tick: SimTimings.tick);
 
-  /// Live API: the driver's last GPS fix on the current leg.
-  final ValueNotifier<VehicleFix?> _liveFix = ValueNotifier<VehicleFix?>(null);
+  /// Live API: the driver's car, gliding between their GPS fixes along the current leg (SD-1).
+  final VehicleGlide _glide = VehicleGlide();
   LiveTripSession? _session;
 
   /// Last applied API status (drops late, older answers).
   String? _lastStatus;
   LatLng? _lastPoint;
+
+  /// When the newest applied fix was taken: an older one (a poll answer after a socket fix) is ignored.
+  DateTime? _lastFixAt;
 
   /// Set while the passenger's own cancel is in flight, so the resulting CANCELLED push shows no notice.
   bool _cancelledByMe = false;
@@ -280,13 +283,14 @@ class RideFlowController extends Notifier<RideFlowState> {
   bool get _live => ref.read(isLiveApiProvider);
 
   /// Live vehicle marker position for map screens (simulated, or the driver's GPS when live).
-  ValueListenable<VehicleFix?> get vehicle => _live ? _liveFix : _sim.vehicle;
+  ValueListenable<VehicleFix?> get vehicle => _live ? _glide.vehicle : _sim.vehicle;
 
   @override
   RideFlowState build() {
     ref.onDispose(() {
       _sim.cancelAll();
       _stopFollowing();
+      _glide.dispose();
     });
     if (ref.read(isLiveApiProvider)) {
       // Live: the pickup is the phone's location; no drop until the rider chooses one (never a seeded place).
@@ -677,7 +681,8 @@ class RideFlowController extends Notifier<RideFlowState> {
     _cancelledByMe = false;
     _lastStatus = null;
     _lastPoint = null;
-    _liveFix.value = null;
+    _lastFixAt = null;
+    _glide.clear();
     state = state.copyWith(
       phase: RidePhase.searching,
       tripId: trip.id,
@@ -760,8 +765,9 @@ class RideFlowController extends Notifier<RideFlowState> {
           tripQuote: u.trip.quote ?? state.tripQuote,
         );
       case RidePhase.driverCancelled:
-        _liveFix.value = null;
+        _glide.clear();
         _lastPoint = null;
+        _lastFixAt = null;
         state = state.copyWith(phase: RidePhase.driverCancelled, driverCancelledOnce: true, approach: const [], arrivedAt: null);
       case RidePhase.assigned:
         // Coming from any other phase starts a new approach leg (built from the driver's first fix).
@@ -804,10 +810,17 @@ class RideFlowController extends Notifier<RideFlowState> {
         state = state.copyWith(phase: RidePhase.completed, driver: driver, etaMin: 0, tripQuote: u.trip.quote ?? state.tripQuote);
         ref.invalidate(tripHistoryProvider);
     }
+    // A read of the trip (restore, a poll while the socket is down) carries the driver's last fix: show the car
+    // now instead of after the next `trip.location`.
+    final at = u.driverLocation;
+    if (at != null) _onLocation(at);
   }
 
   void _onLocation(LiveLocation l) {
     if (l.tripId != state.tripId) return;
+    final last = _lastFixAt;
+    if (last != null && (l.at.isBefore(last) || (l.at == last && l.point == _lastPoint))) return;
+    _lastFixAt = l.at;
     final phase = state.phase;
     if (phase == RidePhase.assigned && state.approach.isEmpty) {
       // First fix of this driver: build the approach leg once (one route call per leg).
@@ -820,21 +833,16 @@ class RideFlowController extends Notifier<RideFlowState> {
         }
       });
     }
-    _track(l.point);
+    _track(l.point, heading: l.heading);
   }
 
-  /// Moves the marker to [point] and updates the ETA from what is left of the current leg.
-  void _track(LatLng point) {
-    final previous = _lastPoint;
+  /// Moves the car to [point] (gliding there along the leg) and updates the ETA from what is left of the leg.
+  void _track(LatLng point, {double? heading}) {
     _lastPoint = point;
     final phase = state.phase;
     final leg = phase == RidePhase.inProgress ? state.routeOrDefault : state.approach;
     final track = leg.isEmpty ? (progress: 0.0, remainingKm: 0.0, totalKm: 0.0) : trackOnPath(leg, point);
-    _liveFix.value = VehicleFix(
-      position: point,
-      heading: headingFor(previous, point, _liveFix.value?.heading ?? 0),
-      progress: track.progress,
-    );
+    _glide.addFix(point, heading: heading, path: leg);
     switch (phase) {
       case RidePhase.assigned when leg.isNotEmpty:
         _setEta(etaMinutes(track.remainingKm, kApproachSpeedKmh));

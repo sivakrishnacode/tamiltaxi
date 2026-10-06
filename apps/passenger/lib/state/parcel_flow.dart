@@ -218,12 +218,16 @@ class ParcelFlowState {
 /// DRIVER_ARRIVED → PICKED_UP → DELIVERED with the driver's GPS, and shows the delivery OTP from the server.
 class ParcelFlowController extends Notifier<ParcelFlowState> {
   final TripSimulator _sim = TripSimulator(tick: SimTimings.tick);
-  final ValueNotifier<VehicleFix?> _liveFix = ValueNotifier<VehicleFix?>(null);
+  /// Live API: the driver's car, gliding between their GPS fixes along the current leg (SD-1).
+  final VehicleGlide _glide = VehicleGlide();
   LiveTripSession? _session;
 
   /// Last applied API status (drops late, older answers).
   String? _lastStatus;
   LatLng? _lastPoint;
+
+  /// When the newest applied fix was taken: an older one (a poll answer after a socket fix) is ignored.
+  DateTime? _lastFixAt;
   bool _cancelledByMe = false;
 
   /// The passenger chose the pickup themselves (the device location no longer replaces it).
@@ -231,13 +235,14 @@ class ParcelFlowController extends Notifier<ParcelFlowState> {
 
   bool get _live => ref.read(isLiveApiProvider);
 
-  ValueListenable<VehicleFix?> get vehicle => _live ? _liveFix : _sim.vehicle;
+  ValueListenable<VehicleFix?> get vehicle => _live ? _glide.vehicle : _sim.vehicle;
 
   @override
   ParcelFlowState build() {
     ref.onDispose(() {
       _sim.cancelAll();
       _stopFollowing();
+      _glide.dispose();
     });
     if (ref.read(isLiveApiProvider)) return _freshLive();
     Future.microtask(_refreshRoute);
@@ -596,7 +601,8 @@ class ParcelFlowController extends Notifier<ParcelFlowState> {
     _cancelledByMe = false;
     _lastStatus = null;
     _lastPoint = null;
-    _liveFix.value = null;
+    _lastFixAt = null;
+    _glide.clear();
     final details = (restoring ? trip.parcel : null) ?? state.details;
     state = state.copyWith(
       phase: ParcelPhase.searching,
@@ -670,8 +676,9 @@ class ParcelFlowController extends Notifier<ParcelFlowState> {
         if (state.phase == ParcelPhase.assigned || state.phase == ParcelPhase.atPickup) {
           ref.read(appNoticeProvider.notifier).show('${state.driver.firstName} had to cancel. Finding another driver…');
         }
-        _liveFix.value = null;
+        _glide.clear();
         _lastPoint = null;
+        _lastFixAt = null;
         state = state.copyWith(
           phase: ParcelPhase.searching,
           approach: const [],
@@ -704,10 +711,17 @@ class ParcelFlowController extends Notifier<ParcelFlowState> {
         state = state.copyWith(phase: ParcelPhase.delivered, driver: driver, etaMin: 0, deliveredAt: TtClock.now());
         ref.invalidate(tripHistoryProvider);
     }
+    // A read of the trip (restore, a poll while the socket is down) carries the driver's last fix: show the car
+    // now instead of after the next `trip.location`.
+    final at = u.driverLocation;
+    if (at != null) _onLocation(at);
   }
 
   void _onLocation(LiveLocation l) {
     if (l.tripId != state.tripId) return;
+    final last = _lastFixAt;
+    if (last != null && (l.at.isBefore(last) || (l.at == last && l.point == _lastPoint))) return;
+    _lastFixAt = l.at;
     if (state.phase == ParcelPhase.assigned && state.approach.isEmpty) {
       final from = l.point, to = state.pickup.location, mode = _mode;
       state = state.copyWith(approach: roadPath(from, to, mode: mode));
@@ -718,20 +732,16 @@ class ParcelFlowController extends Notifier<ParcelFlowState> {
         }
       });
     }
-    _track(l.point);
+    _track(l.point, heading: l.heading);
   }
 
-  void _track(LatLng point) {
-    final previous = _lastPoint;
+  /// Moves the car to [point] (gliding there along the leg) and updates the ETA from what is left of the leg.
+  void _track(LatLng point, {double? heading}) {
     _lastPoint = point;
     final phase = state.phase;
     final leg = phase == ParcelPhase.inTransit ? state.routeOrDefault : state.approach;
     final track = leg.isEmpty ? (progress: 0.0, remainingKm: 0.0, totalKm: 0.0) : trackOnPath(leg, point);
-    _liveFix.value = VehicleFix(
-      position: point,
-      heading: headingFor(previous, point, _liveFix.value?.heading ?? 0),
-      progress: track.progress,
-    );
+    _glide.addFix(point, heading: heading, path: leg);
     final eta = switch (phase) {
       ParcelPhase.assigned when leg.isNotEmpty => etaMinutes(track.remainingKm, kApproachSpeedKmh),
       ParcelPhase.inTransit => remainingTripMinutes(track, state.estimate.tripMin),

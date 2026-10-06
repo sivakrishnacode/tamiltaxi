@@ -46,6 +46,10 @@ class LiveTripUpdate {
   /// Times a driver dropped this trip and it searched again.
   int get reassignCount => (json['reassignCount'] as num?)?.toInt() ?? 0;
 
+  /// The driver's last fix when the passenger read the trip (`GET /trips/:id`, `/trips/active`), so the car shows
+  /// at once after a reconnect or a restart; null in pushes and when there is none fresh.
+  LiveLocation? get driverLocation => LiveLocation.fromJson(trip.id, json['driverLocation']);
+
   /// "Book any": vehicles the passenger added to the search besides [Trip.vehicle].
   List<VehicleKind> get alsoVehicles => [
         for (final k in (json['alsoKinds'] as List?) ?? const []) ?knownVehicleKind(k),
@@ -74,10 +78,26 @@ class VehicleAlternative {
 
 /// Live driver position on the passenger's map.
 class LiveLocation {
-  const LiveLocation(this.tripId, this.point, this.at);
+  const LiveLocation(this.tripId, this.point, this.at, {this.heading});
+
+  /// `{lat, lng, at?, hdg?}` as `trip.location` and a trip's `driverLocation` carry it; null when unusable.
+  static LiveLocation? fromJson(String tripId, Object? raw) {
+    if (raw is! Map || raw['lat'] is! num || raw['lng'] is! num) return null;
+    final at = raw['at'];
+    return LiveLocation(
+      tripId,
+      LatLng((raw['lat'] as num).toDouble(), (raw['lng'] as num).toDouble()),
+      at is num ? DateTime.fromMillisecondsSinceEpoch(at.toInt()) : DateTime.now(),
+      heading: raw['hdg'] is num ? (raw['hdg'] as num).toDouble() : null,
+    );
+  }
+
   final String tripId;
   final LatLng point;
   final DateTime at;
+
+  /// The phone's direction of travel (degrees from north), sent while moving.
+  final double? heading;
 }
 
 /// Passenger side of a real trip: book, follow it (status, driver GPS, chat), cancel and rate.
@@ -145,11 +165,12 @@ class LiveTrips {
   /// Driver GPS for [tripId] (joins the trip room).
   Stream<LiveLocation> locations(String tripId) {
     unawaited(realtime.joinTrip(tripId));
-    return realtime.on('trip.location').where((j) => j['tripId'] == tripId).map((j) => LiveLocation(
-          tripId,
-          LatLng((j['lat'] as num).toDouble(), (j['lng'] as num).toDouble()),
-          DateTime.fromMillisecondsSinceEpoch((j['at'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch),
-        ));
+    return realtime
+        .on('trip.location')
+        .where((j) => j['tripId'] == tripId)
+        .map((j) => LiveLocation.fromJson(tripId, j))
+        .where((l) => l != null)
+        .cast<LiveLocation>();
   }
 
   Stream<ChatMessage> messages(String tripId) =>

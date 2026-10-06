@@ -148,7 +148,8 @@ class _P16RideInProgressScreenState extends ConsumerState<P16RideInProgressScree
             final ahead = route.isEmpty ? pos : pointAlong(route, (progress + 0.02).clamp(0.0, 1.0));
             final insets = sheetMapInsets(EdgeInsets.fromLTRB(40, 88, 40, h * 0.34), h * 0.34);
             return TtMap(
-              center: route.isEmpty ? pos : null,
+              // A rental (no route) follows the car: to each new GPS fix, not to every frame of its glide.
+              center: route.isEmpty ? (fix?.target ?? pos) : null,
               zoom: 15,
               drop: ride.isRental ? null : ride.drop.location,
               route: remainingPath(route, pos, progress),

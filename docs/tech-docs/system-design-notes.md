@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider)
+Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
 
 ---
 
@@ -20,7 +20,8 @@ Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the 
 3. **Catch-up instead of guaranteed delivery.** Socket.IO delivers at most once. After a reconnect the apps re-read
    state over HTTP (trip, open offers, chat), so a missed push costs a few seconds, not a stuck screen.
 4. **An honest map.** Live mode shows only real free drivers. No phantom cars, ever. Positions are rounded to about
-   55 m and headings to 15° so riders can't follow a driver home.
+   55 m and headings to 15°, and a car's marker id changes every hour, so riders can't follow a driver home. Gliding
+   only fills the seconds between real fixes; it never invents cars or stretches far past the last fix (40 m).
 5. **Cheapest thing that works.** One t3.small runs everything. An optimization waits for a measured need or a
    scaling stage ([COST_AND_SCALING.md](../COST_AND_SCALING.md) §7).
 
@@ -30,10 +31,10 @@ Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the 
 |---|---|---|---|
 | Driver GPS → server | Socket.IO `driver:location` | every 5 s, or after 20 m moved (at most every 2 s) | HTTP heartbeat every 30 s; up to 500 fixes buffered on the phone and sent in one batch |
 | Driver index | Redis set `h3:drv:<kind>:<res-8 cell>` + `driver:alive:<id>` (90 s TTL) | each fix | stale members pruned during searches |
-| Driver position → rider (on a trip) | `trip.location` to room `trip:<id>` | each accepted fix (~5 s) | none; the marker waits for the next fix |
+| Driver position → rider (on a trip) | `trip.location` to room `trip:<id>`; the app glides the car between fixes (`VehicleGlide`) | each accepted fix (~5 s) | `driverLocation` in `GET /trips/:id` / `/trips/active` (restore, every poll) |
 | Trip status | `trip.updated` / `trip.no_drivers` pushes | on change | rider polls `GET /trips/:id` every 8 s **only while the socket is down**, once after reconnect |
 | Offers → driver | `trip.offer` push + FCM (app in background or killed) | on dispatch | `currentOffers` poll every 15 s while the socket is down |
-| Free vehicles near a pickup (P-07, P-10, P-12) | `GET /drivers/nearby`, **polled** | every 15 s while shown | keeps the last list |
+| Free vehicles near a pickup (P-07, P-10, P-12) | `GET /drivers/nearby`, **polled**; hourly marker ids, cars glide ~1.8 s to each new place | every 15 s while shown | keeps the last list |
 | Driver demand map | `GET /demand/hotspots`, polled; server cache 60 s | every 2 min | — |
 | Surge | `DemandService` every 60 s, res-7 cells, k-ring smoothed | 60 s | — |
 
@@ -73,7 +74,7 @@ How Tamil Taxi compares:
 | At-least-once delivery | Socket.IO is at most once; we catch up over HTTP after reconnects. Trip JSON has no `updatedAt`, so apps order updates by status rank | Gap: SD-4 |
 | H3 k-ring search | `DriverLocationService.nearby`: pickup res-8 cell, then ring 1, ring 2 … up to the radius; **stops after the first ring with enough drivers**. Res 7 for surge and demand, res 9/8/7 for learned ETA | **Matches**, including the O(k² + m) cost |
 | Edge servers | One EC2 in Mumbai, ~1,000 km from Coimbatore | Not needed: the round trip is small next to 4G latency. Revisit only for far-away cities |
-| Dead reckoning + Kalman filter | The rider's driver marker **jumps** to each fix (~5 s apart). Heading comes from the last two points (3 m threshold); the GPS heading the server sends is ignored. Nearby markers jump every 15 s and have no ids | **Biggest gap**: SD-1, SD-3 |
+| Dead reckoning + Kalman filter | The rider's driver marker **jumps** to each fix (~5 s apart). Heading comes from the last two points (3 m threshold); the GPS heading the server sends is ignored. Nearby markers jump every 15 s and have no ids | **Biggest gap** then; fixed the same day (SD-1, SD-3, SD-5) |
 | Phantom cars | None in live mode. Mock mode (`TT_LIVE_API=false`) shows a fixed demo mix | Keep it so (principle 4) |
 
 Numbers worth keeping:
@@ -167,11 +168,11 @@ Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week o
 
 | ID | Change | Why | Trigger | Effort |
 |---|---|---|---|---|
-| SD-1 | **Glide the rider's driver marker** (P-13, P-16, PP-08, PP-09): animate from the old to the new position over about one fix interval, **along the route polyline** (`trackOnPath` already gives progress on the leg). If no fix comes, keep going at the last speed for at most one interval, then hold (dead reckoning without overshoot). Use the GPS `hdg` from `trip.location` when the car moves, the last heading when it stands | The most visible quality gap against Uber, Ola and Rapido. Apps only, no server change, no extra cost | Next UI polish pass | M |
+| SD-1 | **Done (6 Oct 2026):** `VehicleGlide` (tamiltaxi_data). ~~Glide the rider's driver marker~~ (P-13, P-16, PP-08, PP-09): animate from the old to the new position over about one fix interval, **along the route polyline** (`trackOnPath` already gives progress on the leg). If no fix comes, keep going at the last speed for at most one interval, then hold (dead reckoning without overshoot). Use the GPS `hdg` from `trip.location` when the car moves, the last heading when it stands | The most visible quality gap against Uber, Ola and Rapido. Apps only, no server change, no extra cost | Next UI polish pass | M |
 | SD-2 | **Faster `GET /drivers/nearby`:** cache the answer per (pickup res-8 cell, rides or parcels) for ~5 s so riders in one hexagon share one computation; read each ring's drivers with one pipelined `MGET driver:alive:*` + busy check instead of 2 serial calls per driver; return the heading from the fix `nearby()` already read instead of calling `lastFix` again | Hottest read path; cost grows with riders × drivers | Before public launch, or when Home traffic shows in latency | S |
-| SD-3 | **Nearby markers that move instead of blink:** give each car a short-lived id (hash of driver id + a daily secret) so the app can glide it between polls; key Google markers by that id, not by list index (`vehicle-$i` can hand one marker to a different car between polls) | Smooth map at no extra request cost; still no real ids exposed | With SD-1 | S |
+| SD-3 | **Done (6 Oct 2026):** hourly HMAC marker ids, `TtMap` glides cars ~1.8 s. ~~Nearby markers that move instead of blink:~~ give each car a short-lived id (hash of driver id + a daily secret) so the app can glide it between polls; key Google markers by that id, not by list index (`vehicle-$i` can hand one marker to a different car between polls) | Smooth map at no extra request cost; still no real ids exposed | With SD-1 | S |
 | SD-4 | **Order and dedupe pushes:** add `updatedAt` (or a version number) to the trip JSON and every trip event; apps drop anything older than what they hold | Our cheap answer to RAMEN's ordered, at-least-once delivery. Already in using.tech.md §10 "Trip `updatedAt`" | Next API change to trips | S |
-| SD-5 | **Driver position in the catch-up read:** include the driver's last fix in `GET /trips/:id` for the trip's rider while a driver is assigned | After reconnecting or reopening the app, the car shows at once instead of after the next fix | With SD-1 | S |
+| SD-5 | **Done (6 Oct 2026):** `driverLocation` in `GET /trips/:id` and `/trips/active`. ~~Driver position in the catch-up read:~~ include the driver's last fix in `GET /trips/:id` for the trip's rider while a driver is assigned | After reconnecting or reopening the app, the car shows at once instead of after the next fix | With SD-1 | S |
 | SD-6 | **Slower GPS while parked and free:** with no trip, speed under 1 m/s and under 10 m moved, send every 15 s instead of 5 s (alive TTL is 90 s; arrival checks trust fixes up to 30 s). Keep 5 s during a trip | Most online drivers are waiting: about a third of the uploads, writes and battery for them | When driver battery complaints or ingest load show up | S |
 | SD-7 | **One round trip per fix:** fold the ingest's Redis reads and writes (`driver:cell`, alive, busy, session, trip phase) into one Lua script or pipeline | ~7 round trips → 1–2 | Stage 3 (thousands of online drivers) | M |
 | SD-8 | **Second API process:** Socket.IO Redis adapter (`@socket.io/redis-adapter`) so room emits reach sockets on any process. No sticky sessions needed (websocket-only clients) | One Node process is the first limit (COST_AND_SCALING §7) | Stage 3 | M |

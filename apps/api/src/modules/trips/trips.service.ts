@@ -72,6 +72,12 @@ const normalisePhone = (phone: string): string => (phone.startsWith('+91') ? pho
 
 type CancelInfo = { by: CancelledBy; code: CancelCode; note: string | null };
 
+/** The driver's last fix as the passenger's trip reads carry it (same fields as `trip.location`). */
+type DriverLocationView = { lat: number; lng: number; at: number | null; hdg: number | null };
+
+/** Statuses in which the passenger follows the driver on the map. */
+const DRIVER_ON_TRIP: readonly TripStatus[] = [TripStatus.DRIVER_ASSIGNED, TripStatus.DRIVER_ARRIVED, TripStatus.IN_PROGRESS, TripStatus.PICKED_UP];
+
 /** A trip [TripsService.accept] just won: as booked, as the driver's vehicle takes it, where the driver was and when. */
 type ClaimedTrip = { booked: Trip; matched: Trip; at: { lat: number; lng: number } | null; acceptedAt: Date };
 
@@ -329,16 +335,27 @@ export class TripsService {
     const where = user.driverId ? { driverId: user.driverId, status: unfinished } : { passengerId: user.userId, status: unfinished };
     const trip = await this.prisma.trip.findFirst({ where, orderBy: { createdAt: 'desc' }, include: TRIP_INCLUDE });
     if (!trip) return null;
-    return user.driverId && trip.driverId === user.driverId ? { ...trip, otp: '' } : trip;
+    return user.driverId && trip.driverId === user.driverId ? { ...trip, otp: '' } : this.withDriverLocation(trip);
   }
 
-  /** A trip the caller takes part in. The OTP is hidden from drivers. */
+  /** A trip the caller takes part in. The OTP is hidden from drivers; the passenger also gets [withDriverLocation]. */
   async get(user: AuthUser, id: string): Promise<Trip> {
     const trip = await this.prisma.trip.findUnique({ where: { id }, include: TRIP_INCLUDE });
     if (!trip) throw new NotFoundException('Trip not found');
     const isPassenger = trip.passengerId === user.userId;
     if (!isPassenger && trip.driverId !== user.driverId) throw new ForbiddenException();
-    return isPassenger ? trip : { ...trip, otp: '' };
+    return isPassenger ? this.withDriverLocation(trip) : { ...trip, otp: '' };
+  }
+
+  /**
+   * For the passenger's reads (restore, catch-up after a reconnect): the driver's last fix while they are on the way
+   * or driving (`driverLocation`, null when there is none fresh), so the app shows the car at once instead of after
+   * the next `trip.location`.
+   */
+  private async withDriverLocation<T extends Trip>(trip: T): Promise<T & { driverLocation?: DriverLocationView | null }> {
+    if (!trip.driverId || !DRIVER_ON_TRIP.includes(trip.status)) return trip;
+    const fix = await this.location.lastFix(trip.driverId);
+    return { ...trip, driverLocation: fix && { lat: fix.lat, lng: fix.lng, at: fix.at, hdg: fix.heading } };
   }
 
   async accept(driverId: string, tripId: string): Promise<Trip> {

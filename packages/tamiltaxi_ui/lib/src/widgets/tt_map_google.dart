@@ -107,8 +107,11 @@ abstract final class _MarkerBitmaps {
 }
 
 class _GoogleTtMap extends StatefulWidget {
-  const _GoogleTtMap({required this.map});
+  const _GoogleTtMap({required this.map, required this.vehicles});
   final TtMap map;
+
+  /// [TtMap.vehicles] as drawn this frame (gliding, [_VehicleGlider]).
+  final List<MapVehicle> vehicles;
 
   @override
   State<_GoogleTtMap> createState() => _GoogleTtMapState();
@@ -322,7 +325,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
 
     if (m.pickup != null) need('pickup', const PickupDot(), _pickupSize);
     if (m.drop != null) need('drop', const DropPin(size: 40), _dropSize);
-    for (final v in m.vehicles) {
+    for (final v in widget.vehicles) {
       need(_vehicleKey(v), VehicleMarker(type: v.type, large: v.large), _vehicleSize(v));
     }
   }
@@ -356,13 +359,14 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
         ),
       );
     }
-    for (var i = 0; i < m.vehicles.length; i++) {
-      final v = m.vehicles[i];
+    for (var i = 0; i < widget.vehicles.length; i++) {
+      final v = widget.vehicles[i];
       final icon = _icons[_vehicleKey(v)];
       if (icon == null) continue;
       out.add(
         gm.Marker(
-          markerId: gm.MarkerId('vehicle-$i'),
+          // Keyed by the car (nearby cars' marker id) so a glide moves one marker rather than handing it on.
+          markerId: gm.MarkerId(v.id == null ? 'vehicle-$i' : 'car-${v.id}'),
           position: _g(v.position),
           icon: icon,
           rotation: v.heading,

@@ -272,6 +272,7 @@ class ApiRideRepository implements RideRepository {
       for (final v in _list(res['vehicles']))
         if (knownVehicleKind(v['vehicleKind'] ?? v['kind']) case final kind?)
           NearbyVehicle(
+            id: v['id'] is String ? v['id'] as String : null,
             kind: kind,
             position: LatLng((v['lat'] as num).toDouble(), (v['lng'] as num).toDouble()),
             heading: (v['heading'] as num?)?.toDouble(),

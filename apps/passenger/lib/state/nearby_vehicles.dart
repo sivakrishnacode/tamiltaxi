@@ -47,12 +47,13 @@ final nearbyVehiclesProvider = StreamProvider.autoDispose.family<List<NearbyVehi
   return controller.stream;
 });
 
-/// The [kinds] among the free vehicles near [at] as map markers (all of them when [kinds] is null).
+/// The [kinds] among the free vehicles near [at] as map markers (all of them when [kinds] is null). Each keeps the
+/// server's marker id, so the map glides a car to its new place on each refresh instead of jumping.
 List<MapVehicle> nearbyMarkers(WidgetRef ref, LatLng at, {Iterable<VehicleKind>? kinds, bool parcels = false}) {
   final wanted = kinds?.toSet();
   return [
     for (final v in ref.watch(nearbyVehiclesProvider(nearbyKey(at, parcels: parcels))).value ?? const <NearbyVehicle>[])
       if (wanted == null || wanted.contains(v.kind))
-        MapVehicle(position: v.position, type: v.kind.mapType, heading: v.heading ?? 0),
+        MapVehicle(id: v.id, position: v.position, type: v.kind.mapType, heading: v.heading ?? 0),
   ];
 }

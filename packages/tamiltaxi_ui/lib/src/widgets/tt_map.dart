@@ -66,7 +66,11 @@ class TtMapController {
 
 /// A vehicle drawn on the map, rotated to [heading] degrees.
 class MapVehicle {
-  const MapVehicle({required this.position, required this.type, this.heading = 0, this.large = false});
+  const MapVehicle({required this.position, required this.type, this.heading = 0, this.large = false, this.id});
+
+  /// The same car from one list to the next (nearby cars: the server's hourly marker id). A car with an id glides
+  /// to its new position when the list changes instead of jumping; without one it is drawn where it is given.
+  final String? id;
   final LatLng position;
   final MapVehicleType type;
   final double heading;
@@ -179,7 +183,99 @@ class TtMap extends StatelessWidget {
   final List<MapPolygon> polygons;
 
   @override
-  Widget build(BuildContext context) => usesGoogle ? _GoogleTtMap(map: this) : _FlutterTtMap(map: this);
+  Widget build(BuildContext context) => _VehicleGlider(
+        vehicles: vehicles,
+        builder: (drawn) => usesGoogle ? _GoogleTtMap(map: this, vehicles: drawn) : _FlutterTtMap(map: this, vehicles: drawn),
+      );
+}
+
+/// Glides the vehicles that keep their [MapVehicle.id] from where they are drawn to where the new list puts them
+/// (position and heading, ~1.8 s, eased), so nearby cars move on each refresh instead of jumping (SD-3 in
+/// docs/tech-docs/system-design-notes.md). Only the map rebuilds while they move, at most 20 times a second. Vehicles
+/// without an id, new ones and moves over 1.5 km are drawn as given (the live trip car glides itself:
+/// `VehicleGlide`).
+class _VehicleGlider extends StatefulWidget {
+  const _VehicleGlider({required this.vehicles, required this.builder});
+
+  final List<MapVehicle> vehicles;
+  final Widget Function(List<MapVehicle> drawn) builder;
+
+  @override
+  State<_VehicleGlider> createState() => _VehicleGliderState();
+}
+
+class _VehicleGliderState extends State<_VehicleGlider> with SingleTickerProviderStateMixin {
+  static const _duration = Duration(milliseconds: 1800);
+
+  /// Rebuild the map at most this often while cars glide (Google markers are redrawn on every rebuild).
+  static const _frameMs = 50;
+  static const _maxGlideMetres = 1500.0;
+
+  late final AnimationController _glide = AnimationController(vsync: this, duration: _duration, value: 1)
+    ..addListener(_onTick);
+  int _lastBuildMs = 0;
+
+  /// Where each car was drawn when the current glide started.
+  Map<String, MapVehicle> _from = const {};
+  List<MapVehicle> _drawn = const [];
+
+  void _onTick() {
+    final ms = _glide.lastElapsedDuration?.inMilliseconds ?? 0;
+    if (_glide.isAnimating && ms - _lastBuildMs < _frameMs) return;
+    _lastBuildMs = ms;
+    setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(covariant _VehicleGlider old) {
+    super.didUpdateWidget(old);
+    if (_sameCars(old.vehicles, widget.vehicles)) return;
+    _from = {for (final v in _drawn) if (v.id != null) v.id!: v};
+    _lastBuildMs = 0;
+    _glide.forward(from: 0);
+  }
+
+  /// Same cars with the same positions and headings (a parent rebuilt with an equal list).
+  static bool _sameCars(List<MapVehicle> a, List<MapVehicle> b) {
+    final before = {for (final v in a) if (v.id != null) v.id!: v};
+    final after = b.where((v) => v.id != null).toList();
+    if (before.length != after.length) return false;
+    for (final v in after) {
+      final w = before[v.id];
+      if (w == null || w.position != v.position || w.heading != v.heading) return false;
+    }
+    return true;
+  }
+
+  @override
+  void dispose() {
+    _glide.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Curves.easeInOutCubic.transform(_glide.value);
+    _drawn = [
+      for (final v in widget.vehicles)
+        if (_from[v.id] case final from? when t < 1 && _metres(from.position, v.position) <= _maxGlideMetres)
+          MapVehicle(
+            id: v.id,
+            type: v.type,
+            large: v.large,
+            position: LatLng(
+              from.position.latitude + (v.position.latitude - from.position.latitude) * t,
+              from.position.longitude + (v.position.longitude - from.position.longitude) * t,
+            ),
+            heading: (from.heading + (((v.heading - from.heading + 540) % 360) - 180) * t) % 360,
+          )
+        else
+          v,
+    ];
+    return widget.builder(_drawn);
+  }
+
+  static double _metres(LatLng a, LatLng b) => const Distance().as(LengthUnit.Meter, a, b);
 }
 
 /// What the camera fit depends on: the bounds of [TtMap.fitPoints] (to about a metre) and both paddings. Equal keys
@@ -201,8 +297,11 @@ Object? _fitKey(TtMap m) {
 /// flutter_map engine (tests, no Google key): CARTO tiles. Re-fits the camera when [TtMap.fitPoints] change, like
 /// the Google engine.
 class _FlutterTtMap extends StatefulWidget {
-  const _FlutterTtMap({required this.map});
+  const _FlutterTtMap({required this.map, required this.vehicles});
   final TtMap map;
+
+  /// [TtMap.vehicles] as drawn this frame (gliding, [_VehicleGlider]).
+  final List<MapVehicle> vehicles;
 
   @override
   State<_FlutterTtMap> createState() => _FlutterTtMapState();
@@ -297,7 +396,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
                   alignment: Alignment.topCenter,
                   child: const DropPin(size: 40),
                 ),
-              for (final v in m.vehicles)
+              for (final v in widget.vehicles)
                 Marker(
                   point: v.position,
                   width: v.large ? 56 : 36,

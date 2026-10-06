@@ -3,11 +3,14 @@ import {
   ConflictException,
   ForbiddenException,
   HttpException,
+  Inject,
   HttpStatus,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { Env } from '../../core/config/env.js';
+import { ENV } from '../../core/config/env.token.js';
 import { FileStorageService, type UploadedBlob } from '../../core/storage/file-storage.service.js';
 import { DriverEarningsService } from './driver-earnings.service.js';
 import type { UpdateDriverDto } from './dto/update-driver.dto.js';
@@ -75,11 +78,12 @@ export class DriversService {
     private readonly state: DriverStateCache,
     private readonly settings: SettingsService,
     private readonly redis: RedisService,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
-  /** Free vehicles around [at] for the rider's map (nearby-vehicles.ts). */
+  /** Free vehicles around [at] for the rider's map (nearby-vehicles.ts); marker ids keyed with the JWT secret. */
   async nearbyVehicles(at: { lat: number; lng: number }, kinds: readonly VehicleKind[]): Promise<{ vehicles: NearbyVehicle[] }> {
-    return { vehicles: await nearbyVehicles(this.location, at, kinds) };
+    return { vehicles: await nearbyVehicles(this.location, at, kinds, { key: this.env.jwtSecret }) };
   }
 
   /**

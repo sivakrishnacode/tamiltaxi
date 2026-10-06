@@ -256,11 +256,16 @@ describe('Tamil Taxi API (e2e)', () => {
     const rider = await login();
     const pax = { Authorization: `Bearer ${rider}` };
     const auto = await onlineDriver('AUTO', near);
-    // The rider's map shows it nearby: kind and a rounded position, no id; signed-in riders only.
+    // The rider's map shows it nearby: kind, a rounded position and an hourly marker id (not the driver's); signed-in
+    // riders only. The same car keeps its marker id between refreshes, so the app can glide it.
     await http.get('/v1/drivers/nearby').query({ lat: pickup.lat, lng: pickup.lng }).expect(401);
     const around = (await http.get('/v1/drivers/nearby').query({ lat: pickup.lat, lng: pickup.lng }).set(pax).expect(200)).body.vehicles;
     expect(around.map((v: { kind: string }) => v.kind)).toContain('AUTO');
     expect(around[0]).not.toHaveProperty('driverId');
+    const autoId = (await http.get('/v1/drivers/me').set({ Authorization: `Bearer ${auto}` }).expect(200)).body.id as string;
+    expect(around.map((v: { id: string }) => v.id)).not.toContain(autoId);
+    const again = (await http.get('/v1/drivers/nearby').query({ lat: pickup.lat, lng: pickup.lng }).set(pax).expect(200)).body.vehicles;
+    expect(again.map((v: { id: string }) => v.id)).toEqual(around.map((v: { id: string }) => v.id));
     const priority = (await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'AUTO_PRIORITY', pickup, drop: BROOKEFIELDS }).expect(201)).body;
     expect(priority.fareTotal).toBe(fare('AUTO_PRIORITY'));
     expect((await acceptWhenOffered(priority.id, auto)).status).toBe(200);
@@ -1004,6 +1009,18 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(forFriend.otp).toMatch(/^[1-9]\d{3}$/);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: me.id } })).rideOtp).toBe(rideOtp);
     await http.post(`/v1/trips/${forFriend.id}/cancel`).set(pax).send({}).expect(200);
+    await http.post('/v1/drivers/me/offline').set(driver);
+  }, 30_000);
+
+  it("the rider's trip reads carry the driver's last position while a driver is on the trip; the driver's don't", async () => {
+    const { trip, driver, pax } = await assignedBikeTrip({ lat: 11.0185, lng: 76.9727 });
+    await http.post('/v1/drivers/me/location').set(driver).send({ lat: 11.019, lng: 76.973, hdg: 90 }).expect(204);
+    const mine = (await http.get(`/v1/trips/${trip.id}`).set(pax).expect(200)).body;
+    expect(mine.driverLocation).toMatchObject({ lat: 11.019, lng: 76.973, hdg: 90, at: expect.any(Number) });
+    expect((await http.get('/v1/trips/active').set(pax).expect(200)).body.driverLocation).toMatchObject({ lat: 11.019, lng: 76.973 });
+    expect((await http.get(`/v1/trips/${trip.id}`).set(driver).expect(200)).body).not.toHaveProperty('driverLocation');
+    await http.post(`/v1/trips/${trip.id}/cancel`).set(pax).send({}).expect(200);
+    expect((await http.get(`/v1/trips/${trip.id}`).set(pax).expect(200)).body).not.toHaveProperty('driverLocation');
     await http.post('/v1/drivers/me/offline').set(driver);
   }, 30_000);
 

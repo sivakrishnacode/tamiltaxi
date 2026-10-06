@@ -1,5 +1,5 @@
 import { VehicleKind } from '../../generated/prisma/enums.js';
-import { NEARBY_MAX, nearbyVehicles, PARCEL_MAP_KINDS } from './nearby-vehicles.js';
+import { MARKER_ID_TTL_MS, markerId, NEARBY_MAX, nearbyVehicles, PARCEL_MAP_KINDS } from './nearby-vehicles.js';
 
 const at = { lat: 11.0183, lng: 76.9725 };
 
@@ -18,7 +18,7 @@ function fakeLocation(perKind: Partial<Record<VehicleKind, number>>) {
 }
 
 describe('nearbyVehicles', () => {
-  it('shows a mix of vehicles, nearest first, without ids, positions rounded and headings in 15° steps', async () => {
+  it('shows a mix of vehicles, nearest first, without driver ids, positions rounded and headings in 15° steps', async () => {
     const location = fakeLocation({ BIKE: 6, AUTO: 2, CAB: 1 });
     const out = await nearbyVehicles(location, at);
     // At most 4 of a kind, so one busy area of bikes doesn't hide the autos and cars.
@@ -39,5 +39,19 @@ describe('nearbyVehicles', () => {
     location.nearby.mockClear();
     await nearbyVehicles(location, at, PARCEL_MAP_KINDS);
     expect(location.nearby.mock.calls.map((c) => c[0].kind)).toEqual([...PARCEL_MAP_KINDS]);
+  });
+
+  it("gives each car a marker id that stays for the hour, changes the next hour and isn't the driver's id", async () => {
+    const location = fakeLocation({ BIKE: 2 });
+    const hour = 20_000 * MARKER_ID_TTL_MS;
+    const a = await nearbyVehicles(location, at, [VehicleKind.BIKE], { key: 'secret', now: hour + 1000 });
+    const b = await nearbyVehicles(location, at, [VehicleKind.BIKE], { key: 'secret', now: hour + MARKER_ID_TTL_MS - 1 });
+    const next = await nearbyVehicles(location, at, [VehicleKind.BIKE], { key: 'secret', now: hour + MARKER_ID_TTL_MS });
+    expect(a.map((v) => v.id)).toEqual(b.map((v) => v.id));
+    expect(new Set(a.map((v) => v.id)).size).toBe(2);
+    expect(next.map((v) => v.id)).not.toEqual(a.map((v) => v.id));
+    for (const v of a) expect(v.id).toMatch(/^[\w-]{12}$/);
+    expect(a[0].id).not.toContain('BIKE');
+    expect(markerId('BIKE-0', 'other key', hour)).not.toBe(markerId('BIKE-0', 'secret', hour));
   });
 });

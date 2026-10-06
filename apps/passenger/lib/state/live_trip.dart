@@ -64,12 +64,6 @@ int remainingTripMinutes(PathTrack track, int durationMin) {
 /// Rounds up, ignoring floating-point noise (7.000000000001 → 7), and never returns 0.
 int _ceilMinutes(double minutes) => math.max(1, (minutes - 1e-6).ceil());
 
-/// Heading for the vehicle marker: from the previous fix when the driver actually moved (> 3 m).
-double headingFor(LatLng? previous, LatLng current, double fallback) {
-  if (previous == null || _distance.as(LengthUnit.Meter, previous, current) < 3) return fallback;
-  return headingBetween(previous, current);
-}
-
 /// Order of the API statuses along a trip (trip JSON has no `updatedAt`, so this orders updates).
 int statusRank(String status) => switch (status) {
   'SEARCHING' => 0,

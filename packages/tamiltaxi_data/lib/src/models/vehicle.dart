@@ -332,11 +332,13 @@ int waitingChargeFor({required Duration waited, required int freeMin, required i
 }
 
 /// A free driver's vehicle on the rider's map (`GET /drivers/nearby`): kind, a rounded position and the heading in
-/// 15° steps (null when the phone didn't know it). No driver id.
+/// 15° steps (null when the phone didn't know it). No driver id: [id] is a marker id the server changes every hour,
+/// so the map can glide the same car between refreshes (null from older servers and in mock mode).
 @immutable
 class NearbyVehicle {
-  const NearbyVehicle({required this.kind, required this.position, this.heading});
+  const NearbyVehicle({required this.kind, required this.position, this.heading, this.id});
 
+  final String? id;
   final VehicleKind kind;
   final LatLng position;
   final double? heading;
