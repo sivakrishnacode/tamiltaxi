@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the "design Uber" interview answer)
+Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP per trip vs fixed)
 
 ---
 
@@ -130,6 +130,29 @@ How Tamil Taxi compares:
 | 24/7 availability | One EC2 runs everything; Redis has AOF on; no Postgres replica, no failover, no automated off-box backup yet | **Gap**, accepted for the pilot; SD-16 before public launch |
 | Monitoring and logs | `/health`, `/health/ready`; plain Nest logs on the box; no metrics or alerts | **Gap**: SD-16 |
 | JWT + roles, TLS | JWT with `@Roles` guards, sockets checked on connect, Caddy TLS, S3 with SSE | **Matches** |
+
+### 6 Oct 2026: a new ride OTP every trip, or the same one?
+
+Source: a social post claiming Uber makes a new OTP for every ride while Rapido reuses one per rider (Rapido's current
+behaviour not checked by us). Its argument: an OTP read out in a crowd can be overheard, and a fixed code can be
+replayed later, while a per-ride code dies with the ride.
+
+What the ride OTP really protects: the **right rider gets into the right car** (two people waiting at a mall gate),
+the **driver can't start the meter before the rider is in** (fare fraud, fake trips), and the start is **proof the
+rider was there** (disputes, safety). Against those, a fixed code's weak point is less the stranger in the crowd (they
+would need to be at your next pickup when your car comes) and more that **every driver who ever drove you knows it
+for good**. A fixed code is quicker for regulars (no need to open the app with a helmet on), which is the trade-off.
+
+| Question | Tamil Taxi | Verdict |
+|---|---|---|
+| New code per trip? | Yes: `randomInt(1000, 10000)` from `node:crypto` when the trip is booked (`TripsService`) | **Safer model, same as Uber** |
+| Can the driver see it? | No: stripped from every driver response and from `trip.updated` to the trip room (`hideOtp`); the public tracking link doesn't carry it | **Good** |
+| Guessing | 5 tries a minute per trip, then locked (`TripOtpGuard`, 429 `OTP_LOCKED`); only the assigned driver can try. Guessing ~9,000 codes at that rate takes hours, far longer than any pickup wait | **Good** |
+| Valid how long? | Only while the trip waits to start (ride) or to be delivered (parcel, the receiver's code) | **Good** |
+| Fixed codes in the repo | `4829` (ride) and `7153` (delivery) exist only in mock mode and tests | Fine |
+| Lock screen | The rider's push says "Share OTP 1234 to start"; on a locked phone Android shows it unless the user hides sensitive content. Uber and Ola do the same | No change |
+
+No backlog item: keep it per trip. Don't add a "same PIN every time" option for convenience.
 
 ## 4. Optimization backlog
 
