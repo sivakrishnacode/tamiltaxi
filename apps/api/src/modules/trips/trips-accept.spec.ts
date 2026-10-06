@@ -18,7 +18,7 @@ function setup(opts: { writeWins: boolean; afterWriteFails?: boolean; driver?: R
   };
   const location = { claimBusy: async () => true, releaseBusy, position: async () => null };
   const none = {} as never;
-  const trips = new TripsService(prisma as never, none, dispatch as never, location as never, none, none, none, none, none, none, none, none, none, none, none, none, none, none);
+  const trips = new TripsService(prisma as never, none, dispatch as never, location as never, none, none, none, none, none, none, none, none, none, none, none, none, none, none, none);
   return { trips, releaseBusy };
 }
 

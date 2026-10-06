@@ -26,6 +26,13 @@ export class MessageDto {
   app?: 'DRIVER' | 'PASSENGER' | 'BOTH';
 }
 
+/** POST /admin/users/:id/ride-otp body: a new ride OTP for the rider (random when [otp] is left out). */
+export class RideOtpDto {
+  @IsOptional()
+  @Matches(/^[1-9]\d{3}$/, { message: 'Enter 4 digits, not starting with 0' })
+  otp?: string;
+}
+
 /** PATCH /admin/drivers/:id/profile body: fix a driver's details for them (support calls). */
 export class AdminDriverProfileDto {
   /** Only while the driver is offline (live locations are indexed per vehicle). */

@@ -153,8 +153,9 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 - **Apps use the live API by default.** Mock mode: `--dart-define=TT_LIVE_API=false`.
 - **Dev login:** `OTP_DEV_MODE=true` (no SMS). `DEV_OTP_CODE` is the only code when set (Docker `.env.example`: `123456`;
   staging: a secret in `/opt/tamiltaxi/.env` and `credentials.local.md`); without it (`start:dev`) any 6 digits except
-  `000000`, which production refuses to start with. Admin phone: `9000000001`. Ride OTP `4829`,
-  delivery OTP `7153`.
+  `000000`, which production refuses to start with. Admin phone: `9000000001`. Mock-mode ride OTP `4829`,
+  delivery OTP `7153`. Live: **one ride OTP per rider** (`User.rideOtp`, Rapido style: speed over a code per ride);
+  admins change it when overheard. Parcels and rides for someone else get a one-time code.
 - **Fare engine** (same in the apps and the API): `max(minFare, (base + perKm·km + perMin·min) × multiplier)`,
   multiplier ≤ `maxMultiplier` (1.5) and never applied to the minimum-fare top-up,
   each line rounded down. No peak by default (`currentMultiplier` 1.0): demo quotes Bike ₹35, Scooty ₹39, Auto ₹66,
@@ -183,3 +184,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 2 Oct 2026 | Repo map: `scripts/footer_art` removed (the home footer is a picture now) |
 | 6 Oct 2026 | Intro: the Contribute page is gone (the owner pays the running costs) |
 | 6 Oct 2026 | Rule 1.2 and repo map: `system-design-notes.md` (design learnings + optimization backlog) |
+| 6 Oct 2026 | Key facts: one ride OTP per rider (live), mock codes labelled |

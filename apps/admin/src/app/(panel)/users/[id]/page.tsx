@@ -19,7 +19,7 @@ import { adminApi } from "@/lib/api";
 import { displayName, formatDate, formatDateTime, formatInr, formatPhone, humanize, initials, kycProgress, shortId, vehicleLabel } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 
-import { RoleControl } from "./user-actions";
+import { RideOtpControl, RoleControl } from "./user-actions";
 
 export async function generateMetadata({ params }: PageProps<"/users/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -127,6 +127,11 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
               <Field label="Gender">{humanize(u.gender)}</Field>
               <Field label="Women drivers">{u.preferWomenDriver ? "Preferred" : "No preference"}</Field>
               <Field label="Auto-share trips">{u.autoShareTrips ? "On" : "Off"}</Field>
+              {!isDeleted && (
+                <Field label="Ride OTP" className="col-span-2">
+                  <RideOtpControl userId={u.id} name={name} rideOtp={u.rideOtp ?? null} />
+                </Field>
+              )}
               <Field label="Identity (Didit)">
                 <StatusBadge status={u.identityStatus ?? "NOT_STARTED"} label={u.identityStatus === "APPROVED" ? "Verified" : undefined} />
               </Field>

@@ -256,6 +256,14 @@ export async function setUserRole(userId: string, role: Role): Promise<ActionRes
   return plain(res);
 }
 
+/** A new ride OTP for the person (typed, or random when [otp] is empty): when theirs was overheard. Audited. */
+export async function changeRideOtp(userId: string, otp?: string): Promise<ActionResult> {
+  const code = otp?.trim() || undefined;
+  if (code && !/^[1-9]\d{3}$/.test(code)) return { ok: false, error: "Enter 4 digits, not starting with 0" };
+  const res = await run(() => adminApi.setRideOtp(userId, code), (d) => `New ride OTP: ${d.rideOtp}`, [`/users/${userId}`]);
+  return plain(res);
+}
+
 export async function setUserBlocked(userId: string, isBlocked: boolean, reason?: string, driverId?: string): Promise<ActionResult> {
   const trimmed = reason?.trim();
   if (isBlocked && (!trimmed || trimmed.length < 3 || trimmed.length > 200)) return { ok: false, error: "Add a reason (3–200 characters)" };

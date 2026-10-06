@@ -139,6 +139,8 @@ export interface User {
   readonly role: Role;
   readonly preferWomenDriver: boolean;
   readonly autoShareTrips: boolean;
+  /** One ride OTP for every ride the person takes themselves (made at their first booking; null before). */
+  readonly rideOtp?: string | null;
   readonly isBlocked?: boolean;
   readonly blockedReason?: string | null;
   readonly identityStatus?: IdentityStatus;

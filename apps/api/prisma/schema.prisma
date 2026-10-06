@@ -256,6 +256,10 @@ model User {
   role               Role                   @default(PASSENGER)
   preferWomenDriver  Boolean                @default(false)
   autoShareTrips     Boolean                @default(true)
+  /// The rider's ride OTP: one code for every ride they take themselves (Rapido style, chosen for speed: riders learn
+  /// it and needn't open the app at the car). Made at the first booking; admins change it when it was overheard
+  /// (trips/ride-otp.service.ts). Never sent to drivers.
+  rideOtp            String?
   isBlocked          Boolean                @default(false)
   blockedReason      String?
   /// Latest Didit identity check result (mirrors the newest IdentityVerification).

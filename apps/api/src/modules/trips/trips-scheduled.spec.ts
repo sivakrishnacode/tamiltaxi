@@ -31,7 +31,7 @@ function setup(statuses: TripStatus[] = [TripStatus.SCHEDULED]) {
   const jobs = { schedule: vi.fn(async (_kind: string, _id: string, _runAt: number) => {}) };
   const none = {} as never;
   const trips = new TripsService(prisma as never, none, dispatch as never, none, events as never, none, demand as never,
-    notifier as never, none, none, jobs as never, none, none, none, none, none, none, redis as never);
+    notifier as never, none, none, jobs as never, none, none, none, none, none, none, redis as never, none);
   return { trips, rows, locks, jobs, dispatch, demand, updateMany, findFirst, redis };
 }
 

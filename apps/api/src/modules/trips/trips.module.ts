@@ -10,6 +10,7 @@ import { DriverBlocksController } from './driver-blocks.controller.js';
 import { DriverBlocksService } from './driver-blocks.service.js';
 import { DriverOfferStatsService } from './driver-offer-stats.service.js';
 import { TripChatService } from './trip-chat.service.js';
+import { RideOtpService } from './ride-otp.service.js';
 import { TripOtpGuard } from './trip-otp-guard.js';
 import { TripPhotosController } from './trip-photos.controller.js';
 import { TripPhotosService } from './trip-photos.service.js';
@@ -21,7 +22,7 @@ import { TripsService } from './trips.service.js';
 @Module({
   imports: [FaresModule, DriversModule, RealtimeModule, MapsModule, SafetyModule],
   controllers: [TripsController, DriverBlocksController, TripPhotosController],
-  providers: [TripsService, DispatchService, TripChatService, TripOtpGuard, TripTimeoutsService, DriverBlocksService, DriverOfferStatsService, TripPhotosService],
-  exports: [DriverBlocksService, DriverOfferStatsService],
+  providers: [TripsService, DispatchService, TripChatService, TripOtpGuard, RideOtpService, TripTimeoutsService, DriverBlocksService, DriverOfferStatsService, TripPhotosService],
+  exports: [DriverBlocksService, DriverOfferStatsService, RideOtpService],
 })
 export class TripsModule {}

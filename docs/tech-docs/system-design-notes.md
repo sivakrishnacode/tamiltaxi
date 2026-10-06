@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP per trip vs fixed)
+Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider)
 
 ---
 
@@ -145,14 +145,21 @@ for good**. A fixed code is quicker for regulars (no need to open the app with a
 
 | Question | Tamil Taxi | Verdict |
 |---|---|---|
-| New code per trip? | Yes: `randomInt(1000, 10000)` from `node:crypto` when the trip is booked (`TripsService`) | **Safer model, same as Uber** |
+| New code per trip? | Was yes (`randomInt(1000, 10000)` per booking). **Since 6 Oct 2026: one code per rider** (see the decision below) | Owner's choice: speed |
 | Can the driver see it? | No: stripped from every driver response and from `trip.updated` to the trip room (`hideOtp`); the public tracking link doesn't carry it | **Good** |
 | Guessing | 5 tries a minute per trip, then locked (`TripOtpGuard`, 429 `OTP_LOCKED`); only the assigned driver can try. Guessing ~9,000 codes at that rate takes hours, far longer than any pickup wait | **Good** |
 | Valid how long? | Only while the trip waits to start (ride) or to be delivered (parcel, the receiver's code) | **Good** |
 | Fixed codes in the repo | `4829` (ride) and `7153` (delivery) exist only in mock mode and tests | Fine |
 | Lock screen | The rider's push says "Share OTP 1234 to start"; on a locked phone Android shows it unless the user hides sensitive content. Uber and Ola do the same | No change |
 
-No backlog item: keep it per trip. Don't add a "same PIN every time" option for convenience.
+**Decision (6 Oct 2026, owner): one ride OTP per rider, Rapido style.** Speed over security in the trip-start flow:
+riders remember their code and needn't look at the phone at the car; overhearing is rare, and when it happens an admin
+changes the code (`POST /admin/users/:id/ride-otp`, user page › Ride OTP › Change), which also moves the rider's rides
+that haven't started. What we kept from the safer model: drivers still never receive the code from the API, guessing
+is still limited to 5 tries a minute, and parcels (the receiver's code) and rides booked for someone else still get a
+one-time code, so a rider's own code is never handed to another person. Known cost: every driver who has driven a
+rider knows that rider's code. If abuse shows up (trips started without the rider), revisit: a new code per ride, or
+a rider-side "new code" button.
 
 ## 4. Optimization backlog
 

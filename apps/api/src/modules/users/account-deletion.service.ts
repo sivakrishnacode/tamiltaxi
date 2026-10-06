@@ -133,6 +133,7 @@ export class AccountDeletionService {
           gender: null,
           phone: deletedPhone(userId),
           preferWomenDriver: false,
+          rideOtp: null,
           identityStatus: IdentityStatus.NOT_STARTED,
           identityVerifiedAt: null,
           blockedReason: null,

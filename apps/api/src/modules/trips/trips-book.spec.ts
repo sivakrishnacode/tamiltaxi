@@ -19,7 +19,7 @@ function setup(open: { id: string } | null) {
     },
   };
   const none = {} as never;
-  const trips = new TripsService(prisma as never, none, none, none, none, geo as never, none, none, settings as never, none, none, none, none, none, none, none, none, redis as never);
+  const trips = new TripsService(prisma as never, none, none, none, none, geo as never, none, none, settings as never, none, none, none, none, none, none, none, none, redis as never, none);
   return { trips, store, findFirst };
 }
 

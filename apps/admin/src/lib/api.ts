@@ -303,6 +303,9 @@ export const adminApi = {
   user: (id: string) => orNotFound(apiFetch<UserDetail>(`/admin/users/${enc(id)}`)),
   updateUser: (id: string, data: { name?: string; email?: string | null; role?: Role; isBlocked?: boolean; blockedReason?: string }) =>
     apiFetch<UserDetail>(`/admin/users/${enc(id)}`, { method: "PATCH", body: data }),
+  /** A new ride OTP ([otp], or a random one); their rides that haven't started move to it. */
+  setRideOtp: (id: string, otp?: string) =>
+    apiFetch<{ rideOtp: string }>(`/admin/users/${enc(id)}/ride-otp`, { method: "POST", body: otp ? { otp } : {} }),
   /** Deletes the account (personal details wiped, trips kept); 409 while they have an unfinished trip. */
   deleteUser: (id: string) => apiFetch<null>(`/admin/users/${enc(id)}`, { method: "DELETE" }),
 

@@ -974,6 +974,39 @@ describe('Tamil Taxi API (e2e)', () => {
     for (const d of [driver, { Authorization: `Bearer ${other}` }]) await http.post('/v1/drivers/me/offline').set(d);
   }, 30_000);
 
+  it('one ride OTP per rider: the same on every own ride; an admin change reaches the ride waiting to start', async () => {
+    const { trip, driver, pax } = await assignedBikeTrip({ lat: 11.0185, lng: 76.9727 });
+    const me = (await http.get('/v1/me').set(pax).expect(200)).body;
+    expect(trip.otp).toMatch(/^[1-9]\d{3}$/);
+    expect(me.rideOtp).toBe(trip.otp);
+
+    // Overheard: an admin gives a new code. The ride waiting to start takes it (the driver still never sees it).
+    const admin = await adminAuth();
+    await http.post(`/v1/admin/users/${me.id}/ride-otp`).set(admin).send({ otp: '0123' }).expect(400);
+    await http.post(`/v1/admin/users/${me.id}/ride-otp`).set(pax).send({}).expect(403);
+    const { rideOtp } = (await http.post(`/v1/admin/users/${me.id}/ride-otp`).set(admin).send({}).expect(200)).body;
+    expect(rideOtp).toMatch(/^[1-9]\d{3}$/);
+    expect(rideOtp).not.toBe(trip.otp);
+    expect((await http.get(`/v1/trips/${trip.id}`).set(pax).expect(200)).body.otp).toBe(rideOtp);
+    expect((await http.get(`/v1/trips/${trip.id}`).set(driver).expect(200)).body.otp).toBe('');
+    await http.post(`/v1/trips/${trip.id}/arrived`).set(driver).expect(200);
+    await http.post(`/v1/trips/${trip.id}/start`).set(driver).send({ otp: trip.otp }).expect(400);
+    await http.post(`/v1/trips/${trip.id}/start`).set(driver).send({ otp: rideOtp }).expect(200);
+    await http.post('/v1/drivers/me/location').set(driver).send({ lat: BROOKEFIELDS.lat, lng: BROOKEFIELDS.lng }).expect(204);
+    await http.post(`/v1/trips/${trip.id}/complete`).set(driver).send({}).expect(200);
+
+    // The next own ride starts with the same code; a ride for someone else gets a one-time code.
+    const book = { kind: 'RIDE', vehicleKind: 'BIKE', pickup: GANDHIPURAM, drop: BROOKEFIELDS };
+    const next = (await http.post('/v1/trips').set(pax).send(book).expect(201)).body;
+    expect(next.otp).toBe(rideOtp);
+    await http.post(`/v1/trips/${next.id}/cancel`).set(pax).send({}).expect(200);
+    const forFriend = (await http.post('/v1/trips').set(pax).send({ ...book, rider: { name: 'Kavin', phone: '9876512399', isWoman: false } }).expect(201)).body;
+    expect(forFriend.otp).toMatch(/^[1-9]\d{3}$/);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: me.id } })).rideOtp).toBe(rideOtp);
+    await http.post(`/v1/trips/${forFriend.id}/cancel`).set(pax).send({}).expect(200);
+    await http.post('/v1/drivers/me/offline').set(driver);
+  }, 30_000);
+
   it('no-show: the driver may cancel without fault only after waiting at the pickup', async () => {
     const jobs = app.get(JobsService);
     const { trip, driver, pax } = await assignedBikeTrip({ lat: 11.0185, lng: 76.9727 });

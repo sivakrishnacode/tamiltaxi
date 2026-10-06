@@ -1,5 +1,4 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { randomInt } from 'node:crypto';
 
 import type { AuthUser } from '../../core/auth/auth-user.js';
 import { JobsService } from '../../core/jobs/jobs.service.js';
@@ -38,6 +37,8 @@ import { checkNearStop, positionForCheck } from './trip-position.js';
 import { averageRating } from './driver-rating.js';
 import { fareReviewNotes, mergeReviewNote } from './fare-review.js';
 import { TripOtpGuard } from './trip-otp-guard.js';
+import { newTripOtp, RideOtpService } from './ride-otp.service.js';
+import { TRIP_INCLUDE } from './trip-include.js';
 import { DriverBlocksService, istTime } from './driver-blocks.service.js';
 import { canReassign, canTransition, isFinished } from './trip-transitions.js';
 import { ALL_TRIP_JOBS, noShowAt, pickupCapAt, pickupCheckAt, setOffAt, stuckAt, TRIP_JOBS } from './trip-timeouts.js';
@@ -68,10 +69,6 @@ export interface VehicleAlternative {
 /** "+919876543210" from "9876543210" or "+919876543210" (the DTO already checked it). */
 const normalisePhone = (phone: string): string => (phone.startsWith('+91') ? phone : `+91${phone}`);
 
-const TRIP_INCLUDE = {
-  driver: { include: { user: { select: { id: true, name: true, phone: true, gender: true } } } },
-  passenger: { select: { id: true, name: true, phone: true, identityStatus: true } },
-} as const;
 
 type CancelInfo = { by: CancelledBy; code: CancelCode; note: string | null };
 
@@ -122,6 +119,7 @@ export class TripsService {
     private readonly maps: MapsService,
     private readonly tripDrivers: TripDriversService,
     private readonly redis: RedisService,
+    private readonly rideOtps: RideOtpService,
   ) {}
 
   /**
@@ -246,7 +244,8 @@ export class TripsService {
         durationMin: quote.durationMin,
         fare: quote as unknown as Prisma.InputJsonValue,
         fareTotal: quote.total,
-        otp: String(randomInt(1000, 10000)),
+        // The rider's own code for their own rides; a one-time code for parcels and rides for someone else.
+        otp: dto.kind === TripKind.RIDE && !dto.rider ? await this.rideOtps.forRider(passengerId) : newTripOtp(),
         paymentMode: dto.paymentMode,
         parcel: dto.parcel as Prisma.InputJsonValue | undefined,
         payer: dto.payer,

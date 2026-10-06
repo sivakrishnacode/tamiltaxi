@@ -7,11 +7,12 @@ import type { KycDocument, User } from '../../generated/prisma/client.js';
 import { Role } from '../../generated/prisma/enums.js';
 import { type ActivityEntry, type AdminNoteView, AdminPeopleService } from './admin-people.service.js';
 import { AdminUsersService } from './admin-users.service.js';
+import { RideOtpService } from '../trips/ride-otp.service.js';
 import { AccountDeletionService } from '../users/account-deletion.service.js';
 import type { Paged } from './admin.types.js';
 import { AuditInterceptor } from './audit.interceptor.js';
 import { ListQueryDto } from './dto/list-query.dto.js';
-import { CreateNoteDto, MessageDto } from './dto/people.dto.js';
+import { CreateNoteDto, MessageDto, RideOtpDto } from './dto/people.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 
 /** User management (with notes, history and a direct push per person) and the KYC review queue. */
@@ -23,6 +24,7 @@ export class AdminUsersController {
     private readonly users: AdminUsersService,
     private readonly people: AdminPeopleService,
     private readonly deletion: AccountDeletionService,
+    private readonly rideOtps: RideOtpService,
   ) {}
 
   /** ?role=PASSENGER|DRIVER|ADMIN&blocked=true|false&q=… */
@@ -46,6 +48,16 @@ export class AdminUsersController {
   @HttpCode(204)
   remove(@Param('id') id: string, @CurrentUser() user: AuthUser): Promise<void> {
     return this.deletion.delete(id, { kind: 'admin', adminId: user.userId });
+  }
+
+  /**
+   * A new ride OTP for the rider (when theirs was overheard): [RideOtpDto.otp] or a random one. Their rides that
+   * haven't started move to it and their app is told. Audited.
+   */
+  @Post('users/:id/ride-otp')
+  @HttpCode(200)
+  async rideOtp(@Param('id') id: string, @Body() body: RideOtpDto): Promise<{ rideOtp: string }> {
+    return { rideOtp: await this.rideOtps.change(id, body.otp) };
   }
 
   /** Internal notes on the person (driver or rider), newest first. */
