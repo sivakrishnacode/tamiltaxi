@@ -14,7 +14,7 @@ import '../account/p25b_new_ticket_screen.dart';
 import '../activity/p21_activity_screen.dart';
 import '../activity/p22_trip_details_screen.dart';
 import '../onboarding/p01_splash_screen.dart';
-import '../onboarding/p02_onboarding_screen.dart';
+import '../onboarding/p02_welcome_screen.dart';
 import '../onboarding/p03_phone_screen.dart';
 import '../onboarding/p04_otp_screen.dart';
 import '../onboarding/p05_profile_setup_screen.dart';
@@ -102,9 +102,7 @@ final List<GalleryEntry> galleryEntries = [
   _e('DS', 'Design system', _ds, (_) => const DesignSystemScreen(), tag: GalleryTag.showcaseOnly),
   // Part 2
   _e('P-01', 'Splash', _p2, (_) => const P01SplashScreen(showcase: true)),
-  _e('P-02a', 'Onboarding · Lower fares', _p2, (_) => const P02OnboardingScreen(initialPage: 0, showcase: true)),
-  _e('P-02b', 'Onboarding · Driver keeps 100%', _p2, (_) => const P02OnboardingScreen(initialPage: 1, showcase: true)),
-  _e('P-02c', 'Onboarding · Rides and parcels', _p2, (_) => const P02OnboardingScreen(initialPage: 2, showcase: true)),
+  _e('P-02', 'Welcome', _p2, (_) => const P02WelcomeScreen(showcase: true)),
   _e('P-03', 'Phone number', _p2, (_) => const P03PhoneScreen(showcase: true)),
   _e('P-04', 'OTP verification', _p2, (_) => const P04OtpScreen(phone: '98765 43210', showcase: true)),
   _e('P-05', 'Profile setup', _p2, (_) => const P05ProfileSetupScreen(showcase: true)),

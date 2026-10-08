@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_passenger/app.dart';
-import 'package:tamiltaxi_passenger/features/onboarding/p02_onboarding_screen.dart';
+import 'package:tamiltaxi_passenger/features/onboarding/p02_welcome_screen.dart';
 import 'package:tamiltaxi_passenger/router/app_router.dart';
 import 'package:tamiltaxi_passenger/router/routes.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
@@ -45,11 +45,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1000));
     expect(find.byType(KolamRing), findsNothing, reason: 'the ring has faded out');
     expect(_taglineOpacity(tester), greaterThan(0));
-    expect(find.byType(P02OnboardingScreen), findsNothing);
+    expect(find.byType(P02WelcomeScreen), findsNothing);
 
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(P02OnboardingScreen), findsOneWidget);
+    expect(find.byType(P02WelcomeScreen), findsOneWidget);
     await _finish(tester);
   });
 
@@ -62,7 +62,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 1600));
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(P02OnboardingScreen), findsOneWidget);
+    expect(find.byType(P02WelcomeScreen), findsOneWidget);
     await _finish(tester);
   });
 }

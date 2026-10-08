@@ -133,7 +133,7 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
     }
     if (!mounted) return;
     setState(() => _verifying = false);
-    if (widget.signup) showTtSnack(context, 'Welcome back! You already have a Tamil Taxi Driver account.');
+    if (widget.signup) showTtSnack(context, 'Welcome back!');
     context.go(route);
   }
 

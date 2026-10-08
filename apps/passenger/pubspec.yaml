@@ -35,3 +35,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # Welcome screen picture (P-02), made with ChatGPT; see docs/design/onboarding/.
+    - assets/onboarding/

@@ -65,9 +65,9 @@ void main() {
     await closeApp(tester, container);
   });
 
-  testWidgets('D-02 frame: Join opens nothing', (tester) async {
+  testWidgets('D-02 frame: Continue opens nothing', (tester) async {
     final container = await pumpRoute(tester, Routes.galleryView('D-02'));
-    await _tap(tester, 'Join as a driver');
+    await _tap(tester, 'Continue with phone number');
     expect(find.byType(D02WelcomeScreen), findsOneWidget);
     expect(find.text(kPreviewNote), findsOneWidget);
     await closeApp(tester, container);

@@ -44,6 +44,8 @@ flutter:
   assets:
     # The floating bubble over other apps: the road x on coral (the launcher icon is the kolam set).
     - assets/brand/tt_icon.png
+    # Welcome screen picture (D-02), made with ChatGPT; see docs/design/onboarding/.
+    - assets/onboarding/
 
 # Patched copy of flutter_overlay_window (see packages/flutter_overlay_window/TT_PATCHES.md).
 dependency_overrides:

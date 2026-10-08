@@ -53,9 +53,7 @@ Notes:
 | Frame ID | Screen | Status | File |
 |---|---|---|---|
 | P-01 | Splash | In the app | [passenger/P-01.png](passenger/P-01.png) |
-| P-02a | Onboarding · Lower fares | In the app | [passenger/P-02a.png](passenger/P-02a.png) |
-| P-02b | Onboarding · Driver keeps 100% | In the app | [passenger/P-02b.png](passenger/P-02b.png) |
-| P-02c | Onboarding · Rides and parcels | In the app | [passenger/P-02c.png](passenger/P-02c.png) |
+| P-02 | Welcome | Added after the design | [passenger/P-02.png](passenger/P-02.png) |
 | P-03 | Phone number | In the app | [passenger/P-03.png](passenger/P-03.png) |
 | P-04 | OTP verification | In the app | [passenger/P-04.png](passenger/P-04.png) |
 | P-05 | Profile setup | In the app | [passenger/P-05.png](passenger/P-05.png) |

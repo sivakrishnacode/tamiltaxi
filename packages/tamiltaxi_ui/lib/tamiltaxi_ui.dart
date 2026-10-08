@@ -51,6 +51,7 @@ export 'src/widgets/stepper_timeline.dart';
 export 'src/widgets/swipe_to_confirm.dart';
 export 'src/widgets/vehicle_option_card.dart';
 export 'src/widgets/waiting_timer.dart';
+export 'src/widgets/welcome_view.dart';
 export 'src/widgets/showcase_frame.dart';
 export 'src/widgets/chat_scaffold.dart';
 export 'src/widgets/support_views.dart';

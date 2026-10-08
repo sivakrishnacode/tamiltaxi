@@ -18,7 +18,7 @@ import '../features/design_gallery/design_gallery_screen.dart';
 import '../features/design_gallery/gallery_registry.dart';
 import '../features/onboarding/legal_screen.dart';
 import '../features/onboarding/p01_splash_screen.dart';
-import '../features/onboarding/p02_onboarding_screen.dart';
+import '../features/onboarding/p02_welcome_screen.dart';
 import '../features/onboarding/p03_phone_screen.dart';
 import '../features/onboarding/p04_otp_screen.dart';
 import '../features/onboarding/p05_profile_setup_screen.dart';
@@ -76,7 +76,7 @@ GoRouter createPassengerRouter({String initialLocation = Routes.splash}) => GoRo
   initialLocation: initialLocation,
   routes: [
     _full(Routes.splash, (_) => const P01SplashScreen()),
-    _full(Routes.onboarding, (_) => const P02OnboardingScreen()),
+    _full(Routes.onboarding, (_) => const P02WelcomeScreen()),
     _full(Routes.login, (_) => const P03PhoneScreen()),
     _full(Routes.otp, (s) => P04OtpScreen(phone: s.uri.queryParameters['phone'] ?? '98765 43210')),
     _full(Routes.profileSetup, (_) => const P05ProfileSetupScreen()),
