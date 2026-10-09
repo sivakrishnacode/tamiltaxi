@@ -9,8 +9,9 @@ import '../../router/routes.dart';
 import '../../state/parcel_flow.dart';
 import 'widgets/parcel_widgets.dart';
 
-/// PP-09 Parcel in transit: live tracking to the drop, ETA, stepper at "Picked up",
-/// share tracking. Goods only, so no SOS: a Help icon sits in the top bar instead.
+/// PP-09 Parcel in transit: live tracking to the drop, ETA, stepper at "Picked up", the delivery OTP
+/// the receiver gives the driver at drop-off, and sending it with the tracking to the receiver.
+/// Goods only, so no SOS: a Help icon sits in the top bar instead.
 class PP09ParcelInTransitScreen extends ConsumerWidget {
   const PP09ParcelInTransitScreen({super.key, this.showcase = false});
 
@@ -34,6 +35,7 @@ class PP09ParcelInTransitScreen extends ConsumerWidget {
     final pickedUpAt = now.subtract(Duration(minutes: (s.estimate.tripMin - eta).clamp(1, 120)));
     final live = !showcase && s.phase == ParcelPhase.inTransit;
     final liveApi = !showcase && ref.watch(isLiveApiProvider);
+    final receiverFirst = s.details.receiverName.trim().isEmpty ? 'the receiver' : s.details.receiverName.split(' ').first;
 
     return PopScope(
       canPop: false,
@@ -160,9 +162,19 @@ class PP09ParcelInTransitScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    if (s.details.deliveryOtp.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      OtpDisplay(
+                        label: 'DELIVERY OTP',
+                        code: s.details.deliveryOtp,
+                        caption: liveApi
+                            ? 'Send it to $receiverFirst. The driver asks for it at drop-off.'
+                            : 'Sent to $receiverFirst by SMS. The driver asks for it at drop-off.',
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     TtButton.secondary(
-                      label: 'Share tracking with receiver',
+                      label: 'Send OTP & tracking to $receiverFirst',
                       icon: Symbols.share_location_rounded,
                       onPressed: () => shareParcelWithReceiver(context, s, ctrl.vehicle.value?.position),
                     ),

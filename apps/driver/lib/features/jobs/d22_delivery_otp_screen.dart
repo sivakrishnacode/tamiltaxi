@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
+import '../../common/launch.dart';
 import '../../common/showcase.dart';
 import '../../router/routes.dart';
 import '../../state/driver_session.dart';
@@ -11,9 +12,9 @@ import '../../state/live_helpers.dart';
 import 'widgets/otp_step.dart';
 import 'widgets/too_far_sheet.dart';
 
-/// D-22a Complete delivery: "Ask Meena for the delivery OTP" (7153), optional photo of the
-/// delivered parcel, "Complete delivery" → D-22b collect. Wrong code shakes with an error.
-/// Live API: the server checks the receiver's code when the delivery completes.
+/// D-22a Complete delivery: "Ask Meena for the delivery OTP" (7153), "Call the sender" when the receiver
+/// doesn't have it, optional photo of the delivered parcel, "Complete delivery" → D-22b collect. Wrong code
+/// shakes with an error. Live API: the server checks the receiver's code when the delivery completes.
 class D22DeliveryOtpScreen extends ConsumerStatefulWidget {
   const D22DeliveryOtpScreen({super.key, this.showcase = false});
 
@@ -103,8 +104,12 @@ class _D22DeliveryOtpScreenState extends ConsumerState<D22DeliveryOtpScreen>
 
   @override
   Widget build(BuildContext context) {
-    final receiver = _job.parcel?.receiverName ?? _job.customerName;
-    final phone = _job.parcel?.receiverPhone ?? _job.customerPhone;
+    final parcel = _job.parcel;
+    final receiver = parcel?.receiverName ?? _job.customerName;
+    final phone = parcel?.receiverPhone ?? _job.customerPhone;
+    // Whoever booked sees the code in their app (live: the account holder; the demo: the sender).
+    final senderPhone = _api ? _job.customerPhone : (parcel?.senderPhone ?? _job.customerPhone);
+    final canCallSender = senderPhone.isNotEmpty && _last10(senderPhone) != _last10(phone);
     return OtpStepScaffold(
       onJob:
           !widget.showcase &&
@@ -128,18 +133,75 @@ class _D22DeliveryOtpScreenState extends ConsumerState<D22DeliveryOtpScreen>
         }),
       ),
       error: _errorText,
-      extra: PhotoAttachmentTile(
-        photo: _photo,
-        camera: true,
-        label: 'Take photo of delivered parcel',
-        onChanged: (photo) async {
-          setState(() => _photo = photo);
-          if (_api && photo != null) await _uploadPhoto(photo);
-        },
+      extra: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (canCallSender) ...[
+            _CallSenderTile(
+              receiver: receiver.split(' ').first,
+              onTap: () => dialNumber(context, senderPhone, name: 'the sender'),
+            ),
+            const SizedBox(height: TtSpacing.m),
+          ],
+          PhotoAttachmentTile(
+            photo: _photo,
+            camera: true,
+            label: 'Take photo of delivered parcel',
+            onChanged: (photo) async {
+              setState(() => _photo = photo);
+              if (_api && photo != null) await _uploadPhoto(photo);
+            },
+          ),
+        ],
       ),
       buttonLabel: 'Complete delivery',
       busy: _busy,
       onSubmit: _code.length == 4 && !isOtpLocked ? _complete : null,
+    );
+  }
+}
+
+/// The last 10 digits of a phone number ("+91 94433 21098" and "9443321098" match).
+String _last10(String phone) {
+  final d = phone.replaceAll(RegExp(r'\D'), '');
+  return d.length > 10 ? d.substring(d.length - 10) : d;
+}
+
+/// "Meena doesn't have it? Call the sender": the sender sees the code in their app.
+class _CallSenderTile extends StatelessWidget {
+  const _CallSenderTile({required this.receiver, required this.onTap});
+
+  final String receiver;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    return Semantics(
+      button: true,
+      label: '$receiver doesn\'t have the OTP? Call the sender',
+      excludeSemantics: true,
+      child: TtCard(
+        color: TtColors.background,
+        onTap: onTap,
+        child: Row(
+          children: [
+            const Icon(Symbols.call_rounded, color: TtColors.coral600, fill: 1),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$receiver doesn\'t have it?', style: t.bodyMedium),
+                  Text('Call the sender. It\'s in their app.',
+                      style: t.bodySmall.copyWith(color: TtColors.navy500)),
+                ],
+              ),
+            ),
+            const Icon(Symbols.chevron_right_rounded, color: TtColors.navy500),
+          ],
+        ),
+      ),
     );
   }
 }
