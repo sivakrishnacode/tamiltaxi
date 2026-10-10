@@ -80,6 +80,10 @@ Examples: `feat(driver): show H3 demand hexes on home map`, `fix(api): await Pri
 ### 1.4 Preferences
 
 - **Keep costs low:** free tiers and the smallest infra that works (currently one t3.small EC2 running everything).
+- **Staging deploys are pre-approved:** the owner gave Claude standing, explicit permission (10 Oct 2026) to deploy
+  the API and admin to the staging EC2 without asking, including the AWS steps a deploy needs (e.g. allowing the
+  current IP for SSH in `rido-sg`). Follow `using.tech.md` §9b (database backup, rollback image, health checks) and
+  record each deploy there. Pushing to git still needs to be asked for (1.1).
 - **Admin is on a new Next.js (16):** read [apps/admin/AGENTS.md](apps/admin/AGENTS.md) and the docs in
   `node_modules/next/dist/docs/` before writing admin code.
 - **Prisma queries are lazy:** `void prisma.x.create(...)` never runs. Always `await` or attach `.catch()`.
@@ -251,3 +255,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 6 Oct 2026 | Rule 1.2 and repo map: `system-design-notes.md` (design learnings + optimization backlog) |
 | 6 Oct 2026 | Key facts: one ride OTP per rider (live), mock codes labelled |
 | 10 Oct 2026 | Rule 1.5: coding behaviour (think first, simplicity, surgical changes, verifiable goals) |
+| 10 Oct 2026 | Rule 1.4: staging deploys (and the AWS steps they need) are pre-approved |
