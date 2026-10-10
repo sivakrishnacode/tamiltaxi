@@ -14,6 +14,7 @@ import { roadKm } from '../geo/eta-model.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { EtaService, etasByMode } from '../maps/eta.service.js';
 import { TripEventsService } from '../realtime/trip-events.service.js';
+import type { Settings } from '../settings/settings.defaults.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { assignBatch, BatchRequest } from './batch-assign.js';
 import { searchRadiusAt, searchWindowMs } from './search-radius.js';
@@ -25,8 +26,12 @@ import { extraOf, withExtra } from './extra-fare.js';
 const PENDING_KEY = 'dispatch:pending';
 const LOCK_KEY = 'dispatch:lock';
 const SWEEP_LOCK_KEY = 'dispatch:sweep:lock';
-/** The offer key outlives the offer timer so the timeout handler still sees whose offer it was. */
+/** An offer stays open this long after its timer so the timeout handler still sees whose offer it was. */
 const OFFER_GRACE_S = 5;
+/** Drivers looking at the trip right now (sorted set, score = when their offer closes, timer + grace, epoch ms). */
+const offersKey = (tripId: string): string => `dispatch:${tripId}:offers`;
+/** One timeout job per driver the trip is offered to. */
+const offerJobId = (tripId: string, driverId: string): string => `${tripId}:${driverId}`;
 /** Durable jobs (see JobsService): an offer's timeout, and the next search when the queue ran out. */
 export const OFFER_EXPIRE_JOB = 'offer.expire';
 export const RESEARCH_JOB = 'dispatch.research';
@@ -61,9 +66,12 @@ const SWEEP_EVERY_MS = 15_000;
  * 3. Candidates are ranked by road ETA (cached per hex pair), not straight-line distance, adjusted for how reliably
  *    each driver took offers over 7 days and how long they have waited (driver-rank.ts; ETA stays dominant).
  *    Butterfly trips keep only women drivers (ONLY) or give them a head start (PREFERRED), see women-drivers.ts.
- * 4. The whole batch is assigned together so two riders never get the same driver.
- * 5. Each driver gets `offerSeconds` to accept; decline/timeout moves to the next in that trip's queue. A driver can
- *    hold up to `maxOpenOffers` requests at once (stacked in the app); accepting one releases the others at once.
+ * 4. The whole batch is assigned together so two riders never get the same driver first.
+ * 5. Rapido style: `offerFanOut` drivers from the trip's queue see the request at the same time, each with
+ *    `offerSeconds` to answer; the first to accept gets it (the guarded write in TripsService.accept) and the others'
+ *    cards close. A decline or timeout passes that driver's place to the next in the queue (1 = one driver at a time,
+ *    Uber style). A driver can hold up to `maxOpenOffers` requests at once (stacked in the app); accepting one
+ *    releases the others at once.
  * 6. Out of candidates → search again every few seconds (a driver who let the offer time out can get it again; one who
  *    declined can't) until [searchWindowMs] has passed since the search started (or a vehicle was added), then
  *    NO_DRIVERS.
@@ -93,7 +101,8 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    this.jobs.register<{ driverId: string }>(OFFER_EXPIRE_JOB, (job) => this.onTimeout(job.id, job.payload.driverId));
+    // Jobs scheduled before fan-out were keyed by the trip alone (no tripId in the payload).
+    this.jobs.register<{ tripId?: string; driverId: string }>(OFFER_EXPIRE_JOB, (job) => this.onTimeout(job.payload.tripId ?? job.id, job.payload.driverId));
     // A paused driver's open requests go to the next drivers at once (DriverBlocksService can't call us directly).
     this.blocks.onPaused((driverId) => this.releaseOffers(driverId, null));
     this.jobs.register(RESEARCH_JOB, async (job) => void (await this.redis.sadd(PENDING_KEY, job.id)));
@@ -112,9 +121,21 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
     await this.redis.sadd(PENDING_KEY, trip.id);
   }
 
-  /** Current offered driver for a trip, if any. */
-  offeredTo(tripId: string): Promise<string | null> {
-    return this.redis.get(`dispatch:${tripId}:offer`);
+  /** Drivers the trip is offered to right now (their offer still open). */
+  offeredTo(tripId: string): Promise<string[]> {
+    return this.redis.zrangebyscore(offersKey(tripId), String(Date.now()), '+inf');
+  }
+
+  /** Is the trip offered to [driverId] right now? */
+  async isOfferedTo(tripId: string, driverId: string): Promise<boolean> {
+    const until = await this.redis.zscore(offersKey(tripId), driverId);
+    return until !== null && Number(until) > Date.now();
+  }
+
+  /** Seconds [driverId] has left to answer the trip's offer (what their card counts down); 0 or less when none. */
+  private async secondsLeft(tripId: string, driverId: string): Promise<number> {
+    const until = await this.redis.zscore(offersKey(tripId), driverId);
+    return until === null ? 0 : Math.floor((Number(until) - Date.now()) / 1000) - OFFER_GRACE_S;
   }
 
   /** The oldest request open for [driverId] (older apps recover one missed offer with this). */
@@ -127,24 +148,30 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
     const tripIds = await this.redis.zrangebyscore(driverOffersKey(driverId), String(Date.now()), '+inf');
     const out: (OfferDetails & { expiresInSeconds: number })[] = [];
     for (const tripId of tripIds) {
-      if ((await this.offeredTo(tripId)) !== driverId) continue;
+      const left = await this.secondsLeft(tripId, driverId);
+      if (left < 1) continue;
       const trip = await this.prisma.trip.findUnique({ where: { id: tripId } });
       if (!trip || trip.status !== TripStatus.SEARCHING) continue;
-      const ttl = (await this.redis.ttl(`dispatch:${tripId}:offer`)) - OFFER_GRACE_S;
-      if (ttl < 1) continue;
-      out.push({ ...(await this.offerDetails(trip, driverId)), expiresInSeconds: ttl });
+      out.push({ ...(await this.offerDetails(trip, driverId)), expiresInSeconds: left });
     }
     return out;
   }
 
-  private async clearOffer(tripId: string): Promise<void> {
-    const driverId = await this.offeredTo(tripId);
-    await this.redis.del(`dispatch:${tripId}:offer`);
-    await this.jobs.cancel(OFFER_EXPIRE_JOB, tripId);
-    if (!driverId) return;
-    // Its slot is free again; the app drops the card (a no-op when the driver answered it themselves).
+  /**
+   * [driverId]'s offer of the trip closes: their slot is free again and the app drops the card (a no-op when the driver
+   * answered it themselves).
+   */
+  private async closeOffer(tripId: string, driverId: string): Promise<void> {
+    await this.redis.zrem(offersKey(tripId), driverId);
+    await this.jobs.cancel(OFFER_EXPIRE_JOB, offerJobId(tripId, driverId));
     await this.redis.zrem(driverOffersKey(driverId), tripId);
     this.events.toDriver(driverId, 'trip.offer_closed', { tripId });
+  }
+
+  /** Closes the trip's offer for every driver who has it. */
+  private async closeOffers(tripId: string): Promise<void> {
+    for (const driverId of await this.redis.zrange(offersKey(tripId), '0', '-1')) await this.closeOffer(tripId, driverId);
+    await this.redis.del(offersKey(tripId));
   }
 
   /**
@@ -154,25 +181,28 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
   private async releaseOffers(driverId: string, keptTripId: string | null): Promise<void> {
     const others = (await this.redis.zrange(driverOffersKey(driverId), '0', '-1')).filter((t) => t !== keptTripId);
     for (const tripId of others) {
-      if ((await this.offeredTo(tripId)) === driverId) await this.next(tripId);
+      if (await this.isOfferedTo(tripId, driverId)) await this.next(tripId, driverId);
       else await this.redis.zrem(driverOffersKey(driverId), tripId);
     }
   }
 
-  /** The driver said no: never offer them this trip again, try the next candidate. */
+  /** The driver said no: never offer them this trip again, give their place to the next candidate. */
   async decline(tripId: string, driverId: string): Promise<void> {
     await this.offerStats.record(driverId, 'declined');
     await this.redis.multi().sadd(declinedKey(tripId), driverId).expire(declinedKey(tripId), 900).exec();
-    await this.next(tripId);
+    await this.next(tripId, driverId);
   }
 
-  /** Driver declined or the offer timed out: try the next candidate. */
-  async next(tripId: string): Promise<void> {
-    await this.clearOffer(tripId);
-    await this.offerNext(tripId);
+  /** [driverId] declined, let the offer time out or was released: their place goes to the next candidate. */
+  async next(tripId: string, driverId: string): Promise<void> {
+    await this.closeOffer(tripId, driverId);
+    await this.fill(tripId);
   }
 
-  /** [driverId] took the trip (the guarded write won): count it for their ranking and stop dispatching. */
+  /**
+   * [driverId] took the trip (the guarded write won): count it for their ranking and stop dispatching. The other drivers
+   * who had it lose their card ([stop]); that is not counted against them.
+   */
   async accepted(tripId: string, driverId: string): Promise<void> {
     await this.offerStats.record(driverId, 'accepted');
     await this.stop(tripId);
@@ -188,7 +218,7 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
   async stop(tripId: string): Promise<void> {
     await this.jobs.cancel(RESEARCH_JOB, tripId);
     await this.redis.srem(PENDING_KEY, tripId);
-    await this.clearOffer(tripId);
+    await this.closeOffers(tripId);
     await this.redis.del(
       `dispatch:${tripId}:queue`,
       declinedKey(tripId),
@@ -213,16 +243,11 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * The passenger added a vehicle to a searching trip: search again now (without cutting short an open offer) and
-   * give the search its full time again from here.
+   * The passenger added a vehicle to a searching trip: search again now (without cutting short open offers; the new
+   * drivers fill free places) and give the search its full time again from here.
    */
   async widen(tripId: string): Promise<void> {
     await this.redis.set(`dispatch:${tripId}:since`, String(Date.now()), 'EX', 900);
-    if (await this.offeredTo(tripId)) {
-      // The next search runs when this offer is answered or times out; queue one so the new vehicle joins then.
-      await this.redis.sadd(PENDING_KEY, tripId);
-      return;
-    }
     await this.jobs.cancel(RESEARCH_JOB, tripId);
     await this.redis.sadd(PENDING_KEY, tripId);
   }
@@ -234,11 +259,13 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
    */
   async boosted(tripId: string): Promise<void> {
     await this.redis.del(declinedKey(tripId));
-    const driverId = await this.offeredTo(tripId);
-    const trip = driverId ? await this.prisma.trip.findUnique({ where: { id: tripId } }) : null;
-    const left = (await this.redis.ttl(`dispatch:${tripId}:offer`)) - OFFER_GRACE_S;
-    if (driverId && trip && left > 0) {
-      this.events.toDriver(driverId, 'trip.offer', { ...(await this.offerDetails(trip, driverId)), expiresInSeconds: left });
+    const holders = await this.offeredTo(tripId);
+    const trip = holders.length ? await this.prisma.trip.findUnique({ where: { id: tripId } }) : null;
+    if (trip) {
+      for (const driverId of holders) {
+        const left = await this.secondsLeft(tripId, driverId);
+        if (left > 0) this.events.toDriver(driverId, 'trip.offer', { ...(await this.offerDetails(trip, driverId)), expiresInSeconds: left });
+      }
     }
     await this.widen(tripId);
   }
@@ -258,17 +285,14 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
       const queues = assignBatch(requests);
       for (const trip of trips) {
         const queue = queues.get(trip.id) ?? [];
+        // Drivers looking at this trip right now (re-queued by [widen]) keep their offer; the rest fill free places.
+        const open = new Set(await this.offeredTo(trip.id));
+        const fresh = queue.filter((d) => !open.has(d));
         const key = `dispatch:${trip.id}:queue`;
         await this.redis.del(key);
-        if (queue.length > 0) await this.redis.rpush(key, ...queue);
+        if (fresh.length > 0) await this.redis.rpush(key, ...fresh);
         await this.redis.expire(key, 600);
-        // A driver is looking at this trip right now (re-queued by [widen]): the fresh queue waits for their answer.
-        const open = await this.offeredTo(trip.id);
-        if (open) {
-          await this.redis.lrem(key, 0, open);
-          continue;
-        }
-        await this.offerNext(trip.id, { searchFoundNobody: queue.length === 0 });
+        await this.fill(trip.id, { searchFoundNobody: queue.length === 0 });
       }
       return trips.length;
     } catch (e) {
@@ -341,30 +365,47 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async offerNext(tripId: string, opts: { searchFoundNobody?: boolean } = {}): Promise<void> {
+  /**
+   * Keeps `offerFanOut` drivers looking at the trip: offers it to the next drivers in its queue until that many have
+   * it. Nobody has it and nobody is left → search again shortly, or end the search.
+   */
+  private async fill(tripId: string, opts: { searchFoundNobody?: boolean } = {}): Promise<void> {
     const trip = await this.prisma.trip.findUnique({ where: { id: tripId } });
     if (!trip || trip.status !== TripStatus.SEARCHING) return;
-    const driverId = await this.redis.lpop(`dispatch:${tripId}:queue`);
-    if (!driverId) return this.searchAgainOrGiveUp(trip, opts.searchFoundNobody ?? false);
-    const [offerSeconds, maxOpenOffers] = await Promise.all([this.settings.get('offerSeconds'), this.settings.get('maxOpenOffers')]);
-    // Up to [maxOpenOffers] open requests per driver (stacked in the app): a driver on a trip, or with a full stack,
-    // is skipped (they come back in a later search if still near).
+    const s = await this.settings.all();
+    let open = (await this.offeredTo(tripId)).length;
+    while (open < Math.max(1, s.offerFanOut)) {
+      const driverId = await this.redis.lpop(`dispatch:${tripId}:queue`);
+      if (!driverId) break;
+      if (await this.offerTo(trip, driverId, s)) open++;
+    }
+    if (open === 0) await this.searchAgainOrGiveUp(trip, opts.searchFoundNobody ?? false);
+  }
+
+  /**
+   * Sends [trip] to [driverId] with `offerSeconds` to answer; false (nothing sent) when they are on a trip or already
+   * have `maxOpenOffers` requests open (stacked in the app): they come back in a later search if still near.
+   */
+  private async offerTo(trip: Trip, driverId: string, s: Pick<Settings, 'offerSeconds' | 'maxOpenOffers'>): Promise<boolean> {
     const now = Date.now();
+    const closesAt = now + (s.offerSeconds + OFFER_GRACE_S) * 1000;
     const isFree =
       !(await this.redis.exists(`driver:busy:${driverId}`)) &&
-      (await this.redis.eval(CLAIM_OFFER, 1, driverOffersKey(driverId), tripId, now, now + (offerSeconds + OFFER_GRACE_S) * 1000, Math.max(1, maxOpenOffers))) === 1;
-    if (!isFree) {
-      await this.offerNext(tripId);
-      return;
-    }
-    await this.redis.set(`dispatch:${tripId}:offer`, driverId, 'EX', offerSeconds + OFFER_GRACE_S);
-    await this.redis.set(`dispatch:${tripId}:offered`, '1', 'EX', 900);
+      (await this.redis.eval(CLAIM_OFFER, 1, driverOffersKey(driverId), trip.id, now, closesAt, Math.max(1, s.maxOpenOffers))) === 1;
+    if (!isFree) return false;
+    await this.redis
+      .multi()
+      .zadd(offersKey(trip.id), closesAt, driverId)
+      .expire(offersKey(trip.id), 900)
+      .set(`dispatch:${trip.id}:offered`, '1', 'EX', 900)
+      .exec();
     await this.offerStats.record(driverId, 'offered');
     const details = await this.offerDetails(trip, driverId);
-    this.events.toDriver(driverId, 'trip.offer', { ...details, expiresInSeconds: offerSeconds });
+    this.events.toDriver(driverId, 'trip.offer', { ...details, expiresInSeconds: s.offerSeconds });
     // Also as a push: the driver app may be in the background or killed.
-    void this.notifier.offer({ driverId, trip, pickupEtaMin: details.pickupEtaMin, expiresInSeconds: offerSeconds });
-    await this.jobs.schedule(OFFER_EXPIRE_JOB, tripId, Date.now() + offerSeconds * 1000, { driverId });
+    void this.notifier.offer({ driverId, trip, pickupEtaMin: details.pickupEtaMin, expiresInSeconds: s.offerSeconds });
+    await this.jobs.schedule(OFFER_EXPIRE_JOB, offerJobId(trip.id, driverId), now + s.offerSeconds * 1000, { tripId: trip.id, driverId });
+    return true;
   }
 
   /**
@@ -436,7 +477,7 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Safety net (one instance at a time): a SEARCHING trip with no open offer, no pending batch and no scheduled
+   * Safety net (one instance at a time): a SEARCHING trip with no open offers, no pending batch and no scheduled
    * re-search fell through the cracks (e.g. its offer key expired while the API was down) → queue it again, or end
    * it if it has searched long enough.
    */
@@ -444,22 +485,22 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
     if (!(await this.redis.set(SWEEP_LOCK_KEY, '1', 'PX', SWEEP_EVERY_MS - 1_000, 'NX'))) return;
     const searching = await this.prisma.trip.findMany({ where: { status: TripStatus.SEARCHING } });
     for (const trip of searching) {
-      const [offer, pending, retry] = await Promise.all([
+      const [offers, pending, retry] = await Promise.all([
         this.offeredTo(trip.id),
         this.redis.sismember(PENDING_KEY, trip.id),
         this.jobs.scheduledAt(RESEARCH_JOB, trip.id),
       ]);
-      if (offer || pending || retry) continue;
+      if (offers.length || pending || retry) continue;
       if (await this.searchedLongEnough(trip)) await this.giveUp(trip);
       else await this.redis.sadd(PENDING_KEY, trip.id);
     }
   }
 
   private async onTimeout(tripId: string, driverId: string): Promise<void> {
-    if ((await this.offeredTo(tripId)) !== driverId) return;
+    if (!(await this.isOfferedTo(tripId, driverId))) return;
     this.logger.debug(`Offer for ${tripId} to ${driverId} timed out`);
     await this.offerStats.record(driverId, 'ignored');
-    await this.next(tripId);
+    await this.next(tripId, driverId);
   }
 }
 

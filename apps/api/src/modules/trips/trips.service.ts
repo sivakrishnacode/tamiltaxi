@@ -360,7 +360,7 @@ export class TripsService {
 
   async accept(driverId: string, tripId: string): Promise<Trip> {
     await this.checkCanTakeTrips(driverId);
-    if ((await this.dispatch.offeredTo(tripId)) !== driverId) throw new ConflictException('This request is no longer available');
+    if (!(await this.dispatch.isOfferedTo(tripId, driverId))) throw new ConflictException('This request is no longer available');
     // One active trip per driver: claimed before the database write, released again only if the write lost (or never
     // ran). Once the trip is theirs, a later step failing must not free them while they hold it.
     if (!(await this.location.claimBusy(driverId, tripId))) throw new ConflictException('Finish your current trip first');
@@ -535,7 +535,7 @@ export class TripsService {
   }
 
   async decline(driverId: string, tripId: string): Promise<void> {
-    if ((await this.dispatch.offeredTo(tripId)) === driverId) await this.dispatch.decline(tripId, driverId);
+    if (await this.dispatch.isOfferedTo(tripId, driverId)) await this.dispatch.decline(tripId, driverId);
   }
 
   /** Driver at the pickup. Too far from it without a reason → 422 TOO_FAR (see [checkNearStop]). */

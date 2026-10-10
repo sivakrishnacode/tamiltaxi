@@ -808,13 +808,13 @@ describe('Tamil Taxi API (e2e)', () => {
     // Assert: taking one hands the other straight back to dispatch; a second active trip is refused.
     const [taken, other] = [a.id, b.id];
     await http.post(`/v1/trips/${taken}/accept`).set(auth).expect(200);
-    expect(await redis.get(`dispatch:${other}:offer`)).not.toBe(driverId);
+    expect(await redis.zscore(`dispatch:${other}:offers`, driverId)).toBeNull();
     expect((await http.get('/v1/trips/offers').set(auth).expect(200)).body).toEqual([]);
     expect(await redis.ttl(`driver:busy:${driverId}`)).toBeGreaterThan(3600);
-    await redis.set(`dispatch:${other}:offer`, driverId, 'EX', 20);
+    await redis.zadd(`dispatch:${other}:offers`, Date.now() + 20_000, driverId);
     const second = await http.post(`/v1/trips/${other}/accept`).set(auth).expect(409);
     expect(second.body.message).toBe('Finish your current trip first');
-    await redis.del(`dispatch:${other}:offer`);
+    await redis.zrem(`dispatch:${other}:offers`, driverId);
 
     // A cancel frees the driver for the other trip, which searches again every few seconds.
     await http.post(`/v1/trips/${taken}/cancel`).set('Authorization', `Bearer ${paxA}`).send({}).expect(200);
@@ -843,45 +843,82 @@ describe('Tamil Taxi API (e2e)', () => {
   }, 60_000);
 
   it('ranks equidistant drivers by their 7-day offer record: the one who ignores offers is asked second', async () => {
-    // Arrange: only these two bike drivers are indexed, at the same spot; one ignored most offers this week.
+    // Arrange: only these two bike drivers are indexed, at the same spot; one ignored most offers this week. One driver
+    // at a time, so the order shows.
+    const redis = app.get(RedisService);
+    const settings = app.get(SettingsService);
+    await settings.update({ offerFanOut: 1 });
+    try {
+      const cells = await redis.keys('h3:drv:BIKE:*');
+      if (cells.length) await redis.del(...cells);
+      const at = { lat: 11.0185, lng: 76.9727 };
+      const [flaky, steady] = [await onlineDriver('BIKE', at), await onlineDriver('BIKE', at)];
+      const idOf = async (t: string) => (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${t}`).expect(200)).body.id as string;
+      const [flakyId, steadyId] = [await idOf(flaky), await idOf(steady)];
+      const today = statsKey(flakyId, Date.now()).slice(-8);
+      await redis.hset(`drv:stats:${flakyId}:${today}`, { o: 20, a: 4, d: 6, i: 10 });
+      await redis.hset(`drv:stats:${steadyId}:${today}`, { o: 20, a: 19, i: 1 });
+      const since = String(Date.now());
+      for (const id of [flakyId, steadyId]) await redis.set(`drv:onlineSince:${id}`, since, 'EX', 600);
+      const pax = await login();
+      const trip = (await http.post('/v1/trips').set('Authorization', `Bearer ${pax}`).send({ kind: 'RIDE', vehicleKind: 'BIKE', pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(201)).body;
+      const offerOf = async (t: string) => {
+        const res = await http.get('/v1/trips/offer').set('Authorization', `Bearer ${t}`);
+        return res.status === 200 ? ((res.body?.trip?.id as string | undefined) ?? null) : null;
+      };
+
+      // Act + assert: the steady driver gets it first; the flaky one only after the steady one declines.
+      let first: string | null = null;
+      for (let i = 0; i < 40 && !first; i++) {
+        if ((await offerOf(steady)) === trip.id) first = steadyId;
+        else if ((await offerOf(flaky)) === trip.id) first = flakyId;
+        else await new Promise((r) => setTimeout(r, 250));
+      }
+      expect(first).toBe(steadyId);
+      await http.post(`/v1/trips/${trip.id}/decline`).set('Authorization', `Bearer ${steady}`).expect((r) => expect(r.status).toBeLessThan(300));
+      expect((await acceptWhenOffered(trip.id, flaky)).status).toBe(200);
+
+      // The admin sees the counters: the decline and the accept were recorded.
+      const admin = await adminAuth();
+      const steadyStats = (await http.get(`/v1/admin/drivers/${steadyId}/offer-stats`).set(admin).expect(200)).body;
+      expect(steadyStats).toMatchObject({ offered: 21, accepted: 19, declined: 1, isRanked: true, days: 7 });
+      const flakyStats = (await http.get(`/v1/admin/drivers/${flakyId}/offer-stats`).set(admin).expect(200)).body;
+      expect(flakyStats).toMatchObject({ offered: 21, accepted: 5 });
+      await http.post(`/v1/trips/${trip.id}/cancel`).set('Authorization', `Bearer ${pax}`).send({}).expect(200);
+      for (const d of [flaky, steady]) await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${d}`).expect(200);
+    } finally {
+      await settings.update({ offerFanOut: 3 });
+    }
+  }, 30_000);
+
+  it('fan-out: nearby drivers see the same request at once; the first to accept gets it, the other loses it uncounted', async () => {
+    // Arrange: only these two bike drivers are indexed, at the same spot (offerFanOut 3).
     const redis = app.get(RedisService);
     const cells = await redis.keys('h3:drv:BIKE:*');
     if (cells.length) await redis.del(...cells);
     const at = { lat: 11.0185, lng: 76.9727 };
-    const [flaky, steady] = [await onlineDriver('BIKE', at), await onlineDriver('BIKE', at)];
-    const idOf = async (t: string) => (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${t}`).expect(200)).body.id as string;
-    const [flakyId, steadyId] = [await idOf(flaky), await idOf(steady)];
-    const today = statsKey(flakyId, Date.now()).slice(-8);
-    await redis.hset(`drv:stats:${flakyId}:${today}`, { o: 20, a: 4, d: 6, i: 10 });
-    await redis.hset(`drv:stats:${steadyId}:${today}`, { o: 20, a: 19, i: 1 });
-    const since = String(Date.now());
-    for (const id of [flakyId, steadyId]) await redis.set(`drv:onlineSince:${id}`, since, 'EX', 600);
+    const [first, second] = [await onlineDriver('BIKE', at), await onlineDriver('BIKE', at)];
+    const secondId = (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${second}`).expect(200)).body.id as string;
     const pax = await login();
     const trip = (await http.post('/v1/trips').set('Authorization', `Bearer ${pax}`).send({ kind: 'RIDE', vehicleKind: 'BIKE', pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(201)).body;
-    const offerOf = async (t: string) => {
-      const res = await http.get('/v1/trips/offer').set('Authorization', `Bearer ${t}`);
-      return res.status === 200 ? ((res.body?.trip?.id as string | undefined) ?? null) : null;
-    };
+    const openFor = async (t: string) => (await http.get('/v1/trips/offers').set('Authorization', `Bearer ${t}`).expect(200)).body.map((o: { trip: { id: string } }) => o.trip.id) as string[];
 
-    // Act + assert: the steady driver gets it first; the flaky one only after the steady one declines.
-    let first: string | null = null;
-    for (let i = 0; i < 40 && !first; i++) {
-      if ((await offerOf(steady)) === trip.id) first = steadyId;
-      else if ((await offerOf(flaky)) === trip.id) first = flakyId;
-      else await new Promise((r) => setTimeout(r, 250));
+    // Act: both have the request open at the same time; the first accepts.
+    let both = false;
+    for (let i = 0; i < 40 && !both; i++) {
+      both = (await openFor(first)).includes(trip.id) && (await openFor(second)).includes(trip.id);
+      if (!both) await new Promise((r) => setTimeout(r, 250));
     }
-    expect(first).toBe(steadyId);
-    await http.post(`/v1/trips/${trip.id}/decline`).set('Authorization', `Bearer ${steady}`).expect((r) => expect(r.status).toBeLessThan(300));
-    expect((await acceptWhenOffered(trip.id, flaky)).status).toBe(200);
+    expect(both).toBe(true);
+    await http.post(`/v1/trips/${trip.id}/accept`).set('Authorization', `Bearer ${first}`).expect(200);
 
-    // The admin sees the counters: the decline and the accept were recorded.
-    const admin = await adminAuth();
-    const steadyStats = (await http.get(`/v1/admin/drivers/${steadyId}/offer-stats`).set(admin).expect(200)).body;
-    expect(steadyStats).toMatchObject({ offered: 21, accepted: 19, declined: 1, isRanked: true, days: 7 });
-    const flakyStats = (await http.get(`/v1/admin/drivers/${flakyId}/offer-stats`).set(admin).expect(200)).body;
-    expect(flakyStats).toMatchObject({ offered: 21, accepted: 5 });
+    // Assert: the other's card is gone, their accept is refused, and losing the race is not an ignored offer.
+    expect(await openFor(second)).toEqual([]);
+    expect((await http.post(`/v1/trips/${trip.id}/accept`).set('Authorization', `Bearer ${second}`).expect(409)).body.message).toBe('This request is no longer available');
+    const stats = (await http.get(`/v1/admin/drivers/${secondId}/offer-stats`).set(await adminAuth()).expect(200)).body;
+    expect(stats).toMatchObject({ offered: 1, accepted: 0, declined: 0, ignored: 0 });
     await http.post(`/v1/trips/${trip.id}/cancel`).set('Authorization', `Bearer ${pax}`).send({}).expect(200);
-    for (const d of [flaky, steady]) await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${d}`).expect(200);
+    for (const d of [first, second]) await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${d}`).expect(200);
   }, 30_000);
 
   it('a driver cancel before pickup finds another driver; the reassign limit then cancels the trip', async () => {
@@ -1219,10 +1256,10 @@ describe('Tamil Taxi API (e2e)', () => {
       const again = (await prisma.driver.findUniqueOrThrow({ where: { id: driverId } })).blockedUntil!.getTime();
       expect(again - Date.now()).toBeGreaterThan(71.9 * 3_600_000);
       expect(await redis.zcard(`dispatch:driver:${driverId}:offers`)).toBe(0);
-      expect(await redis.get(`dispatch:${waiting.id}:offer`)).not.toBe(driverId);
-      await redis.set(`dispatch:${waiting.id}:offer`, driverId, 'EX', 20); // even with the offer still theirs
+      expect(await redis.zscore(`dispatch:${waiting.id}:offers`, driverId)).toBeNull();
+      await redis.zadd(`dispatch:${waiting.id}:offers`, Date.now() + 20_000, driverId); // even with the offer still theirs
       expect((await http.post(`/v1/trips/${waiting.id}/accept`).set(driver).expect(403)).body.code).toBe('DRIVER_TEMP_BLOCKED');
-      await redis.del(`dispatch:${waiting.id}:offer`);
+      await redis.zrem(`dispatch:${waiting.id}:offers`, driverId);
       await http.post(`/v1/trips/${waiting.id}/cancel`).set(rider).send({}).expect(200);
       const admin = await adminAuth();
       const detail = (await http.get(`/v1/admin/drivers/${driverId}`).set(admin).expect(200)).body;
@@ -1421,20 +1458,21 @@ describe('Tamil Taxi API (e2e)', () => {
     const driverId = (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${bike}`).expect(200)).body.id as string;
     const pax = { Authorization: `Bearer ${await login()}` };
     const trip = (await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'BIKE', pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(201)).body;
-    for (let i = 0; i < 40 && (await redis.get(`dispatch:${trip.id}:offer`)) !== driverId; i++) await new Promise((r) => setTimeout(r, 250));
+    for (let i = 0; i < 40 && (await redis.zscore(`dispatch:${trip.id}:offers`, driverId)) === null; i++) await new Promise((r) => setTimeout(r, 250));
 
-    // Assert: the timeout is a job in Redis (survives a restart), due after offerSeconds.
-    const due = await jobs.scheduledAt('offer.expire', trip.id);
+    // Assert: the timeout is a job in Redis (survives a restart), due after offerSeconds; one per driver offered.
+    const jobId = `${trip.id}:${driverId}`;
+    const due = await jobs.scheduledAt('offer.expire', jobId);
     expect(due).not.toBeNull();
     expect(due! - Date.now()).toBeGreaterThan(5_000);
-    expect(await redis.zscore('jobs:due', `offer.expire|${trip.id}`)).not.toBeNull();
+    expect(await redis.zscore('jobs:due', `offer.expire|${jobId}`)).not.toBeNull();
 
     // Act: time passes (run the due jobs as if 20 s later): the offer times out and moves on.
     await jobs.runDue(Date.now() + 20_000);
-    expect(await redis.get(`dispatch:${trip.id}:offer`)).not.toBe(driverId);
+    expect(await redis.zscore(`dispatch:${trip.id}:offers`, driverId)).toBeNull();
     await http.post(`/v1/trips/${trip.id}/accept`).set('Authorization', `Bearer ${bike}`).expect(409);
     await http.post(`/v1/trips/${trip.id}/cancel`).set(pax).send({}).expect(200);
-    expect(await jobs.scheduledAt('offer.expire', trip.id)).toBeNull();
+    expect(await jobs.scheduledAt('offer.expire', jobId)).toBeNull();
     expect(await jobs.scheduledAt('dispatch.research', trip.id)).toBeNull();
     await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${bike}`).expect(200);
   });

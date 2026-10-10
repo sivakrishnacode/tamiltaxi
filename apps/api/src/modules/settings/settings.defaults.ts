@@ -12,6 +12,11 @@ export const SETTING_DEFAULTS = {
   searchExpandSeconds: 45,
   /** Seconds each driver has to accept an offer. */
   offerSeconds: 15,
+  /**
+   * Drivers who see a request at the same time (Rapido style); the first to accept gets it, a decline or timeout
+   * passes that place to the next driver. 1 = one driver at a time.
+   */
+  offerFanOut: 3,
   /** Requests one driver can have open at once (stacked on the request screen; accepting one releases the rest). 1 = one at a time. */
   maxOpenOffers: 3,
   /** Drivers offered per booking before "No drivers". */

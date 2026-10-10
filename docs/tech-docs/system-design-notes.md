@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 6 Oct 2026 (created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
+Last updated: 10 Oct 2026 (offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
 
 ---
 
@@ -120,7 +120,7 @@ How Tamil Taxi compares:
 | Fare estimate → book by fare id | `POST /fares/quote` → `POST /trips`. Booking **re-prices on the server** (no quote id): the client can't tamper with the price, but if surge moves between P-10 and booking the rider pays the new price | Fine while surge is off by default; SD-13 when live surge is on |
 | Duplicate bookings | Redis `NX` booking lock per passenger + "you already have a trip in progress" (409 `TRIP_IN_PROGRESS`) | **Matches** |
 | Assignment queue | Bookings wait in a Redis pending set; a batch runs every `batchWindowMs` (2 s); offer timeouts and re-searches are durable Redis jobs; a Redis lock lets one API instance run a batch | **Matches**, plus batch assignment so two riders never get one driver |
-| One driver at a time, 15 s timeout | One offer per trip at a time, `offerSeconds` = 15; a driver may hold up to `maxOpenOffers` (3) requests; accept is a guarded `updateMany` (only one driver's write wins) and `claimBusy` keeps one active trip per driver | **Matches** |
+| One driver at a time, 15 s timeout | Since 10 Oct 2026 `offerFanOut` (3) drivers see each request at once, `offerSeconds` = 15 each; a driver may hold up to `maxOpenOffers` (3) requests; accept is a guarded `updateMany` (only one driver's write wins) and `claimBusy` keeps one active trip per driver | **Differs on purpose** (see 10 Oct below); `offerFanOut` 1 matches |
 | Driver scoring | Road ETA (cached per hex pair, one Route Matrix call), 7-day offer record, idle time, women-driver preference, booking preferences | Ahead of the textbook |
 | Geohash / quadtree / H3 | H3 res 8 sets in Redis (Redis `GEOSEARCH` was used first and removed on 25 Sep 2026) | Already on the better option |
 | Location queue + location service | The gateway calls `LocationIngestService` directly (no queue) | Fine at this size; SD-15 when a second consumer or bursts appear |
@@ -162,6 +162,24 @@ one-time code, so a rider's own code is never handed to another person. Known co
 rider knows that rider's code. If abuse shows up (trips started without the rider), revisit: a new code per ride, or
 a rider-side "new code" button.
 
+### 10 Oct 2026: one driver at a time, or several at once?
+
+Source: the owner's question after reading our dispatch. Uber (and the interview answer above) offers a ride to one
+driver at a time; Rapido and Namma Yatri send it to several nearby drivers, and the first to accept gets it.
+
+| | One at a time | Several at once |
+|---|---|---|
+| Rider's wait | Each ignored offer costs a full `offerSeconds`: 5 drivers who ignore it = 75 s before the next search | The quickest of N drivers answers; an ignored offer costs nothing while others still have it |
+| Who gets it | Always the best-ranked driver who says yes | Often the fastest tapper, not always the nearest |
+| Drivers | Never tap Accept and lose | Sometimes lose a race (the card closes); more request pushes |
+| Ranking | Every offer is answered or ignored | Losing a race must not count as ignored (it doesn't: only declines and timeouts are recorded) |
+
+**Decision (10 Oct 2026, owner): several at once.** `offerFanOut` starts at 3 (a starting value, tune it in admin ›
+Settings › Dispatch & ETA, 1–10; 1 = the old behaviour). Supply is sparse at launch, so a fast "yes" from anyone near matters more than giving
+the nearest driver first say. The batch assignment still puts each driver first
+in only one rider's queue. Revisit when supply is dense: with many drivers close by, one at a time sends the nearest
+car and spends fewer driver taps. Gap found: a driver who loses the race sees the card vanish with no reason (SD-17).
+
 ## 4. Optimization backlog
 
 Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week or more).
@@ -184,3 +202,4 @@ Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week o
 | SD-14 | **HTTP/2 and HTTP/3 for app calls:** `cronet_http` on Android behind the same `http.Client`; open UDP 443 in the security group | Faster setup and less head-of-line blocking on lossy 4G; the socket stays as it is | Riders or drivers on weak networks report slow screens | S–M |
 | SD-15 | **Location stream:** the gateway appends fixes to a Redis Stream; consumers (dispatch index, trip room, breadcrumbs, safety) read it. Not Kafka (cost) | Absorbs bursts and lets new consumers (analytics, ETA learning) read GPS without slowing ingest | A second heavy consumer, or ingest latency under load | M |
 | SD-16 | **Launch-grade operations:** nightly `pg_dump` to S3 (already in the launch checklist), an external uptime check with alerts (free tier), JSON logs shipped off the box, and a restore drill | One box and no off-box backup means one disk failure loses everything | Before public launch | S–M |
+| SD-17 | **Tell the driver who lost the race:** send `trip.offer_closed` with a reason when another driver took the request, and show "Another driver took this ride" instead of a card that just vanishes (or a 409 "no longer available" after tapping Accept) | Losing races is normal with several drivers at once; a reason keeps drivers from thinking the app glitched | Drivers ask where requests went, or before raising `offerFanOut` | S |

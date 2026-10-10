@@ -829,6 +829,8 @@ export interface Settings {
   /** Seconds to widen from searchRadiusKm to maxSearchRadiusKm. */
   readonly searchExpandSeconds: number;
   readonly offerSeconds: number;
+  /** Drivers who see a request at the same time; the first to accept gets it. */
+  readonly offerFanOut: number;
   /** Requests one driver can have open at once (stacked in the app). */
   readonly maxOpenOffers: number;
   readonly maxCandidates: number;

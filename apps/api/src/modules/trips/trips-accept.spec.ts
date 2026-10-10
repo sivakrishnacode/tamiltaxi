@@ -11,7 +11,7 @@ function setup(opts: { writeWins: boolean; afterWriteFails?: boolean; driver?: R
     driver: { findUnique: async () => ({ vehicleKind: 'BIKE', status: 'APPROVED', blockedUntil: null, user: { isBlocked: false }, ...opts.driver }) },
   };
   const dispatch = {
-    offeredTo: async () => 'd1',
+    isOfferedTo: async () => true,
     accepted: async () => {
       if (opts.afterWriteFails) throw new Error('Redis hiccup');
     },
