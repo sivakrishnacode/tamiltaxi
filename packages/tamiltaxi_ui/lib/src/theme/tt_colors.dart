@@ -27,6 +27,9 @@ abstract final class TtColors {
   static const error = Color(0xFFB91C1C);
   static const sos = Color(0xFFDC2626);
 
+  /// Drop markers (the map ring, list pins), like RedTaxi's; the pickup is [success] green.
+  static const drop = Color(0xFFDC2626);
+
   // Status tints (10% fill used by banners and pills)
   static const successTint = Color(0xFFDCFCE7);
   static const successText = Color(0xFF15803D);

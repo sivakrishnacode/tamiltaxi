@@ -22,14 +22,11 @@ abstract final class _Mercator {
     return LatLng(lat, w.dx / scale * 360 - 180);
   }
 
-  /// Camera that fits [points] inside [size] minus [padding] (like flutter_map's CameraFit). A [pin] drawn
-  /// [pinHeight] px above its point (the drop) gets room for the whole pin when it sits in the fitted box.
+  /// Camera that fits [points] inside [size] minus [padding] (like flutter_map's CameraFit).
   static (LatLng, double) fit(
     List<LatLng> points,
     Size size,
     EdgeInsets padding, {
-    LatLng? pin,
-    double pinHeight = 0,
     double minZoom = 10,
     double maxZoom = 16,
   }) {
@@ -43,35 +40,12 @@ abstract final class _Mercator {
     }
     final availW = math.max(1.0, size.width - padding.horizontal);
     final availH = math.max(1.0, size.height - padding.vertical);
-    final p = pin == null ? null : world(pin, 0);
-    // The pin's point counts when it is at the box (a road route ends a few metres from the place), not when the
-    // screen leaves it out on purpose (far away).
-    final near = math.max(maxX - minX, maxY - minY) * 0.1 + 1e-9;
-    final pinInBox = p != null &&
-        pinHeight > 0 &&
-        p.dx >= minX - near &&
-        p.dx <= maxX + near &&
-        p.dy >= minY - near &&
-        p.dy <= maxY + near;
-    if (pinInBox) {
-      minX = math.min(minX, p.dx);
-      maxX = math.max(maxX, p.dx);
-      minY = math.min(minY, p.dy);
-      maxY = math.max(maxY, p.dy);
-    }
-    // The pin's height is fixed on screen, so its share of the box depends on the zoom: a few passes settle it.
-    var top = minY;
-    var zoom = maxZoom;
-    for (var pass = 0; pass < 3; pass++) {
-      final dx = maxX - minX, dy = maxY - top;
-      final zx = dx > 0 ? math.log(availW / dx) / math.ln2 : maxZoom;
-      final zy = dy > 0 ? math.log(availH / dy) / math.ln2 : maxZoom;
-      zoom = math.min(zx, zy).clamp(minZoom, maxZoom).toDouble();
-      if (!pinInBox) break;
-      top = math.min(minY, p.dy - pinHeight / math.pow(2, zoom));
-    }
+    final dx = maxX - minX, dy = maxY - minY;
+    final zx = dx > 0 ? math.log(availW / dx) / math.ln2 : maxZoom;
+    final zy = dy > 0 ? math.log(availH / dy) / math.ln2 : maxZoom;
+    final zoom = math.min(zx, zy).clamp(minZoom, maxZoom).toDouble();
     final scale = math.pow(2, zoom).toDouble();
-    final centre = Offset((minX + maxX) / 2 * scale, (top + maxY) / 2 * scale);
+    final centre = Offset((minX + maxX) / 2 * scale, (minY + maxY) / 2 * scale);
     // Shift so the fitted box sits in the padded area, not the raw centre.
     final target = centre - Offset((padding.left - padding.right) / 2, (padding.top - padding.bottom) / 2);
     return (unproject(target, zoom), zoom);
@@ -98,12 +72,6 @@ abstract final class _MarkerBitmaps {
           throw e;
         });
   }
-
-  /// Anchor for a marker whose point sits at [inner] (0..1 of the unpadded widget).
-  static Offset anchor(Size size, Offset inner) => Offset(
-    (pad + inner.dx * size.width) / (size.width + 2 * pad),
-    (pad + inner.dy * size.height) / (size.height + 2 * pad),
-  );
 }
 
 class _GoogleTtMap extends StatefulWidget {
@@ -118,8 +86,7 @@ class _GoogleTtMap extends StatefulWidget {
 }
 
 class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver {
-  static const _pickupSize = Size(28, 28);
-  static const _dropSize = Size(40, 40);
+  static const _dotSize = Size(28, 28);
   static const _eager = <Factory<OneSequenceGestureRecognizer>>{
     Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
   };
@@ -283,14 +250,9 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     m.onPositionChanged?.call(TtCamera(center: _l(pos.target), zoom: pos.zoom), !_programmaticMove);
   }
 
-  /// Fits [fit] inside the area left by `mapPadding`, keeping the whole drop pin (drawn above its point) in view.
-  (LatLng, double) _fitCamera(List<LatLng> fit, Size size) => _Mercator.fit(
-        fit,
-        m.mapPadding.deflateSize(size),
-        m.fitPadding,
-        pin: m.drop,
-        pinHeight: _dropSize.height,
-      );
+  /// Fits [fit] inside the area left by `mapPadding`.
+  (LatLng, double) _fitCamera(List<LatLng> fit, Size size) =>
+      _Mercator.fit(fit, m.mapPadding.deflateSize(size), m.fitPadding);
 
   gm.CameraPosition _initialCamera(Size size) {
     final fit = m.fitPoints;
@@ -323,8 +285,8 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
       );
     }
 
-    if (m.pickup != null) need('pickup', const PickupDot(), _pickupSize);
-    if (m.drop != null) need('drop', const DropPin(size: 40), _dropSize);
+    if (m.pickup != null) need('pickup', const PickupDot(), _dotSize);
+    if (m.drop != null) need('drop', const DropDot(), _dotSize);
     for (final v in widget.vehicles) {
       need(_vehicleKey(v), VehicleMarker(type: v.type, large: v.large), _vehicleSize(v));
     }
@@ -352,8 +314,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
           markerId: const gm.MarkerId('drop'),
           position: _g(m.drop!),
           icon: dropIcon,
-          // flutter_map path draws the 40 px pin above the point (Alignment.topCenter).
-          anchor: _MarkerBitmaps.anchor(_dropSize, const Offset(0.5, 1)),
+          anchor: const Offset(0.5, 0.5),
           consumeTapEvents: true,
           zIndexInt: 3,
         ),
@@ -454,7 +415,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
                           gm.Polyline(
                             polylineId: const gm.PolylineId('route'),
                             points: [for (final p in m.route) _g(p)],
-                            color: TtColors.coral500,
+                            color: TtColors.navy900,
                             width: 5,
                             startCap: gm.Cap.roundCap,
                             endCap: gm.Cap.roundCap,

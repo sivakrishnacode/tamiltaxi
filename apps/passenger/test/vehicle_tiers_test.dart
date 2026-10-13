@@ -10,10 +10,17 @@ import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
 import 'support/harness.dart';
 
+/// P-10's sheet opens half way (the route fills the map above it); drag it up to see every tier.
+Future<void> _openSheet(WidgetTester tester) async {
+  await tester.drag(find.text('Choose a ride'), const Offset(0, -500));
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   testWidgets('P-10 shows the seven ride tiers with their pictures and fares', (tester) async {
     await pumpRoute(tester, Routes.chooseVehicle);
     await tester.pump(const Duration(seconds: 1));
+    await _openSheet(tester);
 
     const tiers = {'Bike': 35, 'Scooty': 39, 'Auto': 66, 'Auto Priority': 80, 'Mini': 132, 'Sedan': 158, 'SUV': 210};
     for (final MapEntry(key: name, value: fare) in tiers.entries) {
@@ -42,17 +49,20 @@ void main() {
   testWidgets('P-10 shows the free vehicles that could take the selected tier', (tester) async {
     await pumpRoute(tester, Routes.chooseVehicle);
     await tester.pump(const Duration(seconds: 1));
-    Finder markers(MapVehicleType type) => find.byWidgetPredicate((w) => w is VehicleMarker && w.type == type);
+    // The vehicles P-10 hands the map (the camera zooms to the route, so some may be just off screen).
+    int markers(MapVehicleType type) =>
+        tester.widget<TtMap>(find.byType(TtMap)).vehicles.where((v) => v.type == type).length;
     // Bike: the mock's two bikes and one scooter; no autos or cars.
-    expect(markers(MapVehicleType.bike), findsNWidgets(3));
-    expect(markers(MapVehicleType.auto), findsNothing);
-    expect(markers(MapVehicleType.car), findsNothing);
+    expect(markers(MapVehicleType.bike), 3);
+    expect(markers(MapVehicleType.auto), 0);
+    expect(markers(MapVehicleType.car), 0);
+    await _openSheet(tester);
     await tester.ensureVisible(find.text('Auto Priority'));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('Auto Priority'));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(markers(MapVehicleType.auto), findsNWidgets(2));
-    expect(markers(MapVehicleType.bike), findsNothing);
+    expect(markers(MapVehicleType.auto), 2);
+    expect(markers(MapVehicleType.bike), 0);
 
   });
 

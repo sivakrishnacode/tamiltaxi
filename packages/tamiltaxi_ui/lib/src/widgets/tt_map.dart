@@ -110,8 +110,8 @@ class MapPolygon {
 /// Google Maps SDK (styled light map, bitmap markers); otherwise flutter_map with CARTO
 /// light-grey tiles and the required attribution (tests, no key).
 ///
-/// Draws pickup (green dot), drop (coral pin), vehicles (navy top-down icons), a coral 5px
-/// route, a pulse ring and hex polygons (no circles: areas are H3 hexes). If tiles fail (offline) the plain #F1F5F9
+/// Draws pickup (green ring), drop (red ring), vehicles (navy top-down icons), a near-black 5px
+/// route (like RedTaxi and Ola), a pulse ring and hex polygons (no circles: areas are H3 hexes). If tiles fail (offline) the plain #F1F5F9
 /// background shows; nothing throws.
 class TtMap extends StatelessWidget {
   const TtMap({
@@ -380,7 +380,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
           if (m.route.length >= 2)
             PolylineLayer(
               polylines: [
-                Polyline(points: m.route, color: TtColors.coral500, strokeWidth: 5, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
+                Polyline(points: m.route, color: TtColors.navy900, strokeWidth: 5, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
               ],
             ),
           MarkerLayer(
@@ -388,14 +388,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
               if (m.pulseAt != null)
                 Marker(point: m.pulseAt!, width: 180, height: 180, child: PulseRing(color: m.pulseColor)),
               if (m.pickup != null) Marker(point: m.pickup!, width: 28, height: 28, child: const PickupDot()),
-              if (m.drop != null)
-                Marker(
-                  point: m.drop!,
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.topCenter,
-                  child: const DropPin(size: 40),
-                ),
+              if (m.drop != null) Marker(point: m.drop!, width: 28, height: 28, child: const DropDot()),
               for (final v in widget.vehicles)
                 Marker(
                   point: v.position,

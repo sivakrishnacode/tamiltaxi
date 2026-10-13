@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +17,7 @@ import 'p11_fare_details_sheet.dart';
 /// P-10 Choose vehicle: route map, a slim "Choose a ride · For me" row, Pink Taxi for women riders (a woman driver,
 /// first or only; the list turns pink), one 60 dp row per tier ("3 min away · Drop 9:24 PM", Fastest; only the
 /// selected one outlined, its ⓘ opens fare details), then "Cash / UPI" and "Book Bike · ₹38" pinned at the bottom.
+/// The map fills the screen; the sheet opens half way with the route fitted above it and drags up to show every ride.
 class P10ChooseVehicleScreen extends ConsumerStatefulWidget {
   const P10ChooseVehicleScreen({super.key, this.showcase = false});
 
@@ -26,6 +29,27 @@ class P10ChooseVehicleScreen extends ConsumerStatefulWidget {
 }
 
 class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen> {
+  /// Sheet stops (fractions of the screen), like Ola's and Rapido's: it opens at [_half] with the route filling the
+  /// map above it; drag up to [_full] to see every ride.
+  static const _half = 0.5;
+  static const _full = 0.86;
+
+  /// Live sheet height, so the distance chip rides on top of it.
+  final ValueNotifier<double> _extent = ValueNotifier(_half);
+
+  /// Sheet height the map's padding follows, updated once a drag settles (re-padding the platform map on every
+  /// drag frame would stutter).
+  final ValueNotifier<double> _settled = ValueNotifier(_half);
+  Timer? _settleTimer;
+
+  @override
+  void dispose() {
+    _extent.dispose();
+    _settled.dispose();
+    _settleTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -87,32 +111,40 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
       return '$eta min away · Drop ${formatTime(now.add(Duration(minutes: eta + q.tripMin)))}';
     }
 
+    // Pulled up past half way: the list is the point, the map only keeps the Google logo above the sheet.
+    bool open(double extent) => extent > (_half + _full) / 2;
+
     return Scaffold(
       backgroundColor: TtColors.surface,
       body: LayoutBuilder(
         builder: (context, c) {
-          final sheetH = (c.maxHeight * 0.70).clamp(360.0, 620.0).toDouble();
-          final mapH = c.maxHeight - sheetH + TtSpacing.l;
+          final safeTop = MediaQuery.paddingOf(context).top;
           return Stack(
             fit: StackFit.expand,
             children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                height: mapH,
-                child: TtMap(
-                  center: noPickup ? state.drop.location : null,
-                  pickup: noPickup ? null : state.pickup.location,
-                  drop: state.drop.location,
-                  route: route,
-                  // The free vehicles that could take the selected tier (bikes and scooters for Bike, autos for
-                  // Auto Priority), like Rapido.
-                  vehicles: noPickup ? const [] : nearbyMarkers(ref, state.pickup.location, kinds: state.vehicle.servedBy),
-                  fitPoints: noPickup ? null : route,
-                  fitPadding: const EdgeInsets.fromLTRB(56, 96, 56, 88),
-                  // The sheet overlaps the map's bottom edge; keep the Google logo above it.
-                  mapPadding: sheetMapPadding(TtSpacing.l + 8),
+              Positioned.fill(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _settled,
+                  builder: (context, settled, _) {
+                    final sheetPx = c.maxHeight * settled;
+                    return TtMap(
+                      center: noPickup ? state.drop.location : null,
+                      pickup: noPickup ? null : state.pickup.location,
+                      drop: state.drop.location,
+                      route: route,
+                      // The free vehicles that could take the selected tier (bikes and scooters for Bike, autos for
+                      // Auto Priority), like Rapido.
+                      vehicles: noPickup ? const [] : nearbyMarkers(ref, state.pickup.location, kinds: state.vehicle.servedBy),
+                      // The route fills the map above the half-open sheet, like RedTaxi's. Not refitted into the strip
+                      // left when the sheet is pulled up (it would zoom far out).
+                      fitPoints: noPickup || open(settled) ? null : route,
+                      // Below the back button and above the distance chip. The Google map is padded by the sheet
+                      // ([TtMap.mapPadding]); flutter_map has no such padding, so the sheet is in the fit padding there.
+                      fitPadding: EdgeInsets.fromLTRB(40, safeTop + 76, 40, 72 + (TtMap.usesGoogle ? 0 : sheetPx)),
+                      mapPadding: sheetMapPadding(sheetPx),
+                      attributionPadding: EdgeInsets.only(bottom: sheetPx),
+                    );
+                  },
                 ),
               ),
               Positioned(
@@ -129,10 +161,12 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                   ),
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: mapH - 76,
+              // The distance chip rides on top of the sheet and steps aside when the sheet is pulled up.
+              ValueListenableBuilder<double>(
+                valueListenable: _extent,
+                builder: (context, extent, chip) => open(extent)
+                    ? const SizedBox.shrink()
+                    : Positioned(left: 0, right: 0, top: c.maxHeight * (1 - extent) - 60, child: chip!),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l, vertical: TtSpacing.s),
@@ -155,121 +189,134 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                   ),
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: sheetH,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    color: TtColors.surface,
-                    borderRadius: TtRadii.sheetTop,
-                    boxShadow: TtShadows.raised,
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      children: [
-                        const SheetHandle(),
-                        Expanded(
-                          child: ListView(
-                            padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l),
-                            children: [
-                              // One slim row (like Uber's "Choose a trip"): the title and who's riding. Fare details open
-                              // from the ⓘ on the selected ride.
-                              SizedBox(
-                                height: 40,
-                                child: Row(
-                                  children: [
-                                    Expanded(child: Text('Choose a ride', style: t.bodySemibold)),
-                                    _RiderChip(
-                                      rider: state.rider,
-                                      onTap: () async {
-                                        final me = ref.read(currentProfileProvider).firstName;
-                                        final choice = await P10bWhoIsRidingSheet.show(context, me: me, current: state.rider);
-                                        if (choice != null) flow.setRider(choice.rider);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Women riders: Pink Taxi right here, in view (a woman driver, preferred or only).
-                              if (flow.canUseButterfly) ...[
-                                PinkTaxiStrip(
-                                  value: womenDriver,
-                                  onChanged: flow.setWomenDriver,
-                                  riderName: state.rider?.firstName,
-                                ),
-                                const SizedBox(height: TtSpacing.s),
-                              ] else
-                                const SizedBox(height: 2),
-                              if (!quotesReady)
-                                noPickup
-                                    ? const _QuotesPending(error: kChoosePickupForFares, onRetry: null)
-                                    : _QuotesPending(error: state.quotesError, onRetry: flow.loadQuotes)
-                              else ...[
-                              // Book Any (like Ola): the nearest Auto, Mini, Sedan or SUV, at that vehicle's fare.
-                              if (anyQuotes.length >= 2) ...[
-                                VehicleOptionCard(
-                                  icon: Symbols.local_taxi_rounded,
-                                  art: _BookAnyArt(pink: womenDriver.isOn),
-                                  name: 'Book Any',
-                                  subtitle: _vehicleList(anyQuotes),
-                                  capacity: _seatRange(anyQuotes),
-                                  fare: anyQuotes.first.total,
-                                  fareText: anyRange,
-                                  accent: womenDriver.isOn ? TtColors.butterfly600 : TtColors.coral500,
-                                  selected: state.bookAny,
-                                  onTap: flow.selectBookAny,
-                                  onInfo: () => showTtSnack(
-                                    context,
-                                    'Book Any asks the nearest ${_vehicleList(anyQuotes)} drivers at once. '
-                                    'You pay the fare of the one that comes.',
+              NotificationListener<DraggableScrollableNotification>(
+                onNotification: (n) {
+                  _extent.value = n.extent;
+                  _settleTimer?.cancel();
+                  _settleTimer = Timer(const Duration(milliseconds: 180), () {
+                    if (mounted) _settled.value = (n.extent * 100).round() / 100;
+                  });
+                  return false;
+                },
+                child: DraggableScrollableSheet(
+                  initialChildSize: _half,
+                  minChildSize: _half,
+                  maxChildSize: _full,
+                  snap: true,
+                  snapAnimationDuration: const Duration(milliseconds: 240),
+                  builder: (context, scroll) => DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: TtColors.surface,
+                      borderRadius: TtRadii.sheetTop,
+                      boxShadow: TtShadows.raised,
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ListView(
+                              controller: scroll,
+                              padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l),
+                              children: [
+                                const SheetHandle(),
+                                // One slim row (like Uber's "Choose a trip"): the title and who's riding. Fare details open
+                                // from the ⓘ on the selected ride.
+                                SizedBox(
+                                  height: 40,
+                                  child: Row(
+                                    children: [
+                                      Expanded(child: Text('Choose a ride', style: t.bodySemibold)),
+                                      _RiderChip(
+                                        rider: state.rider,
+                                        onTap: () async {
+                                          final me = ref.read(currentProfileProvider).firstName;
+                                          final choice = await P10bWhoIsRidingSheet.show(context, me: me, current: state.rider);
+                                          if (choice != null) flow.setRider(choice.rider);
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                // Women riders: Pink Taxi right here, in view (a woman driver, preferred or only).
+                                if (flow.canUseButterfly) ...[
+                                  PinkTaxiStrip(
+                                    value: womenDriver,
+                                    onChanged: flow.setWomenDriver,
+                                    riderName: state.rider?.firstName,
+                                  ),
+                                  const SizedBox(height: TtSpacing.s),
+                                ] else
+                                  const SizedBox(height: 2),
+                                if (!quotesReady)
+                                  noPickup
+                                      ? const _QuotesPending(error: kChoosePickupForFares, onRetry: null)
+                                      : _QuotesPending(error: state.quotesError, onRetry: flow.loadQuotes)
+                                else ...[
+                                // Book Any (like Ola): the nearest Auto, Mini, Sedan or SUV, at that vehicle's fare.
+                                if (anyQuotes.length >= 2) ...[
+                                  VehicleOptionCard(
+                                    icon: Symbols.local_taxi_rounded,
+                                    art: _BookAnyArt(pink: womenDriver.isOn),
+                                    name: 'Book Any',
+                                    subtitle: _vehicleList(anyQuotes),
+                                    capacity: _seatRange(anyQuotes),
+                                    fare: anyQuotes.first.total,
+                                    fareText: anyRange,
+                                    accent: womenDriver.isOn ? TtColors.butterfly600 : TtColors.coral500,
+                                    selected: state.bookAny,
+                                    onTap: flow.selectBookAny,
+                                    onInfo: () => showTtSnack(
+                                      context,
+                                      'Book Any asks the nearest ${_vehicleList(anyQuotes)} drivers at once. '
+                                      'You pay the fare of the one that comes.',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                ],
+                                for (final q in state.quotes) ...[
+                                  VehicleOptionCard(
+                                    icon: q.vehicle.kind.icon,
+                                    art: VehicleArt(q.vehicle.kind, pink: womenDriver.isOn),
+                                    accent: womenDriver.isOn ? TtColors.butterfly600 : TtColors.coral500,
+                                    name: q.vehicle.name,
+                                    subtitle: subtitleOf(q),
+                                    capacity: q.vehicle.capacityLabel,
+                                    fastest: q.vehicle.kind == fastest,
+                                    fare: q.total,
+                                    badge: q.vehicle.badge,
+                                    badgeTone: q.vehicle.badge == 'Comfort' || q.vehicle.badge == 'Fastest'
+                                        ? VehicleBadgeTone.navy
+                                        : VehicleBadgeTone.coral,
+                                    selected: !state.bookAny && q.vehicle.kind == state.vehicle,
+                                    onTap: () => flow.selectVehicle(q.vehicle.kind),
+                                    onInfo: () => P11FareDetailsSheet.show(context),
+                                  ),
+                                  const SizedBox(height: 2),
+                                ],
+                                ],
+                                const SizedBox(height: TtSpacing.s),
                               ],
-                              for (final q in state.quotes) ...[
-                                VehicleOptionCard(
-                                  icon: q.vehicle.kind.icon,
-                                  art: VehicleArt(q.vehicle.kind, pink: womenDriver.isOn),
-                                  accent: womenDriver.isOn ? TtColors.butterfly600 : TtColors.coral500,
-                                  name: q.vehicle.name,
-                                  subtitle: subtitleOf(q),
-                                  capacity: q.vehicle.capacityLabel,
-                                  fastest: q.vehicle.kind == fastest,
-                                  fare: q.total,
-                                  badge: q.vehicle.badge,
-                                  badgeTone: q.vehicle.badge == 'Comfort' || q.vehicle.badge == 'Fastest'
-                                      ? VehicleBadgeTone.navy
-                                      : VehicleBadgeTone.coral,
-                                  selected: !state.bookAny && q.vehicle.kind == state.vehicle,
-                                  onTap: () => flow.selectVehicle(q.vehicle.kind),
-                                  onInfo: () => P11FareDetailsSheet.show(context),
-                                ),
-                                const SizedBox(height: 2),
-                              ],
-                              ],
-                              const SizedBox(height: TtSpacing.s),
-                            ],
+                            ),
                           ),
-                        ),
-                        if (!noPickup) const _PayNote(),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(TtSpacing.l, noPickup ? TtSpacing.s : 0, TtSpacing.l, TtSpacing.l),
-                          child: noPickup
-                              ? TtButton(label: 'Choose your pickup', onPressed: () => context.push(Routes.pinPickupOnMap))
-                              : TtButton(
-                                  label: !quotesReady
-                                      ? 'Book'
-                                      : state.bookAny && anyQuotes.length >= 2
-                                          ? 'Book Any · $anyRange'
-                                          : 'Book ${quote.vehicle.name} · ${formatInr(quote.total)}',
-                                  loading: state.busy,
-                                  onPressed: quotesReady && !state.busy ? _book : null,
-                                ),
-                        ),
-                      ],
+                          // Pinned under the list at every sheet height.
+                          if (!noPickup) const _PayNote(),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(TtSpacing.l, noPickup ? TtSpacing.s : 0, TtSpacing.l, TtSpacing.l),
+                            child: noPickup
+                                ? TtButton(label: 'Choose your pickup', onPressed: () => context.push(Routes.pinPickupOnMap))
+                                : TtButton(
+                                    label: !quotesReady
+                                        ? 'Book'
+                                        : state.bookAny && anyQuotes.length >= 2
+                                            ? 'Book Any · $anyRange'
+                                            : 'Book ${quote.vehicle.name} · ${formatInr(quote.total)}',
+                                    loading: state.busy,
+                                    onPressed: quotesReady && !state.busy ? _book : null,
+                                  ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
