@@ -31,11 +31,12 @@ so they point right like every other ride app.
    three-wheeler with an open flat cargo bed; small Indian mini truck (1-tonne light commercial vehicle) with an open
    cargo bed / pickup truck with an open bed; medium closed box truck with a white box body and a coral stripe;
    last cell empty.
-3. Travel modes (home "More ways to travel" tiles), 2 columns x 1 row, the passenger SUV and sedan attached as style
-   references: Outstation = the compact SUV with a coral hard-shell suitcase (white handle, charcoal wheels) standing
-   behind its rear; Rental = the compact sedan with a large round coral stopwatch (white face, tick marks only, one
-   charcoal hand) behind its rear. Props about 70% of the car's height and poking above the roof, the car is the
-   hero, each illustration filling about 75% of its half, a clear empty gap between the two.
+3. Travel modes (home "More ways to travel" tiles), 2 columns x 1 row, Ola's tile layout (mirrored, since `build.py`
+   mirrors) plus the passenger sedan (mirrored) attached as references: the same white sedan in both, front to the
+   lower-left; in front of its rear, closest to the viewer, Outstation = a big coral hard-shell suitcase (white band
+   across the lower third, white label patch, charcoal handle), Rental = a big round coral stopwatch (white face, two
+   charcoal hands at three o'clock, no numerals, coral knob on top). Each prop slightly taller than the car's roof,
+   hiding the car's rear third; at least 80 px of empty space between the two. The sheet came out 2172 x 724.
 
 With the Codex CLI that ships in the ChatGPT desktop app: `codex exec --skip-git-repo-check -s read-only "<brief>"
 < /dev/null`; the images land in `~/.codex/generated_images/`.
