@@ -53,6 +53,7 @@ class ActivityShowcaseNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TtBottomNav(
         items: PassengerShell.items,
+        iconWeight: PassengerShell.iconWeight,
         currentIndex: 2,
         onTap: (i) => context.go(_roots[i]),
       );

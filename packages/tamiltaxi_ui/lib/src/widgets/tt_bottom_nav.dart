@@ -12,11 +12,20 @@ class TtNavItem {
 
 /// Bottom navigation (4 items): active item gets a coral-50 pill behind a filled coral icon.
 class TtBottomNav extends StatelessWidget {
-  const TtBottomNav({super.key, required this.items, required this.currentIndex, required this.onTap});
+  const TtBottomNav({
+    super.key,
+    required this.items,
+    required this.currentIndex,
+    required this.onTap,
+    this.iconWeight = 400,
+  });
 
   final List<TtNavItem> items;
   final int currentIndex;
   final ValueChanged<int> onTap;
+
+  /// Material Symbols stroke weight (100–700) for every icon in the bar.
+  final double iconWeight;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +65,7 @@ class TtBottomNav extends StatelessWidget {
                             child: Icon(
                               items[i].icon,
                               fill: i == currentIndex ? 1 : 0,
+                              weight: iconWeight,
                               color: i == currentIndex ? TtColors.coral600 : TtColors.navy500,
                             ),
                           ),

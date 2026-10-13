@@ -10,11 +10,14 @@ class PassengerShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   static const items = [
-    TtNavItem(icon: Symbols.directions_car_rounded, label: 'Ride'),
-    TtNavItem(icon: Symbols.deployed_code_rounded, label: 'Parcel'),
+    TtNavItem(icon: Symbols.home_rounded, label: 'Ride'),
+    TtNavItem(icon: Symbols.package_2_rounded, label: 'Parcel'),
     TtNavItem(icon: Symbols.receipt_long_rounded, label: 'Activity'),
-    TtNavItem(icon: Symbols.person_rounded, label: 'Account'),
+    TtNavItem(icon: Symbols.account_circle_rounded, label: 'Account'),
   ];
+
+  /// Bolder than the 400 default so the tab icons read clearly on small screens.
+  static const iconWeight = 600.0;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +33,7 @@ class PassengerShell extends StatelessWidget {
       body: navigationShell,
       bottomNavigationBar: TtBottomNav(
         items: items,
+        iconWeight: iconWeight,
         currentIndex: navigationShell.currentIndex,
         // Tapping the active tab pops it back to its root.
         onTap: (i) => navigationShell.goBranch(i, initialLocation: i == navigationShell.currentIndex),

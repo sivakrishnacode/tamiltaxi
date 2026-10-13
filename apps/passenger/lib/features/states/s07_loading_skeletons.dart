@@ -109,6 +109,7 @@ class S07aHomeSkeletonScreen extends StatelessWidget {
       ),
       bottomNavigationBar: TtBottomNav(
         items: PassengerShell.items,
+        iconWeight: PassengerShell.iconWeight,
         currentIndex: 0,
         onTap: (i) => context.go(_tabs[i]),
       ),
