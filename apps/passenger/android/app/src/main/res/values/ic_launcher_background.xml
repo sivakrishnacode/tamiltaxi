@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#F4511E</color>
+    <!-- Both native splashes: white behind the Clean White logo (P-01 continues it). -->
+    <color name="splash_background">#FFFFFF</color>
 </resources>

@@ -38,3 +38,5 @@ flutter:
   assets:
     # Welcome screen picture (P-02), made with ChatGPT; see docs/design/onboarding/.
     - assets/onboarding/
+    # The Tamil Taxi logo (RiderLogo); the launcher icon and native splashes are made from it (scripts/brand_icons.py).
+    - assets/brand/

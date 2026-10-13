@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
+import '../../common/rider_logo.dart';
 import '../../router/routes.dart';
 
 /// P-02 Welcome: one screen like Ola's: the rider-and-vehicles picture, "Rides and parcels at fair prices" and
@@ -16,7 +17,7 @@ class P02WelcomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => TtWelcomeView(
-        brand: const TtWordmark(size: 28, stacked: false, roadColor: TtColors.coral500),
+        brand: const RiderLogo(height: 64),
         image: const AssetImage('assets/onboarding/choose_ride.webp'),
         semanticLabel: 'A rider choosing between a bike, an auto and a cab',
         title: 'Rides and parcels at fair prices',

@@ -178,7 +178,7 @@ docs/tech-docs/system-design-notes.md  design learnings vs our system + optimiza
 docs/private/                    owner-only business docs (git-ignored, never publish)
 .github/                         CI workflow, issue + PR templates
 docs/design/                     screenshots of every app screen + index (scripts/export_design.py)
-scripts/                         flutter.sh / dart.sh (SDK lookup), build_apks.sh, export_design.py, vehicle_icons/
+scripts/                         flutter.sh / dart.sh (SDK lookup), build_apks.sh, export_design.py, brand_icons.py, vehicle_icons/
 docker-compose.yml               postgres + redis + api + admin (+ `tools` profile: Adminer, Redis Insight)
 ```
 

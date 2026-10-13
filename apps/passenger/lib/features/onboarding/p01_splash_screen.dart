@@ -8,16 +8,16 @@ import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
+import '../../common/rider_logo.dart';
 import '../../router/routes.dart';
 import '../../state/session_actions.dart';
 
-/// P-01 Splash: coral background, the white "தமிழ் / Taxi" name (same art and place as the native
-/// splash, so the hand-off is seamless) and the tagline.
+/// P-01 Splash: white background, the Tamil Taxi logo (same picture, size and place as the native splash, so the
+/// hand-off is seamless) and the tagline.
 ///
-/// A 2 s intro ([SimTimings.intro]) plays from the native splash's exact frame: the icon's kolam ring draws itself
-/// round the name and its dots pop in, the lane dashes run along the x's flyover while the name gives a small
-/// bounce, the ring fades out as it widens, and the tagline rises in. Then it routes to onboarding, sign-in or Home.
-/// With "Remove animations" on it shows the last frame for [SimTimings.splash] instead.
+/// A 2 s intro ([SimTimings.intro]) plays from the native splash's exact frame: the logo gives a small, soft
+/// bounce, then the tagline rises in. Then it routes to onboarding, sign-in or Home. With "Remove animations" on it
+/// shows the last frame for [SimTimings.splash] instead.
 class P01SplashScreen extends ConsumerStatefulWidget {
   const P01SplashScreen({super.key, this.showcase = false});
 
@@ -29,7 +29,8 @@ class P01SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTickerProviderStateMixin {
-  static const _nameWidth = 122.0;
+  /// The native splashes' logo width (scripts/brand_icons.py).
+  static const _logoWidth = 136.0;
   Timer? _timer;
   late final AnimationController _intro = AnimationController(
     vsync: this,
@@ -38,10 +39,8 @@ class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTi
   bool _started = false;
 
   // The timeline, as fractions of the intro.
-  static const _ring = Interval(0.10, 0.45, curve: Curves.easeInOutCubic);
-  static const _lanes = Interval(0.25, 0.60, curve: Curves.easeInOut);
-  static const _fade = Interval(0.60, 0.80, curve: Curves.easeOut);
-  static const _tagline = Interval(0.80, 1.0, curve: Curves.easeOut);
+  static const _bounce = Interval(0.15, 0.65, curve: Curves.easeInOut);
+  static const _tagline = Interval(0.70, 1.0, curve: Curves.easeOut);
 
   @override
   void didChangeDependencies() {
@@ -105,9 +104,9 @@ class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTi
   Widget build(BuildContext context) {
     final t = context.type;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: TtColors.coral500,
+        backgroundColor: TtColors.surface,
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
           // Design gallery: tap to watch the intro again.
@@ -116,29 +115,16 @@ class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTi
             animation: _intro,
             builder: (context, _) {
               final v = _intro.value;
-              final ring = _ring.transform(v);
-              final lanes = _lanes.transform(v);
-              final fade = _fade.transform(v);
+              final bounce = _bounce.transform(v);
               final tagline = _tagline.transform(v);
               return Stack(
                 children: [
-                  // The ring widens a little as it fades.
-                  if (ring > 0 && fade < 1)
-                    Center(
-                      child: Opacity(
-                        opacity: 1 - fade,
-                        child: Transform.scale(
-                          scale: 1 + 0.18 * fade,
-                          child: KolamRing(nameWidth: _nameWidth, sweep: ring),
-                        ),
-                      ),
-                    ),
-                  // Centred on the whole window, like the native splash (drawable-nodpi/splash_logo.png, 130 dp
-                  // wide). Two lane periods end where the dashes started, so the last frame is the plain logo.
+                  // Centred on the whole window, like the native splash (136 dp wide); the bounce ends at size 1, so
+                  // the last frame is the plain logo.
                   Center(
                     child: Transform.scale(
-                      scale: 1 + 0.05 * math.sin(math.pi * lanes),
-                      child: TtAppName(width: _nameWidth, color: TtColors.surface, laneShift: 2 * lanes),
+                      scale: 1 + 0.06 * math.sin(math.pi * bounce),
+                      child: const RiderLogo(width: _logoWidth),
                     ),
                   ),
                   SafeArea(
@@ -155,7 +141,7 @@ class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTi
                               child: Text(
                                 'Fair rides. Full fare to your driver.',
                                 textAlign: TextAlign.center,
-                                style: t.body.copyWith(color: TtColors.surface),
+                                style: t.body.copyWith(color: TtColors.navy700),
                               ),
                             ),
                           ),

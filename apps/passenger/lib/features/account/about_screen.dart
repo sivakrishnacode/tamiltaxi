@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
 import '../../common/launch.dart';
+import '../../common/rider_logo.dart';
 
 import '../../router/routes.dart';
 import 'p23_account_screen.dart';
@@ -28,7 +29,7 @@ class AboutScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
         children: [
-          const Center(child: TtWordmark(size: 56)),
+          const Center(child: RiderLogo(width: 160)),
           const SizedBox(height: 8),
           Text(
             'Version ${P23AccountScreen.version}',
