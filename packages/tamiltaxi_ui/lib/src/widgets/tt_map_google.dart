@@ -124,6 +124,12 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     super.initState();
     m.controller?._google = this;
     WidgetsBinding.instance.addObserver(this);
+    PaintingBinding.instance.systemFonts.addListener(_fontsLoaded);
+  }
+
+  /// A font finished loading: measure the name chips again, which draws new bitmaps ([_chipKey] holds the width).
+  void _fontsLoaded() {
+    if (mounted && (m.pickupLabel != null || m.dropLabel != null)) setState(() {});
   }
 
   /// Android (texture layer platform view): after the app was in the background (Google Maps navigation, a
@@ -209,6 +215,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    PaintingBinding.instance.systemFonts.removeListener(_fontsLoaded);
     if (m.controller?._google == this) m.controller!._google = null;
     super.dispose();
   }
@@ -303,8 +310,8 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
         need(kind, mark, markSize);
       } else {
         final tap = onTap != null;
-        need(_chipKey(kind, label, tap), _PlaceChip(text: label, drop: drop, tappable: tap, style: style),
-            _PlaceChip.sizeFor(label, style, tappable: tap));
+        final size = _PlaceChip.sizeFor(label, style, tappable: tap);
+        need(_chipKey(kind, label, tap, size), _PlaceChip(text: label, drop: drop, tappable: tap, style: style), size);
       }
     }
 
@@ -317,7 +324,9 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     }
   }
 
-  static String _chipKey(String kind, String label, bool tappable) => 'chip-$kind-$tappable-$label';
+  /// The chip's bitmap key; its width is in it, so a chip measured again once the font has loaded gets a new bitmap.
+  static String _chipKey(String kind, String label, bool tappable, Size size) =>
+      'chip-$kind-$tappable-${size.width.round()}-$label';
 
   /// The pickup / drop marker: its name chip with the mark on the point, or the bare dot (centred) / pin (tip on the
   /// point, as flutter_map's Alignment.topCenter).
@@ -325,9 +334,9 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     if (at == null) return null;
     if (label != null) {
       final tap = onTap != null;
-      final icon = _icons[_chipKey(kind, label, tap)];
-      if (icon == null) return null;
       final size = _PlaceChip.sizeFor(label, _PlaceChip.styleOf(context), tappable: tap);
+      final icon = _icons[_chipKey(kind, label, tap, size)];
+      if (icon == null) return null;
       return gm.Marker(
         markerId: gm.MarkerId(kind),
         position: _g(at),

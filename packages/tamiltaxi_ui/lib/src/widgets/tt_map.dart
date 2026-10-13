@@ -274,25 +274,27 @@ class _PlaceChip extends StatelessWidget {
   /// Where the place is: the middle of the mark.
   static const Offset markCentre = Offset(_padLeft + _mark / 2, height / 2);
 
-  static TextStyle styleOf(BuildContext context) =>
-      context.type.bodySmallMedium.copyWith(color: TtColors.navy900, height: 1.2);
+  /// The full style, merged with the screen's default text style (its letter spacing and so on) as a [Text] would
+  /// be, so [sizeFor] measures exactly what [build] draws, on the map and in the marker bitmap alike.
+  static TextStyle styleOf(BuildContext context) => DefaultTextStyle.of(context)
+      .style
+      .merge(context.type.bodySmallMedium.copyWith(color: TtColors.navy900, height: 1.2));
 
-  static final _sizes = <String, Size>{};
-
-  /// The chip's size for [text], laid out as [build] lays it out.
-  static Size sizeFor(String text, TextStyle style, {required bool tappable}) =>
-      _sizes.putIfAbsent('$tappable|${style.hashCode}|$text', () {
-        final tp = TextPainter(
-          text: TextSpan(text: text, style: style),
-          maxLines: 1,
-          ellipsis: '…',
-          textDirection: TextDirection.ltr,
-          textScaler: TextScaler.noScaling,
-        )..layout(maxWidth: _maxText);
-        final w = _padLeft + _mark + 6 + tp.width + (tappable ? 2 + 18 : 0) + _padRight;
-        tp.dispose();
-        return Size(w.ceilToDouble(), height);
-      });
+  /// The chip's size for [text], laid out as [build] lays it out. Measured every time, not kept: a size measured
+  /// before the font has loaded is too narrow and would cut the name short for good.
+  static Size sizeFor(String text, TextStyle style, {required bool tappable}) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: 1,
+      ellipsis: '…',
+      textDirection: TextDirection.ltr,
+      textScaler: TextScaler.noScaling,
+    )..layout(maxWidth: _maxText);
+    // 2 px spare so rounding never ellipsises the name.
+    final w = _padLeft + _mark + 6 + tp.width + 2 + (tappable ? 2 + 18 : 0) + _padRight;
+    tp.dispose();
+    return Size(w.ceilToDouble(), height);
+  }
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -587,6 +589,17 @@ class _FlutterTtMap extends StatefulWidget {
 class _FlutterTtMapState extends State<_FlutterTtMap> {
   MapController? _own;
 
+  @override
+  void initState() {
+    super.initState();
+    PaintingBinding.instance.systemFonts.addListener(_fontsLoaded);
+  }
+
+  /// A font finished loading: measure the name chips again ([_PlaceChip.sizeFor]).
+  void _fontsLoaded() {
+    if (mounted && (m.pickupLabel != null || m.dropLabel != null)) setState(() {});
+  }
+
   TtMap get m => widget.map;
   MapController get _mapController => m.controller?._flutterMap ?? (_own ??= MapController());
 
@@ -609,6 +622,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
 
   @override
   void dispose() {
+    PaintingBinding.instance.systemFonts.removeListener(_fontsLoaded);
     _own?.dispose();
     super.dispose();
   }
