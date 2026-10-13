@@ -72,21 +72,30 @@ abstract final class _MarkerBitmaps {
           throw e;
         });
   }
+
+  /// Anchor for a marker whose point sits at [inner] (0..1 of the unpadded widget).
+  static Offset anchor(Size size, Offset inner) => Offset(
+    (pad + inner.dx * size.width) / (size.width + 2 * pad),
+    (pad + inner.dy * size.height) / (size.height + 2 * pad),
+  );
 }
 
 class _GoogleTtMap extends StatefulWidget {
-  const _GoogleTtMap({required this.map, required this.vehicles});
+  const _GoogleTtMap({required this.map, required this.vehicles, required this.run});
   final TtMap map;
 
   /// [TtMap.vehicles] as drawn this frame (gliding, [_VehicleGlider]).
   final List<MapVehicle> vehicles;
+
+  /// The dark stretch running along the route this frame ([_RouteRunner]); empty when still.
+  final List<LatLng> run;
 
   @override
   State<_GoogleTtMap> createState() => _GoogleTtMapState();
 }
 
 class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver {
-  static const _dotSize = Size(28, 28);
+  static const _pinSize = Size(MapPin.width, MapPin.height);
   static const _eager = <Factory<OneSequenceGestureRecognizer>>{
     Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
   };
@@ -241,6 +250,8 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
   bool get _hasOverlays =>
       m.pulseAt != null ||
       m.extraMarkers.isNotEmpty ||
+      m.pickupLabel != null ||
+      m.dropLabel != null ||
       m.polygons.any((p) => p.isZoomLimited);
 
   void _onCameraMove(gm.CameraPosition pos) {
@@ -252,7 +263,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
 
   /// Fits [fit] inside the area left by `mapPadding`.
   (LatLng, double) _fitCamera(List<LatLng> fit, Size size) =>
-      _Mercator.fit(fit, m.mapPadding.deflateSize(size), m.fitPadding);
+      _Mercator.fit(fit, m.mapPadding.deflateSize(size), _fitPaddingOf(m));
 
   gm.CameraPosition _initialCamera(Size size) {
     final fit = m.fitPoints;
@@ -285,8 +296,8 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
       );
     }
 
-    if (m.pickup != null) need('pickup', const PickupDot(), _dotSize);
-    if (m.drop != null) need('drop', const DropDot(), _dotSize);
+    if (m.pickup != null) need('pickup', const MapPin.pickup(), _pinSize);
+    if (m.drop != null) need('drop', const MapPin.drop(), _pinSize);
     for (final v in widget.vehicles) {
       need(_vehicleKey(v), VehicleMarker(type: v.type, large: v.large), _vehicleSize(v));
     }
@@ -301,7 +312,8 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
           markerId: const gm.MarkerId('pickup'),
           position: _g(m.pickup!),
           icon: pickupIcon,
-          anchor: const Offset(0.5, 0.5),
+          // The pin's tip on the point, as on the flutter_map engine (Alignment.topCenter).
+          anchor: _MarkerBitmaps.anchor(_pinSize, const Offset(0.5, 1)),
           consumeTapEvents: true,
           zIndexInt: 2,
         ),
@@ -314,7 +326,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
           markerId: const gm.MarkerId('drop'),
           position: _g(m.drop!),
           icon: dropIcon,
-          anchor: const Offset(0.5, 0.5),
+          anchor: _MarkerBitmaps.anchor(_pinSize, const Offset(0.5, 1)),
           consumeTapEvents: true,
           zIndexInt: 3,
         ),
@@ -352,7 +364,8 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     return _Mercator.world(p, z) - _Mercator.world(_l(_camera.target), z) + centre;
   }
 
-  Widget? _overlay(LatLng point, double width, double height, Alignment alignment, Widget child) {
+  /// [tappable]: the name chips; other overlays let touches through to the map.
+  Widget? _overlay(LatLng point, double width, double height, Alignment alignment, Widget child, {bool tappable = false}) {
     final s = _screen(point);
     final left = 0.5 * width * (alignment.x + 1);
     final top = 0.5 * height * (alignment.y + 1);
@@ -364,7 +377,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
       top: y,
       width: width,
       height: height,
-      child: IgnorePointer(child: child),
+      child: tappable ? child : IgnorePointer(child: child),
     );
   }
 
@@ -372,6 +385,8 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     if (m.pulseAt != null) _overlay(m.pulseAt!, 180, 180, Alignment.center, PulseRing(color: m.pulseColor)),
     for (final mk in m.extraMarkers)
       _overlay(mk.point, mk.width, mk.height, mk.alignment ?? Alignment.center, mk.child),
+    for (final mk in _placeLabels(m))
+      _overlay(mk.point, mk.width, mk.height, mk.alignment ?? Alignment.center, mk.child, tappable: true),
   ].nonNulls.toList();
 
   @override
@@ -415,8 +430,19 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
                           gm.Polyline(
                             polylineId: const gm.PolylineId('route'),
                             points: [for (final p in m.route) _g(p)],
-                            color: TtColors.navy900,
-                            width: 5,
+                            color: TtColors.route,
+                            width: 4,
+                            startCap: gm.Cap.roundCap,
+                            endCap: gm.Cap.roundCap,
+                            jointType: gm.JointType.round,
+                          ),
+                        if (widget.run.length >= 2)
+                          gm.Polyline(
+                            polylineId: const gm.PolylineId('route-run'),
+                            points: [for (final p in widget.run) _g(p)],
+                            color: TtColors.routeRun,
+                            width: 4,
+                            zIndex: 1,
                             startCap: gm.Cap.roundCap,
                             endCap: gm.Cap.roundCap,
                             jointType: gm.JointType.round,

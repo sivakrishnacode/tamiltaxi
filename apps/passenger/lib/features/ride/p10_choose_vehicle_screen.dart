@@ -143,6 +143,13 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                       fitPadding: EdgeInsets.fromLTRB(40, safeTop + 76, 40, 72 + (TtMap.usesGoogle ? 0 : sheetPx)),
                       mapPadding: sheetMapPadding(sheetPx),
                       attributionPadding: EdgeInsets.only(bottom: sheetPx),
+                      // Like RedTaxi / Ola: the route keeps drawing itself, and both places are named on the map;
+                      // tap the pickup to move it, the drop to search again.
+                      animateRoute: !noPickup,
+                      pickupLabel: noPickup ? null : state.pickup.name,
+                      dropLabel: state.drop.name,
+                      onPickupLabel: widget.showcase || noPickup ? null : () => context.push(Routes.pinPickupOnMap),
+                      onDropLabel: widget.showcase ? null : () => context.go(Routes.search),
                     );
                   },
                 ),

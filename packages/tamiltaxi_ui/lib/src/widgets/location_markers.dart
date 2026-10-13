@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -15,13 +17,56 @@ class PickupDot extends StatelessWidget {
   Widget build(BuildContext context) => _RingDot(size: size, color: TtColors.success);
 }
 
-/// Red drop ring with a white centre: the drop on the map, the pickup's twin.
-class DropDot extends StatelessWidget {
-  const DropDot({super.key, this.size = 14});
-  final double size;
+/// The pickup (green) or drop (red) on a map: a teardrop pin with a white centre and a white edge, its tip on the
+/// point (like RedTaxi's and Ola's).
+class MapPin extends StatelessWidget {
+  const MapPin.pickup({super.key}) : color = TtColors.success;
+  const MapPin.drop({super.key}) : color = TtColors.drop;
+
+  final Color color;
+
+  static const double width = 30;
+  static const double height = 40;
+
+  /// How far above its point (the tip) the head's centre is.
+  static const double headAbove = height - width / 2;
 
   @override
-  Widget build(BuildContext context) => _RingDot(size: size, color: TtColors.drop);
+  Widget build(BuildContext context) =>
+      SizedBox(width: width, height: height, child: CustomPaint(painter: _PinPainter(color)));
+}
+
+class _PinPainter extends CustomPainter {
+  const _PinPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.width / 2 - 1;
+    final c = Offset(size.width / 2, r + 1);
+    final tip = Offset(size.width / 2, size.height - 1);
+    // Head circle plus the two tangents down to the tip.
+    final d = tip.dy - c.dy;
+    final a = math.asin(r / d);
+    final path = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(c.dx - r * math.cos(a), c.dy + r * math.sin(a))
+      ..arcTo(Rect.fromCircle(center: c, radius: r), math.pi - a, math.pi + 2 * a, false)
+      ..close();
+    canvas.drawShadow(path, TtColors.navy900, 2, false);
+    canvas.drawPath(path, Paint()..color = color);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    canvas.drawCircle(c, r * 0.4, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(_PinPainter old) => old.color != color;
 }
 
 class _RingDot extends StatelessWidget {

@@ -97,6 +97,7 @@ class _PP06ChooseGoodsVehicleScreenState extends ConsumerState<PP06ChooseGoodsVe
               fitPoints: s.routeOrDefault,
               fitPadding: insets.fit,
               mapPadding: insets.map,
+              animateRoute: true,
               // Between the back button and the distance chip, below the status bar.
               attributionAlignment: Alignment.topCenter,
               attributionPadding: EdgeInsets.only(top: top),

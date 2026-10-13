@@ -1129,16 +1129,16 @@ class _DesignSystemBoardState extends State<DesignSystemBoard> {
         ),
       ),
       const SizedBox(height: TtSpacing.m),
-      legend(const PickupDot(), 'Pickup', 'Green ring, white centre, white edge + soft shadow'),
-      legend(const DropDot(), 'Drop', 'Red ring, white centre (lists: red pin)'),
+      legend(const MapPin.pickup(), 'Pickup', 'Green pin, white centre and edge, tip on the point (lists: green ring)'),
+      legend(const MapPin.drop(), 'Drop', 'Red pin, white centre and edge, tip on the point (lists: red pin)'),
       legend(
         Container(
           width: 40,
           height: 5,
-          decoration: const BoxDecoration(color: TtColors.navy900, borderRadius: TtRadii.pillRadius),
+          decoration: const BoxDecoration(color: TtColors.route, borderRadius: TtRadii.pillRadius),
         ),
         'Route',
-        'navy-900 (near black) · 5px · round caps and joins',
+        'slate-400 · 4px · round caps; previews: a navy-900 stretch runs pickup → drop',
       ),
       legend(
         const SizedBox(width: 48, height: 48, child: PulseRing(animate: false, size: 48)),

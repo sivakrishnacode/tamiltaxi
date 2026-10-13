@@ -110,8 +110,8 @@ class MapPolygon {
 /// Google Maps SDK (styled light map, bitmap markers); otherwise flutter_map with CARTO
 /// light-grey tiles and the required attribution (tests, no key).
 ///
-/// Draws pickup (green ring), drop (red ring), vehicles (navy top-down icons), a near-black 5px
-/// route (like RedTaxi and Ola), a pulse ring and hex polygons (no circles: areas are H3 hexes). If tiles fail (offline) the plain #F1F5F9
+/// Draws pickup (green pin), drop (red pin), optional name chips beside them, vehicles (navy top-down icons), a light
+/// slate 4px route (a dark stretch runs along it on route previews, like RedTaxi and Ola), a pulse ring and hex polygons (no circles: areas are H3 hexes). If tiles fail (offline) the plain #F1F5F9
 /// background shows; nothing throws.
 class TtMap extends StatelessWidget {
   const TtMap({
@@ -135,6 +135,11 @@ class TtMap extends StatelessWidget {
     this.attributionPadding = EdgeInsets.zero,
     this.mapPadding = EdgeInsets.zero,
     this.polygons = const [],
+    this.animateRoute = false,
+    this.pickupLabel,
+    this.dropLabel,
+    this.onPickupLabel,
+    this.onDropLabel,
   });
 
   /// Global switch; tests set this to false so no network tiles are requested and no Google
@@ -182,11 +187,231 @@ class TtMap extends StatelessWidget {
   /// Polygons under the markers (H3 hexes, service-area edge), each shown within its zoom range.
   final List<MapPolygon> polygons;
 
+  /// Route previews (before booking): a dark stretch keeps running along [route] from pickup to drop.
+  final bool animateRoute;
+
+  /// Name chips beside the pickup / drop pins (like RedTaxi's); tapping one calls [onPickupLabel] / [onDropLabel]
+  /// (a ⟩ shows when set).
+  final String? pickupLabel;
+  final String? dropLabel;
+  final VoidCallback? onPickupLabel;
+  final VoidCallback? onDropLabel;
+
   @override
   Widget build(BuildContext context) => _VehicleGlider(
         vehicles: vehicles,
-        builder: (drawn) => usesGoogle ? _GoogleTtMap(map: this, vehicles: drawn) : _FlutterTtMap(map: this, vehicles: drawn),
+        builder: (drawn) => _RouteRunner(
+          route: route,
+          enabled: animateRoute,
+          builder: (run) => usesGoogle
+              ? _GoogleTtMap(map: this, vehicles: drawn, run: run)
+              : _FlutterTtMap(map: this, vehicles: drawn, run: run),
+        ),
       );
+}
+
+/// [TtMap.fitPadding] plus room for the pins, which stand above their points.
+EdgeInsets _fitPaddingOf(TtMap m) =>
+    m.pickup != null || m.drop != null ? m.fitPadding + const EdgeInsets.only(top: MapPin.height) : m.fitPadding;
+
+/// The pickup / drop name chips ([TtMap.pickupLabel], [TtMap.dropLabel]) as markers, level with the pin's head on
+/// the side facing the other point (as RedTaxi places them), which keeps them on screen.
+List<Marker> _placeLabels(TtMap m) {
+  Marker chip(LatLng at, String text, VoidCallback? onTap, LatLng? other) {
+    final right = other == null || at.longitude <= other.longitude;
+    return Marker(
+      point: at,
+      width: _PlaceChip.boxWidth,
+      height: _PlaceChip.boxHeight,
+      // The box's edge on the point, its middle level with the pin's head.
+      alignment: Alignment(right ? 1 : -1, -2 * MapPin.headAbove / _PlaceChip.boxHeight),
+      child: _PlaceChip(text: text, onTap: onTap, right: right),
+    );
+  }
+
+  return [
+    if (m.pickup != null && m.pickupLabel != null) chip(m.pickup!, m.pickupLabel!, m.onPickupLabel, m.drop),
+    if (m.drop != null && m.dropLabel != null) chip(m.drop!, m.dropLabel!, m.onDropLabel, m.pickup),
+  ];
+}
+
+/// A white name chip beside a pin (to its [right] or left), with a dark ⟩ when it can be tapped, like RedTaxi's.
+class _PlaceChip extends StatelessWidget {
+  const _PlaceChip({required this.text, required this.onTap, required this.right});
+
+  static const double boxWidth = 180;
+  static const double boxHeight = 56;
+
+  final String text;
+  final VoidCallback? onTap;
+  final bool right;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = BorderRadius.all(Radius.circular(10));
+    const clear = MapPin.width / 2 + 6; // clear of the pin's head
+    return Align(
+      alignment: right ? Alignment.centerLeft : Alignment.centerRight,
+      child: Padding(
+        padding: EdgeInsets.only(left: right ? clear : 0, right: right ? 0 : clear),
+        child: Semantics(
+          button: onTap != null,
+          label: text,
+          excludeSemantics: true,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: TtColors.surface, borderRadius: radius, boxShadow: TtShadows.soft),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: radius,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(10, 6, onTap == null ? 10 : 6, 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.type.caption.copyWith(color: TtColors.navy900, fontWeight: FontWeight.w500, height: 1.25),
+                        ),
+                      ),
+                      if (onTap != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: const BoxDecoration(color: TtColors.navy900, shape: BoxShape.circle),
+                          child: const Icon(Symbols.chevron_right_rounded, size: 14, color: Colors.white),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Route previews ([TtMap.animateRoute]), like Ola's and RedTaxi's: a dark stretch draws itself along the light route
+/// from pickup to drop, its tail follows, a short pause, again (2.6 s). Hands the engine the stretch to draw ([run]).
+/// Off in tests and screenshots (no tiles) and when the phone asks for fewer animations.
+class _RouteRunner extends StatefulWidget {
+  const _RouteRunner({required this.route, required this.enabled, required this.builder});
+
+  final List<LatLng> route;
+  final bool enabled;
+  final Widget Function(List<LatLng> run) builder;
+
+  @override
+  State<_RouteRunner> createState() => _RouteRunnerState();
+}
+
+class _RouteRunnerState extends State<_RouteRunner> with SingleTickerProviderStateMixin {
+  /// Redraw at most this often (the Google map's polylines go over the platform channel on every rebuild).
+  static const _frameMs = 40;
+
+  late final AnimationController _run = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))
+    ..addListener(_onTick);
+  int _lastBuildMs = 0;
+
+  /// Distance along [_RouteRunner.route] to each of its points (degrees, longitude scaled to the latitude).
+  List<double> _along = const [];
+  List<LatLng>? _measured;
+
+  void _onTick() {
+    final ms = _run.lastElapsedDuration?.inMilliseconds ?? 0;
+    if ((ms - _lastBuildMs).abs() < _frameMs) return;
+    _lastBuildMs = ms;
+    setState(() {});
+  }
+
+  void _sync() {
+    final on = widget.enabled &&
+        widget.route.length >= 2 &&
+        TtMap.tilesEnabled &&
+        !(MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+    if (on && !_run.isAnimating) {
+      _run.repeat();
+    } else if (!on && _run.isAnimating) {
+      _run.stop();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RouteRunner old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  @override
+  void dispose() {
+    _run.dispose();
+    super.dispose();
+  }
+
+  /// The part of the route between fractions [a] and [b] of its length.
+  List<LatLng> _slice(double a, double b) {
+    final route = widget.route;
+    if (!identical(route, _measured)) {
+      _measured = route;
+      var sum = 0.0;
+      _along = [
+        0,
+        for (var i = 1; i < route.length; i++)
+          sum += math.sqrt(
+            math.pow(route[i].latitude - route[i - 1].latitude, 2) +
+                math.pow((route[i].longitude - route[i - 1].longitude) * math.cos(route[i].latitude * math.pi / 180), 2),
+          ),
+      ];
+    }
+    final total = _along.last;
+    if (total <= 0 || b <= a) return const [];
+    LatLng at(double d) {
+      var i = 1;
+      while (i < _along.length - 1 && _along[i] < d) {
+        i++;
+      }
+      final seg = _along[i] - _along[i - 1];
+      final f = seg <= 0 ? 0.0 : ((d - _along[i - 1]) / seg).clamp(0.0, 1.0);
+      final p = route[i - 1], q = route[i];
+      return LatLng(p.latitude + (q.latitude - p.latitude) * f, p.longitude + (q.longitude - p.longitude) * f);
+    }
+
+    final from = a * total, to = b * total;
+    return [
+      at(from),
+      for (var i = 0; i < route.length; i++)
+        if (_along[i] > from && _along[i] < to) route[i],
+      at(to),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_run.isAnimating) return widget.builder(const []);
+    // Head runs to the drop (0–46 %), the tail follows (46–85 %), then a pause.
+    final t = _run.value;
+    const ease = Curves.easeInOut;
+    final run = t < 0.46
+        ? _slice(0, ease.transform(t / 0.46))
+        : t < 0.85
+            ? _slice(ease.transform((t - 0.46) / 0.39), 1)
+            : const <LatLng>[];
+    return widget.builder(run);
+  }
 }
 
 /// Glides the vehicles that keep their [MapVehicle.id] from where they are drawn to where the new list puts them
@@ -297,11 +522,14 @@ Object? _fitKey(TtMap m) {
 /// flutter_map engine (tests, no Google key): CARTO tiles. Re-fits the camera when [TtMap.fitPoints] change, like
 /// the Google engine.
 class _FlutterTtMap extends StatefulWidget {
-  const _FlutterTtMap({required this.map, required this.vehicles});
+  const _FlutterTtMap({required this.map, required this.vehicles, required this.run});
   final TtMap map;
 
   /// [TtMap.vehicles] as drawn this frame (gliding, [_VehicleGlider]).
   final List<MapVehicle> vehicles;
+
+  /// The dark stretch running along the route this frame ([_RouteRunner]); empty when still.
+  final List<LatLng> run;
 
   @override
   State<_FlutterTtMap> createState() => _FlutterTtMapState();
@@ -322,7 +550,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
         final fit = m.fitPoints;
         if (fit == null || fit.length < 2) return;
         try {
-          _mapController.fitCamera(CameraFit.coordinates(coordinates: fit, padding: m.fitPadding, maxZoom: 16));
+          _mapController.fitCamera(CameraFit.coordinates(coordinates: fit, padding: _fitPaddingOf(m), maxZoom: 16));
         } catch (_) {
           // Map not laid out yet.
         }
@@ -336,11 +564,15 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
     super.dispose();
   }
 
+  /// A pin standing on its point (the tip).
+  static Marker _pin(LatLng at, MapPin pin) =>
+      Marker(point: at, width: MapPin.width, height: MapPin.height, alignment: Alignment.topCenter, child: pin);
+
   @override
   Widget build(BuildContext context) {
     final m = this.m;
     final fit = m.fitPoints != null && m.fitPoints!.length >= 2
-        ? CameraFit.coordinates(coordinates: m.fitPoints!, padding: m.fitPadding, maxZoom: 16)
+        ? CameraFit.coordinates(coordinates: m.fitPoints!, padding: _fitPaddingOf(m), maxZoom: 16)
         : null;
     return ClipRect(
       child: FlutterMap(
@@ -380,15 +612,17 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
           if (m.route.length >= 2)
             PolylineLayer(
               polylines: [
-                Polyline(points: m.route, color: TtColors.navy900, strokeWidth: 5, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
+                Polyline(points: m.route, color: TtColors.route, strokeWidth: 4, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
+                if (widget.run.length >= 2)
+                  Polyline(points: widget.run, color: TtColors.routeRun, strokeWidth: 4, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
               ],
             ),
           MarkerLayer(
             markers: [
               if (m.pulseAt != null)
                 Marker(point: m.pulseAt!, width: 180, height: 180, child: PulseRing(color: m.pulseColor)),
-              if (m.pickup != null) Marker(point: m.pickup!, width: 28, height: 28, child: const PickupDot()),
-              if (m.drop != null) Marker(point: m.drop!, width: 28, height: 28, child: const DropDot()),
+              if (m.pickup != null) _pin(m.pickup!, const MapPin.pickup()),
+              if (m.drop != null) _pin(m.drop!, const MapPin.drop()),
               for (final v in widget.vehicles)
                 Marker(
                   point: v.position,
@@ -396,6 +630,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
                   height: v.large ? 56 : 36,
                   child: VehicleMarker(type: v.type, heading: v.heading, large: v.large),
                 ),
+              ..._placeLabels(m),
               ...m.extraMarkers,
             ],
           ),
