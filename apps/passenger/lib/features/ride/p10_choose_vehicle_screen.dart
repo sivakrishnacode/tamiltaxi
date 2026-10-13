@@ -34,9 +34,6 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
   static const _half = 0.5;
   static const _full = 0.86;
 
-  /// Live sheet height, so the distance chip rides on top of it.
-  final ValueNotifier<double> _extent = ValueNotifier(_half);
-
   /// Sheet height the map's padding follows, updated once a drag settles (re-padding the platform map on every
   /// drag frame would stutter).
   final ValueNotifier<double> _settled = ValueNotifier(_half);
@@ -44,7 +41,6 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
 
   @override
   void dispose() {
-    _extent.dispose();
     _settled.dispose();
     _settleTimer?.cancel();
     super.dispose();
@@ -138,9 +134,9 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                       // The route fills the map above the half-open sheet, like RedTaxi's. Not refitted into the strip
                       // left when the sheet is pulled up (it would zoom far out).
                       fitPoints: noPickup || open(settled) ? null : route,
-                      // Below the back button and above the distance chip. The Google map is padded by the sheet
+                      // Below the back button and the distance chip. The Google map is padded by the sheet
                       // ([TtMap.mapPadding]); flutter_map has no such padding, so the sheet is in the fit padding there.
-                      fitPadding: EdgeInsets.fromLTRB(40, safeTop + 76, 40, 88 + (TtMap.usesGoogle ? 0 : sheetPx)),
+                      fitPadding: EdgeInsets.fromLTRB(40, safeTop + 76, 40, 40 + (TtMap.usesGoogle ? 0 : sheetPx)),
                       mapPadding: sheetMapPadding(sheetPx),
                       attributionPadding: EdgeInsets.only(bottom: sheetPx),
                       // Like RedTaxi / Ola: the route keeps drawing itself, and both places are named on the map;
@@ -168,37 +164,32 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                   ),
                 ),
               ),
-              // The distance chip rides on top of the sheet and steps aside when the sheet is pulled up.
-              ValueListenableBuilder<double>(
-                valueListenable: _extent,
-                builder: (context, extent, chip) => open(extent)
-                    ? const SizedBox.shrink()
-                    : Positioned(left: 0, right: 0, top: c.maxHeight * (1 - extent) - 60, child: chip!),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l, vertical: TtSpacing.s),
-                    decoration: const BoxDecoration(
-                      color: TtColors.surface,
-                      borderRadius: TtRadii.pillRadius,
-                      boxShadow: TtShadows.soft,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Symbols.conversion_path_rounded, size: 20, color: TtColors.coral600),
-                        const SizedBox(width: TtSpacing.s),
-                        Text(
-                          noPickup ? 'Choose your pickup' : (quotesReady ? state.estimate.label : 'Getting fares…'),
-                          style: TtTextStyles.tabular(t.bodySemibold),
-                        ),
-                      ],
-                    ),
+              // The distance and time, top right beside the back button (like PP-06).
+              Positioned(
+                top: safeTop + 16,
+                right: TtSpacing.l,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: TtSpacing.l, vertical: TtSpacing.s),
+                  decoration: const BoxDecoration(
+                    color: TtColors.surface,
+                    borderRadius: TtRadii.pillRadius,
+                    boxShadow: TtShadows.soft,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Symbols.conversion_path_rounded, size: 20, color: TtColors.coral600),
+                      const SizedBox(width: TtSpacing.s),
+                      Text(
+                        noPickup ? 'Choose your pickup' : (quotesReady ? state.estimate.label : 'Getting fares…'),
+                        style: TtTextStyles.tabular(t.bodySemibold),
+                      ),
+                    ],
                   ),
                 ),
               ),
               NotificationListener<DraggableScrollableNotification>(
                 onNotification: (n) {
-                  _extent.value = n.extent;
                   _settleTimer?.cancel();
                   _settleTimer = Timer(const Duration(milliseconds: 180), () {
                     if (mounted) _settled.value = (n.extent * 100).round() / 100;

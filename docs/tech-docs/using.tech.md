@@ -1121,7 +1121,7 @@ tier per city (City › Fares).
   tabular (`price`); no box of its own, only the selected row has a white fill and a 1.5 dp outline (`accent`: coral,
   pink for Pink Taxi), and its ⓘ (`onInfo`) opens P-11 fare details. P-10 (13 Oct 2026, like RedTaxi / Ola): the
   map fills the screen and the sheet (`DraggableScrollableSheet`) opens at half height with the route fitted in the
-  map above it, under the back button and over the distance chip; drag it up (0.86) to see every ride, where the map
+  map above it, under the back button and the distance chip (top right, like PP-06); drag it up (0.86) to see every ride, where the map
   only keeps the Google logo above the sheet instead of re-fitting into the strip left; "Cash / UPI" and Book stay
   pinned under the list (was a fixed sheet taking 70 % of the screen with the route in a thin strip). The
   header is one 40 dp row, "Choose a ride" with the "For me ▾" chip; women riders get the **Pink Taxi** strip under
