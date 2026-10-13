@@ -865,21 +865,36 @@ class _MoreWaysRow extends ConsumerWidget {
               child: _WayTile(
                 title: 'Rental',
                 hint: from == null ? 'By the hour' : 'By the hour, from ${formatInr(from)}',
-                kind: VehicleKind.sedan,
+                art: const _ModeArt('way_rental'),
                 onTap: onRental,
               ),
             ),
             const SizedBox(width: TtSpacing.s),
             Expanded(
-              child: _WayTile(title: 'Outstation', hint: 'One way or round trip', kind: VehicleKind.suv, onTap: onOutstation),
+              child: _WayTile(
+                title: 'Outstation',
+                hint: 'One way or round trip',
+                art: const _ModeArt('way_outstation'),
+                onTap: onOutstation,
+              ),
             ),
             const SizedBox(width: TtSpacing.s),
             Expanded(
-              child: _WayTile(title: 'Parcel', hint: 'Send goods across town', kind: VehicleKind.goodsBike, onTap: onParcel),
+              child: _WayTile(
+                title: 'Parcel',
+                hint: 'Send goods across town',
+                art: const VehicleArt(VehicleKind.goodsBike),
+                onTap: onParcel,
+              ),
             ),
             const SizedBox(width: TtSpacing.s),
             Expanded(
-              child: _WayTile(title: 'Packers & Movers', hint: 'House shifting', kind: VehicleKind.truck, onTap: onMovers),
+              child: _WayTile(
+                title: 'Packers & Movers',
+                hint: 'House shifting',
+                art: const VehicleArt(VehicleKind.truck),
+                onTap: onMovers,
+              ),
             ),
           ],
         ),
@@ -888,14 +903,32 @@ class _MoreWaysRow extends ConsumerWidget {
   }
 }
 
-/// A grey tile with the vehicle's miniature and the name under it.
+/// The Rental / Outstation tile picture: a car with a stopwatch or a suitcase, made like the vehicle miniatures
+/// (scripts/vehicle_icons/build.py) and sized like [VehicleArt].
+class _ModeArt extends StatelessWidget {
+  const _ModeArt(this.name);
+  final String name;
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+        'packages/tamiltaxi_ui/assets/vehicles/$name.webp',
+        width: 56,
+        height: 40,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        // Tests and the first frame: keep the space, no broken-image box.
+        errorBuilder: (context, error, stack) => const SizedBox(width: 56, height: 40),
+      );
+}
+
+/// A grey tile with a picture ([art]) and the name under it.
 class _WayTile extends StatelessWidget {
-  const _WayTile({required this.title, required this.hint, required this.kind, required this.onTap});
+  const _WayTile({required this.title, required this.hint, required this.art, required this.onTap});
   final String title;
 
   /// What it is, for screen readers ("By the hour, from ₹249").
   final String hint;
-  final VehicleKind kind;
+  final Widget art;
   final VoidCallback onTap;
 
   @override
@@ -914,7 +947,7 @@ class _WayTile extends StatelessWidget {
               height: 64,
               alignment: Alignment.center,
               decoration: const BoxDecoration(color: TtColors.inputBg, borderRadius: TtRadii.cardRadius),
-              child: VehicleArt(kind),
+              child: art,
             ),
             const SizedBox(height: 6),
             Text(

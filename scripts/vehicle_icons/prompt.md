@@ -1,7 +1,7 @@
 # Vehicle miniatures: ChatGPT brief
 
-The vehicle pictures in `packages/tamiltaxi_ui/assets/vehicles/` come from two sprite sheets made with the ChatGPT
-image model (5 Oct 2026). To add a vehicle, generate a sheet with the same brief, save it in `docs/design/vechile/`,
+The vehicle pictures in `packages/tamiltaxi_ui/assets/vehicles/` come from three sprite sheets made with the ChatGPT
+image model (5 Oct 2026; travel modes 13 Oct 2026). To add a vehicle, generate a sheet with the same brief, save it in `docs/design/vechile/`,
 add it to `SHEETS` in `build.py` and run the script. ChatGPT draws the fronts pointing left; `build.py` mirrors them
 so they point right like every other ride app.
 
@@ -31,6 +31,11 @@ so they point right like every other ride app.
    three-wheeler with an open flat cargo bed; small Indian mini truck (1-tonne light commercial vehicle) with an open
    cargo bed / pickup truck with an open bed; medium closed box truck with a white box body and a coral stripe;
    last cell empty.
+3. Travel modes (home "More ways to travel" tiles), 2 columns x 1 row, the passenger SUV and sedan attached as style
+   references: Outstation = the compact SUV with a coral hard-shell suitcase (white handle, charcoal wheels) standing
+   behind its rear; Rental = the compact sedan with a large round coral stopwatch (white face, tick marks only, one
+   charcoal hand) behind its rear. Props about 70% of the car's height and poking above the roof, the car is the
+   hero, each illustration filling about 75% of its half, a clear empty gap between the two.
 
 With the Codex CLI that ships in the ChatGPT desktop app: `codex exec --skip-git-repo-check -s read-only "<brief>"
 < /dev/null`; the images land in `~/.codex/generated_images/`.

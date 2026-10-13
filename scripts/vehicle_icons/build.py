@@ -1,4 +1,4 @@
-"""Builds the apps' vehicle miniatures from two ChatGPT sprite sheets in docs/design/vechile/.
+"""Builds the apps' vehicle miniatures from three ChatGPT sprite sheets in docs/design/vechile/.
 
     python3 scripts/vehicle_icons/build.py            # writes packages/tamiltaxi_ui/assets/vehicles/<kind>.webp
     python3 scripts/vehicle_icons/build.py --preview  # also build/vehicle_icons/preview.png (light + dark rows)
@@ -6,7 +6,8 @@
 Pink Taxi (rides for women riders with women drivers) uses `<kind>_pink.webp`: the same vehicles with the coral
 accent turned pink (only coral-orange hues move, so the yellow plates and white bodies stay).
 
-The sheets are transparent 1536 x 1024 PNGs, two rows of vehicles, made with the ChatGPT image model from the brief
+The sheets are transparent 1536 x 1024 PNGs, two rows of vehicles (the travel-modes sheet: one row, a car with a
+suitcase for Outstation and with a stopwatch for Rental, on the home tiles), made with the ChatGPT image model from the brief
 in prompt.md (soft 3D, front three-quarter view, white with one coral accent, no logos or text). The folder is kept
 local (git-ignored) like the earlier renders. ChatGPT draws the fronts pointing left; every app in the market shows
 them pointing right, so each vehicle is mirrored (the set has no text, so that is safe).
@@ -28,8 +29,11 @@ OUT = os.path.join(ROOT, 'packages', 'tamiltaxi_ui', 'assets', 'vehicles')
 SHEETS = {
     'Tamil Taxi passenger vehicles (ChatGPT).png': ['bike', 'scooty', 'auto', 'mini', 'sedan', 'suv'],
     'Tamil Taxi goods vehicles (ChatGPT).png': ['goods_bike', 'three_wheeler', 'mini_truck', 'pickup', 'truck'],
+    'Tamil Taxi travel modes (ChatGPT).png': ['way_outstation', 'way_rental'],
 }
 ROWS = 2
+# Sheets drawn as a single row.
+ONE_ROW = {'Tamil Taxi travel modes (ChatGPT).png'}
 
 # Pink Taxi copies of the vehicles a rider can book.
 PINK = ['bike', 'scooty', 'auto', 'auto_priority', 'mini', 'sedan', 'suv']
@@ -40,16 +44,16 @@ CW, CH, BASE = 336, 240, 220  # canvas and the line the wheels stand on, px
 FIT = {
     'bike': (264, 188), 'scooty': (240, 188), 'auto': (244, 204), 'mini': (300, 180), 'sedan': (324, 176),
     'suv': (320, 192), 'goods_bike': (268, 192), 'three_wheeler': (284, 204), 'mini_truck': (312, 196),
-    'pickup': (324, 188), 'truck': (324, 208),
+    'pickup': (324, 188), 'truck': (324, 208), 'way_outstation': (324, 220), 'way_rental': (324, 220),
 }
 
 
-def vehicles_in(sheet):
+def vehicles_in(sheet, rows=ROWS):
     """The vehicles of a sheet as trimmed RGBA images, row by row, split at empty columns."""
     alpha = sheet.getchannel('A').point(lambda a: 255 if a > 24 else 0)
-    band_h = sheet.height // ROWS
+    band_h = sheet.height // rows
     found = []
-    for r in range(ROWS):
+    for r in range(rows):
         band = alpha.crop((0, r * band_h, sheet.width, (r + 1) * band_h))
         filled = [band.crop((x, 0, x + 1, band_h)).getbbox() is not None for x in range(sheet.width)]
         x = 0
@@ -121,7 +125,7 @@ def main():
     built = {}
     for file, names in SHEETS.items():
         sheet = Image.open(os.path.join(SRC, file)).convert('RGBA')
-        found = vehicles_in(sheet)
+        found = vehicles_in(sheet, 1 if file in ONE_ROW else ROWS)
         if len(found) != len(names):
             sys.exit(f'{file}: found {len(found)} vehicles, expected {len(names)}')
         for name, v in zip(names, found):
