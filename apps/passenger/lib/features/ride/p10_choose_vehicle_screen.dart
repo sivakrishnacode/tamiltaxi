@@ -140,13 +140,13 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
                       fitPoints: noPickup || open(settled) ? null : route,
                       // Below the back button and above the distance chip. The Google map is padded by the sheet
                       // ([TtMap.mapPadding]); flutter_map has no such padding, so the sheet is in the fit padding there.
-                      fitPadding: EdgeInsets.fromLTRB(40, safeTop + 76, 40, 72 + (TtMap.usesGoogle ? 0 : sheetPx)),
+                      fitPadding: EdgeInsets.fromLTRB(40, safeTop + 76, 40, 88 + (TtMap.usesGoogle ? 0 : sheetPx)),
                       mapPadding: sheetMapPadding(sheetPx),
                       attributionPadding: EdgeInsets.only(bottom: sheetPx),
                       // Like RedTaxi / Ola: the route keeps drawing itself, and both places are named on the map;
                       // tap the pickup to move it, the drop to search again.
                       animateRoute: !noPickup,
-                      pickupLabel: noPickup ? null : state.pickup.name,
+                      pickupLabel: noPickup ? null : _chipName(state.pickup),
                       dropLabel: state.drop.name,
                       onPickupLabel: widget.showcase || noPickup ? null : () => context.push(Routes.pinPickupOnMap),
                       onDropLabel: widget.showcase ? null : () => context.go(Routes.search),
@@ -335,6 +335,9 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
     );
   }
 }
+
+/// A place's name for its map chip: the phone's location ("Current location") by its street address, like Ola's.
+String _chipName(Place p) => p.id == 'current' && p.address.trim().isNotEmpty ? p.address : p.name;
 
 /// "Auto, Mini, Sedan or SUV".
 String _vehicleList(List<FareQuote> quotes) {

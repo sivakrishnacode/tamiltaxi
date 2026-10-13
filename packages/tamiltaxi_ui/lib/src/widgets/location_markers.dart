@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -17,56 +15,24 @@ class PickupDot extends StatelessWidget {
   Widget build(BuildContext context) => _RingDot(size: size, color: TtColors.success);
 }
 
-/// The pickup (green) or drop (red) on a map: a teardrop pin with a white centre and a white edge, its tip on the
-/// point (like RedTaxi's and Ola's).
-class MapPin extends StatelessWidget {
-  const MapPin.pickup({super.key}) : color = TtColors.success;
-  const MapPin.drop({super.key}) : color = TtColors.drop;
+/// The pickup on a map, like Ola's: a green dot in a soft green halo (alone, or starting the pickup's name chip).
+class PickupHalo extends StatelessWidget {
+  const PickupHalo({super.key});
 
-  final Color color;
-
-  static const double width = 30;
-  static const double height = 40;
-
-  /// How far above its point (the tip) the head's centre is.
-  static const double headAbove = height - width / 2;
+  static const double size = 22;
 
   @override
-  Widget build(BuildContext context) =>
-      SizedBox(width: width, height: height, child: CustomPaint(painter: _PinPainter(color)));
-}
-
-class _PinPainter extends CustomPainter {
-  const _PinPainter(this.color);
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final r = size.width / 2 - 1;
-    final c = Offset(size.width / 2, r + 1);
-    final tip = Offset(size.width / 2, size.height - 1);
-    // Head circle plus the two tangents down to the tip.
-    final d = tip.dy - c.dy;
-    final a = math.asin(r / d);
-    final path = Path()
-      ..moveTo(tip.dx, tip.dy)
-      ..lineTo(c.dx - r * math.cos(a), c.dy + r * math.sin(a))
-      ..arcTo(Rect.fromCircle(center: c, radius: r), math.pi - a, math.pi + 2 * a, false)
-      ..close();
-    canvas.drawShadow(path, TtColors.navy900, 2, false);
-    canvas.drawPath(path, Paint()..color = color);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    canvas.drawCircle(c, r * 0.4, Paint()..color = Colors.white);
-  }
-
-  @override
-  bool shouldRepaint(_PinPainter old) => old.color != color;
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: TtColors.success.withValues(alpha: 0.28), shape: BoxShape.circle),
+        alignment: Alignment.center,
+        child: Container(
+          width: 10,
+          height: 10,
+          decoration: const BoxDecoration(color: TtColors.success, shape: BoxShape.circle),
+        ),
+      );
 }
 
 class _RingDot extends StatelessWidget {
@@ -94,7 +60,7 @@ class _RingDot extends StatelessWidget {
       );
 }
 
-/// Red drop pin (lists, the drop chooser).
+/// Red drop pin (lists, the drop chooser, the drop on a map without its name chip).
 class DropPin extends StatelessWidget {
   const DropPin({super.key, this.size = 22});
   final double size;

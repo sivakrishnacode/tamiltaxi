@@ -22,30 +22,31 @@ Notes:
 
 | Frame ID | Screen | Status | File |
 |---|---|---|---|
-| DS | Design system board · page 1 of 24 | In the app | [system/DS-board-01.png](system/DS-board-01.png) |
-| DS | Design system board · page 2 of 24 | In the app | [system/DS-board-02.png](system/DS-board-02.png) |
-| DS | Design system board · page 3 of 24 | In the app | [system/DS-board-03.png](system/DS-board-03.png) |
-| DS | Design system board · page 4 of 24 | In the app | [system/DS-board-04.png](system/DS-board-04.png) |
-| DS | Design system board · page 5 of 24 | In the app | [system/DS-board-05.png](system/DS-board-05.png) |
-| DS | Design system board · page 6 of 24 | In the app | [system/DS-board-06.png](system/DS-board-06.png) |
-| DS | Design system board · page 7 of 24 | In the app | [system/DS-board-07.png](system/DS-board-07.png) |
-| DS | Design system board · page 8 of 24 | In the app | [system/DS-board-08.png](system/DS-board-08.png) |
-| DS | Design system board · page 9 of 24 | In the app | [system/DS-board-09.png](system/DS-board-09.png) |
-| DS | Design system board · page 10 of 24 | In the app | [system/DS-board-10.png](system/DS-board-10.png) |
-| DS | Design system board · page 11 of 24 | In the app | [system/DS-board-11.png](system/DS-board-11.png) |
-| DS | Design system board · page 12 of 24 | In the app | [system/DS-board-12.png](system/DS-board-12.png) |
-| DS | Design system board · page 13 of 24 | In the app | [system/DS-board-13.png](system/DS-board-13.png) |
-| DS | Design system board · page 14 of 24 | In the app | [system/DS-board-14.png](system/DS-board-14.png) |
-| DS | Design system board · page 15 of 24 | In the app | [system/DS-board-15.png](system/DS-board-15.png) |
-| DS | Design system board · page 16 of 24 | In the app | [system/DS-board-16.png](system/DS-board-16.png) |
-| DS | Design system board · page 17 of 24 | In the app | [system/DS-board-17.png](system/DS-board-17.png) |
-| DS | Design system board · page 18 of 24 | In the app | [system/DS-board-18.png](system/DS-board-18.png) |
-| DS | Design system board · page 19 of 24 | In the app | [system/DS-board-19.png](system/DS-board-19.png) |
-| DS | Design system board · page 20 of 24 | In the app | [system/DS-board-20.png](system/DS-board-20.png) |
-| DS | Design system board · page 21 of 24 | In the app | [system/DS-board-21.png](system/DS-board-21.png) |
-| DS | Design system board · page 22 of 24 | In the app | [system/DS-board-22.png](system/DS-board-22.png) |
-| DS | Design system board · page 23 of 24 | In the app | [system/DS-board-23.png](system/DS-board-23.png) |
-| DS | Design system board · page 24 of 24 | In the app | [system/DS-board-24.png](system/DS-board-24.png) |
+| DS | Design system board · page 1 of 25 | In the app | [system/DS-board-01.png](system/DS-board-01.png) |
+| DS | Design system board · page 2 of 25 | In the app | [system/DS-board-02.png](system/DS-board-02.png) |
+| DS | Design system board · page 3 of 25 | In the app | [system/DS-board-03.png](system/DS-board-03.png) |
+| DS | Design system board · page 4 of 25 | In the app | [system/DS-board-04.png](system/DS-board-04.png) |
+| DS | Design system board · page 5 of 25 | In the app | [system/DS-board-05.png](system/DS-board-05.png) |
+| DS | Design system board · page 6 of 25 | In the app | [system/DS-board-06.png](system/DS-board-06.png) |
+| DS | Design system board · page 7 of 25 | In the app | [system/DS-board-07.png](system/DS-board-07.png) |
+| DS | Design system board · page 8 of 25 | In the app | [system/DS-board-08.png](system/DS-board-08.png) |
+| DS | Design system board · page 9 of 25 | In the app | [system/DS-board-09.png](system/DS-board-09.png) |
+| DS | Design system board · page 10 of 25 | In the app | [system/DS-board-10.png](system/DS-board-10.png) |
+| DS | Design system board · page 11 of 25 | In the app | [system/DS-board-11.png](system/DS-board-11.png) |
+| DS | Design system board · page 12 of 25 | In the app | [system/DS-board-12.png](system/DS-board-12.png) |
+| DS | Design system board · page 13 of 25 | In the app | [system/DS-board-13.png](system/DS-board-13.png) |
+| DS | Design system board · page 14 of 25 | In the app | [system/DS-board-14.png](system/DS-board-14.png) |
+| DS | Design system board · page 15 of 25 | In the app | [system/DS-board-15.png](system/DS-board-15.png) |
+| DS | Design system board · page 16 of 25 | In the app | [system/DS-board-16.png](system/DS-board-16.png) |
+| DS | Design system board · page 17 of 25 | In the app | [system/DS-board-17.png](system/DS-board-17.png) |
+| DS | Design system board · page 18 of 25 | In the app | [system/DS-board-18.png](system/DS-board-18.png) |
+| DS | Design system board · page 19 of 25 | In the app | [system/DS-board-19.png](system/DS-board-19.png) |
+| DS | Design system board · page 20 of 25 | In the app | [system/DS-board-20.png](system/DS-board-20.png) |
+| DS | Design system board · page 21 of 25 | In the app | [system/DS-board-21.png](system/DS-board-21.png) |
+| DS | Design system board · page 22 of 25 | In the app | [system/DS-board-22.png](system/DS-board-22.png) |
+| DS | Design system board · page 23 of 25 | In the app | [system/DS-board-23.png](system/DS-board-23.png) |
+| DS | Design system board · page 24 of 25 | In the app | [system/DS-board-24.png](system/DS-board-24.png) |
+| DS | Design system board · page 25 of 25 | In the app | [system/DS-board-25.png](system/DS-board-25.png) |
 
 ## Passenger app
 

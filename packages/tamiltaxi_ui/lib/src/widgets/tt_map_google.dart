@@ -87,15 +87,16 @@ class _GoogleTtMap extends StatefulWidget {
   /// [TtMap.vehicles] as drawn this frame (gliding, [_VehicleGlider]).
   final List<MapVehicle> vehicles;
 
-  /// The dark stretch running along the route this frame ([_RouteRunner]); empty when still.
-  final List<LatLng> run;
+  /// The pieces of the glow gliding along the route this frame ([_RouteRunner]); empty when still.
+  final List<_RunPiece> run;
 
   @override
   State<_GoogleTtMap> createState() => _GoogleTtMapState();
 }
 
 class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver {
-  static const _pinSize = Size(MapPin.width, MapPin.height);
+  static const _haloSize = Size.square(PickupHalo.size);
+  static const _dropSize = Size.square(_dropPinSize);
   static const _eager = <Factory<OneSequenceGestureRecognizer>>{
     Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
   };
@@ -250,8 +251,6 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
   bool get _hasOverlays =>
       m.pulseAt != null ||
       m.extraMarkers.isNotEmpty ||
-      m.pickupLabel != null ||
-      m.dropLabel != null ||
       m.polygons.any((p) => p.isZoomLimited);
 
   void _onCameraMove(gm.CameraPosition pos) {
@@ -263,7 +262,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
 
   /// Fits [fit] inside the area left by `mapPadding`.
   (LatLng, double) _fitCamera(List<LatLng> fit, Size size) =>
-      _Mercator.fit(fit, m.mapPadding.deflateSize(size), _fitPaddingOf(m));
+      _Mercator.fit(fit, m.mapPadding.deflateSize(size), _fitPaddingOf(m, context));
 
   gm.CameraPosition _initialCamera(Size size) {
     final fit = m.fitPoints;
@@ -296,42 +295,66 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
       );
     }
 
-    if (m.pickup != null) need('pickup', const MapPin.pickup(), _pinSize);
-    if (m.drop != null) need('drop', const MapPin.drop(), _pinSize);
+    // The name chips are markers too, so they stay on their place while the map moves (widgets laid over the map
+    // lag behind it during a drag).
+    final style = _PlaceChip.styleOf(context);
+    void place(String kind, String? label, VoidCallback? onTap, Widget mark, Size markSize, {required bool drop}) {
+      if (label == null) {
+        need(kind, mark, markSize);
+      } else {
+        final tap = onTap != null;
+        need(_chipKey(kind, label, tap), _PlaceChip(text: label, drop: drop, tappable: tap, style: style),
+            _PlaceChip.sizeFor(label, style, tappable: tap));
+      }
+    }
+
+    if (m.pickup != null) place('pickup', m.pickupLabel, m.onPickupLabel, const PickupHalo(), _haloSize, drop: false);
+    if (m.drop != null) {
+      place('drop', m.dropLabel, m.onDropLabel, const DropPin(size: _dropPinSize), _dropSize, drop: true);
+    }
     for (final v in widget.vehicles) {
       need(_vehicleKey(v), VehicleMarker(type: v.type, large: v.large), _vehicleSize(v));
     }
   }
 
+  static String _chipKey(String kind, String label, bool tappable) => 'chip-$kind-$tappable-$label';
+
+  /// The pickup / drop marker: its name chip with the mark on the point, or the bare dot (centred) / pin (tip on the
+  /// point, as flutter_map's Alignment.topCenter).
+  gm.Marker? _placeMarker(String kind, LatLng? at, String? label, VoidCallback? onTap, {required bool drop}) {
+    if (at == null) return null;
+    if (label != null) {
+      final tap = onTap != null;
+      final icon = _icons[_chipKey(kind, label, tap)];
+      if (icon == null) return null;
+      final size = _PlaceChip.sizeFor(label, _PlaceChip.styleOf(context), tappable: tap);
+      return gm.Marker(
+        markerId: gm.MarkerId(kind),
+        position: _g(at),
+        icon: icon,
+        anchor: _MarkerBitmaps.anchor(size, Offset(_PlaceChip.markCentre.dx / size.width, 0.5)),
+        onTap: onTap,
+        consumeTapEvents: true,
+        zIndexInt: drop ? 5 : 4,
+      );
+    }
+    final icon = _icons[kind];
+    if (icon == null) return null;
+    return gm.Marker(
+      markerId: gm.MarkerId(kind),
+      position: _g(at),
+      icon: icon,
+      anchor: drop ? _MarkerBitmaps.anchor(_dropSize, const Offset(0.5, 1)) : const Offset(0.5, 0.5),
+      consumeTapEvents: true,
+      zIndexInt: drop ? 3 : 2,
+    );
+  }
+
   Set<gm.Marker> _markers() {
-    final out = <gm.Marker>{};
-    final pickupIcon = _icons['pickup'];
-    if (m.pickup != null && pickupIcon != null) {
-      out.add(
-        gm.Marker(
-          markerId: const gm.MarkerId('pickup'),
-          position: _g(m.pickup!),
-          icon: pickupIcon,
-          // The pin's tip on the point, as on the flutter_map engine (Alignment.topCenter).
-          anchor: _MarkerBitmaps.anchor(_pinSize, const Offset(0.5, 1)),
-          consumeTapEvents: true,
-          zIndexInt: 2,
-        ),
-      );
-    }
-    final dropIcon = _icons['drop'];
-    if (m.drop != null && dropIcon != null) {
-      out.add(
-        gm.Marker(
-          markerId: const gm.MarkerId('drop'),
-          position: _g(m.drop!),
-          icon: dropIcon,
-          anchor: _MarkerBitmaps.anchor(_pinSize, const Offset(0.5, 1)),
-          consumeTapEvents: true,
-          zIndexInt: 3,
-        ),
-      );
-    }
+    final out = <gm.Marker>{
+      ?_placeMarker('pickup', m.pickup, m.pickupLabel, m.onPickupLabel, drop: false),
+      ?_placeMarker('drop', m.drop, m.dropLabel, m.onDropLabel, drop: true),
+    };
     for (var i = 0; i < widget.vehicles.length; i++) {
       final v = widget.vehicles[i];
       final icon = _icons[_vehicleKey(v)];
@@ -364,8 +387,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     return _Mercator.world(p, z) - _Mercator.world(_l(_camera.target), z) + centre;
   }
 
-  /// [tappable]: the name chips; other overlays let touches through to the map.
-  Widget? _overlay(LatLng point, double width, double height, Alignment alignment, Widget child, {bool tappable = false}) {
+  Widget? _overlay(LatLng point, double width, double height, Alignment alignment, Widget child) {
     final s = _screen(point);
     final left = 0.5 * width * (alignment.x + 1);
     final top = 0.5 * height * (alignment.y + 1);
@@ -377,7 +399,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
       top: y,
       width: width,
       height: height,
-      child: tappable ? child : IgnorePointer(child: child),
+      child: IgnorePointer(child: child),
     );
   }
 
@@ -385,8 +407,6 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     if (m.pulseAt != null) _overlay(m.pulseAt!, 180, 180, Alignment.center, PulseRing(color: m.pulseColor)),
     for (final mk in m.extraMarkers)
       _overlay(mk.point, mk.width, mk.height, mk.alignment ?? Alignment.center, mk.child),
-    for (final mk in _placeLabels(m))
-      _overlay(mk.point, mk.width, mk.height, mk.alignment ?? Alignment.center, mk.child, tappable: true),
   ].nonNulls.toList();
 
   @override
@@ -431,22 +451,22 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
                             polylineId: const gm.PolylineId('route'),
                             points: [for (final p in m.route) _g(p)],
                             color: TtColors.route,
-                            width: 4,
+                            width: 3,
                             startCap: gm.Cap.roundCap,
                             endCap: gm.Cap.roundCap,
                             jointType: gm.JointType.round,
                           ),
-                        if (widget.run.length >= 2)
-                          gm.Polyline(
-                            polylineId: const gm.PolylineId('route-run'),
-                            points: [for (final p in widget.run) _g(p)],
-                            color: TtColors.routeRun,
-                            width: 4,
-                            zIndex: 1,
-                            startCap: gm.Cap.roundCap,
-                            endCap: gm.Cap.roundCap,
-                            jointType: gm.JointType.round,
-                          ),
+                        // Flat ends, so the glow's pieces meet without darker overlaps.
+                        for (var k = 0; k < widget.run.length; k++)
+                          if (widget.run[k].points.length >= 2)
+                            gm.Polyline(
+                              polylineId: gm.PolylineId('route-run-$k'),
+                              points: [for (final p in widget.run[k].points) _g(p)],
+                              color: TtColors.routeRun.withValues(alpha: widget.run[k].alpha),
+                              width: 3,
+                              zIndex: 1,
+                              jointType: gm.JointType.round,
+                            ),
                       },
                       polygons: {
                         for (var i = 0; i < m.polygons.length; i++)

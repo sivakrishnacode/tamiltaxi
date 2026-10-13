@@ -110,8 +110,8 @@ class MapPolygon {
 /// Google Maps SDK (styled light map, bitmap markers); otherwise flutter_map with CARTO
 /// light-grey tiles and the required attribution (tests, no key).
 ///
-/// Draws pickup (green pin), drop (red pin), optional name chips beside them, vehicles (navy top-down icons), a light
-/// slate 4px route (a dark stretch runs along it on route previews, like RedTaxi and Ola), a pulse ring and hex polygons (no circles: areas are H3 hexes). If tiles fail (offline) the plain #F1F5F9
+/// Draws pickup (green dot) and drop (red pin), or Ola-style name chips in their place, vehicles (navy top-down icons),
+/// a light slate 3px route (a soft darker glow glides along it on route previews, like Ola's), a pulse ring and hex polygons (no circles: areas are H3 hexes). If tiles fail (offline) the plain #F1F5F9
 /// background shows; nothing throws.
 class TtMap extends StatelessWidget {
   const TtMap({
@@ -190,8 +190,8 @@ class TtMap extends StatelessWidget {
   /// Route previews (before booking): a dark stretch keeps running along [route] from pickup to drop.
   final bool animateRoute;
 
-  /// Name chips beside the pickup / drop pins (like RedTaxi's); tapping one calls [onPickupLabel] / [onDropLabel]
-  /// (a ⟩ shows when set).
+  /// Name chips that mark the pickup / drop instead of the dot and pin (like Ola's); tapping one calls
+  /// [onPickupLabel] / [onDropLabel] (a ⟩ shows when set).
   final String? pickupLabel;
   final String? dropLabel;
   final VoidCallback? onPickupLabel;
@@ -210,104 +210,146 @@ class TtMap extends StatelessWidget {
       );
 }
 
-/// [TtMap.fitPadding] plus room for the pins, which stand above their points.
-EdgeInsets _fitPaddingOf(TtMap m) =>
-    m.pickup != null || m.drop != null ? m.fitPadding + const EdgeInsets.only(top: MapPin.height) : m.fitPadding;
+/// The drop pin's size on a map without the drop's name chip (it stands on its point).
+const double _dropPinSize = 32;
 
-/// The pickup / drop name chips ([TtMap.pickupLabel], [TtMap.dropLabel]) as markers, level with the pin's head on
-/// the side facing the other point (as RedTaxi places them), which keeps them on screen.
-List<Marker> _placeLabels(TtMap m) {
-  Marker chip(LatLng at, String text, VoidCallback? onTap, LatLng? other) {
-    final right = other == null || at.longitude <= other.longitude;
+/// [TtMap.fitPadding] plus room for what stands beside the points: the drop pin above its point, and the name chip
+/// of the point further east, which runs to its right past the fitted box (Ola's chips run off screen there).
+EdgeInsets _fitPaddingOf(TtMap m, BuildContext context) {
+  var p = m.fitPadding;
+  if (m.drop != null && m.dropLabel == null) p += const EdgeInsets.only(top: _dropPinSize);
+  final chips = [
+    if (m.pickup != null && m.pickupLabel != null) (at: m.pickup!, text: m.pickupLabel!, tap: m.onPickupLabel != null),
+    if (m.drop != null && m.dropLabel != null) (at: m.drop!, text: m.dropLabel!, tap: m.onDropLabel != null),
+  ];
+  if (chips.isNotEmpty) {
+    final east = chips.reduce((a, b) => a.at.longitude >= b.at.longitude ? a : b);
+    final size = _PlaceChip.sizeFor(east.text, _PlaceChip.styleOf(context), tappable: east.tap);
+    p = p.copyWith(right: math.max(p.right, size.width - _PlaceChip.markCentre.dx + 8));
+  }
+  return p;
+}
+
+/// The name chips ([TtMap.pickupLabel], [TtMap.dropLabel]) as flutter_map markers, the mark on the point.
+List<Marker> _chipMarkers(TtMap m, BuildContext context) {
+  final style = _PlaceChip.styleOf(context);
+  Marker chip(LatLng at, String text, bool drop, VoidCallback? onTap) {
+    final size = _PlaceChip.sizeFor(text, style, tappable: onTap != null);
     return Marker(
       point: at,
-      width: _PlaceChip.boxWidth,
-      height: _PlaceChip.boxHeight,
-      // The box's edge on the point, its middle level with the pin's head.
-      alignment: Alignment(right ? 1 : -1, -2 * MapPin.headAbove / _PlaceChip.boxHeight),
-      child: _PlaceChip(text: text, onTap: onTap, right: right),
+      width: size.width,
+      height: size.height,
+      // flutter_map puts the box's centre at the point + alignment × half its size: this puts the mark on the point.
+      alignment: Alignment(1 - 2 * _PlaceChip.markCentre.dx / size.width, 0),
+      child: GestureDetector(
+        onTap: onTap,
+        child: _PlaceChip(text: text, drop: drop, tappable: onTap != null, style: style),
+      ),
     );
   }
 
   return [
-    if (m.pickup != null && m.pickupLabel != null) chip(m.pickup!, m.pickupLabel!, m.onPickupLabel, m.drop),
-    if (m.drop != null && m.dropLabel != null) chip(m.drop!, m.dropLabel!, m.onDropLabel, m.pickup),
+    if (m.pickup != null && m.pickupLabel != null) chip(m.pickup!, m.pickupLabel!, false, m.onPickupLabel),
+    if (m.drop != null && m.dropLabel != null) chip(m.drop!, m.dropLabel!, true, m.onDropLabel),
   ];
 }
 
-/// A white name chip beside a pin (to its [right] or left), with a dark ⟩ when it can be tapped, like RedTaxi's.
+/// A pickup / drop name chip, like Ola's: a white pill with the place's mark (green dot or red pin) on the point,
+/// the name on one line and a ⟩ when it can be tapped. Takes an explicit [style] (it is also drawn into a Google
+/// marker bitmap, where there is no theme) and keeps its size whatever the system text size.
 class _PlaceChip extends StatelessWidget {
-  const _PlaceChip({required this.text, required this.onTap, required this.right});
-
-  static const double boxWidth = 180;
-  static const double boxHeight = 56;
+  const _PlaceChip({required this.text, required this.drop, required this.tappable, required this.style});
 
   final String text;
-  final VoidCallback? onTap;
-  final bool right;
+  final bool drop;
+  final bool tappable;
+  final TextStyle style;
+
+  static const double height = 34;
+  static const double _padLeft = 6;
+  static const double _padRight = 12;
+  static const double _mark = 22;
+  static const double _maxText = 150;
+
+  /// Where the place is: the middle of the mark.
+  static const Offset markCentre = Offset(_padLeft + _mark / 2, height / 2);
+
+  static TextStyle styleOf(BuildContext context) =>
+      context.type.bodySmallMedium.copyWith(color: TtColors.navy900, height: 1.2);
+
+  static final _sizes = <String, Size>{};
+
+  /// The chip's size for [text], laid out as [build] lays it out.
+  static Size sizeFor(String text, TextStyle style, {required bool tappable}) =>
+      _sizes.putIfAbsent('$tappable|${style.hashCode}|$text', () {
+        final tp = TextPainter(
+          text: TextSpan(text: text, style: style),
+          maxLines: 1,
+          ellipsis: '…',
+          textDirection: TextDirection.ltr,
+          textScaler: TextScaler.noScaling,
+        )..layout(maxWidth: _maxText);
+        final w = _padLeft + _mark + 6 + tp.width + (tappable ? 2 + 18 : 0) + _padRight;
+        tp.dispose();
+        return Size(w.ceilToDouble(), height);
+      });
 
   @override
-  Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(10));
-    const clear = MapPin.width / 2 + 6; // clear of the pin's head
-    return Align(
-      alignment: right ? Alignment.centerLeft : Alignment.centerRight,
-      child: Padding(
-        padding: EdgeInsets.only(left: right ? clear : 0, right: right ? 0 : clear),
-        child: Semantics(
-          button: onTap != null,
-          label: text,
-          excludeSemantics: true,
-          child: DecoratedBox(
-            decoration: const BoxDecoration(color: TtColors.surface, borderRadius: radius, boxShadow: TtShadows.soft),
-            child: Material(
-              type: MaterialType.transparency,
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: radius,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(10, 6, onTap == null ? 10 : 6, 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          text,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.type.caption.copyWith(color: TtColors.navy900, fontWeight: FontWeight.w500, height: 1.25),
-                        ),
-                      ),
-                      if (onTap != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 18,
-                          height: 18,
-                          decoration: const BoxDecoration(color: TtColors.navy900, shape: BoxShape.circle),
-                          child: const Icon(Symbols.chevron_right_rounded, size: 14, color: Colors.white),
-                        ),
-                      ],
-                    ],
-                  ),
+  Widget build(BuildContext context) => Semantics(
+        button: tappable,
+        label: text,
+        excludeSemantics: true,
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.only(left: _padLeft, right: _padRight),
+          decoration: const BoxDecoration(
+            color: TtColors.surface,
+            borderRadius: BorderRadius.all(Radius.circular(height / 2)),
+            boxShadow: [BoxShadow(color: Color(0x2E1E293B), blurRadius: 4, offset: Offset(0, 1))],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: _mark,
+                height: _mark,
+                child: drop
+                    ? const Icon(Symbols.location_on_rounded, fill: 1, size: _mark, color: TtColors.drop)
+                    : const PickupHalo(),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                  textScaler: TextScaler.noScaling,
                 ),
               ),
-            ),
+              if (tappable) ...[
+                const SizedBox(width: 2),
+                const Icon(Symbols.chevron_right_rounded, size: 18, color: TtColors.navy700),
+              ],
+            ],
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
-/// Route previews ([TtMap.animateRoute]), like Ola's and RedTaxi's: a dark stretch draws itself along the light route
-/// from pickup to drop, its tail follows, a short pause, again (2.6 s). Hands the engine the stretch to draw ([run]).
-/// Off in tests and screenshots (no tiles) and when the phone asks for fewer animations.
+/// One piece of the gliding stretch and how opaque it is (the stretch fades from tail to head).
+typedef _RunPiece = ({List<LatLng> points, double alpha});
+
+/// Route previews ([TtMap.animateRoute]), like Ola's: a soft darker glow (a fifth of the route, fading in from its
+/// tail) glides slowly along the light route from pickup to drop, a short rest, again (4 s). Hands the engines the
+/// glow's pieces to draw ([_RunPiece]). Off in tests and screenshots (no tiles) and when the phone asks for fewer
+/// animations.
 class _RouteRunner extends StatefulWidget {
   const _RouteRunner({required this.route, required this.enabled, required this.builder});
 
   final List<LatLng> route;
   final bool enabled;
-  final Widget Function(List<LatLng> run) builder;
+  final Widget Function(List<_RunPiece> run) builder;
 
   @override
   State<_RouteRunner> createState() => _RouteRunnerState();
@@ -315,9 +357,9 @@ class _RouteRunner extends StatefulWidget {
 
 class _RouteRunnerState extends State<_RouteRunner> with SingleTickerProviderStateMixin {
   /// Redraw at most this often (the Google map's polylines go over the platform channel on every rebuild).
-  static const _frameMs = 40;
+  static const _frameMs = 24;
 
-  late final AnimationController _run = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))
+  late final AnimationController _run = AnimationController(vsync: this, duration: const Duration(milliseconds: 4000))
     ..addListener(_onTick);
   int _lastBuildMs = 0;
 
@@ -402,14 +444,21 @@ class _RouteRunnerState extends State<_RouteRunner> with SingleTickerProviderSta
   @override
   Widget build(BuildContext context) {
     if (!_run.isAnimating) return widget.builder(const []);
-    // Head runs to the drop (0–46 %), the tail follows (46–85 %), then a pause.
+    // The glow's head runs from the pickup to past the drop (gently eased) in 85 % of the loop, then a short rest. The
+    // glow is five pieces, faint at the tail and solid at the head.
+    const length = 0.2, pieces = 5;
     final t = _run.value;
-    const ease = Curves.easeInOut;
-    final run = t < 0.46
-        ? _slice(0, ease.transform(t / 0.46))
-        : t < 0.85
-            ? _slice(ease.transform((t - 0.46) / 0.39), 1)
-            : const <LatLng>[];
+    final head = t < 0.85 ? Curves.easeInOutSine.transform(t / 0.85) * (1 + length) : 1 + length;
+    final run = <_RunPiece>[
+      for (var k = 0; k < pieces; k++)
+        (
+          points: _slice(
+            (head - length + length * k / pieces).clamp(0.0, 1.0),
+            (head - length + length * (k + 1) / pieces).clamp(0.0, 1.0),
+          ),
+          alpha: (k + 1) / pieces,
+        ),
+    ];
     return widget.builder(run);
   }
 }
@@ -528,8 +577,8 @@ class _FlutterTtMap extends StatefulWidget {
   /// [TtMap.vehicles] as drawn this frame (gliding, [_VehicleGlider]).
   final List<MapVehicle> vehicles;
 
-  /// The dark stretch running along the route this frame ([_RouteRunner]); empty when still.
-  final List<LatLng> run;
+  /// The pieces of the glow gliding along the route this frame ([_RouteRunner]); empty when still.
+  final List<_RunPiece> run;
 
   @override
   State<_FlutterTtMap> createState() => _FlutterTtMapState();
@@ -550,7 +599,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
         final fit = m.fitPoints;
         if (fit == null || fit.length < 2) return;
         try {
-          _mapController.fitCamera(CameraFit.coordinates(coordinates: fit, padding: _fitPaddingOf(m), maxZoom: 16));
+          _mapController.fitCamera(CameraFit.coordinates(coordinates: fit, padding: _fitPaddingOf(m, context), maxZoom: 16));
         } catch (_) {
           // Map not laid out yet.
         }
@@ -564,15 +613,11 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
     super.dispose();
   }
 
-  /// A pin standing on its point (the tip).
-  static Marker _pin(LatLng at, MapPin pin) =>
-      Marker(point: at, width: MapPin.width, height: MapPin.height, alignment: Alignment.topCenter, child: pin);
-
   @override
   Widget build(BuildContext context) {
     final m = this.m;
     final fit = m.fitPoints != null && m.fitPoints!.length >= 2
-        ? CameraFit.coordinates(coordinates: m.fitPoints!, padding: _fitPaddingOf(m), maxZoom: 16)
+        ? CameraFit.coordinates(coordinates: m.fitPoints!, padding: _fitPaddingOf(m, context), maxZoom: 16)
         : null;
     return ClipRect(
       child: FlutterMap(
@@ -612,17 +657,34 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
           if (m.route.length >= 2)
             PolylineLayer(
               polylines: [
-                Polyline(points: m.route, color: TtColors.route, strokeWidth: 4, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
-                if (widget.run.length >= 2)
-                  Polyline(points: widget.run, color: TtColors.routeRun, strokeWidth: 4, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
+                Polyline(points: m.route, color: TtColors.route, strokeWidth: 3, strokeCap: StrokeCap.round, strokeJoin: StrokeJoin.round),
+                // Flat ends, so the pieces meet without darker overlaps.
+                for (final piece in widget.run)
+                  if (piece.points.length >= 2)
+                    Polyline(
+                      points: piece.points,
+                      color: TtColors.routeRun.withValues(alpha: piece.alpha),
+                      strokeWidth: 3,
+                      strokeCap: StrokeCap.butt,
+                      strokeJoin: StrokeJoin.round,
+                    ),
               ],
             ),
           MarkerLayer(
             markers: [
               if (m.pulseAt != null)
                 Marker(point: m.pulseAt!, width: 180, height: 180, child: PulseRing(color: m.pulseColor)),
-              if (m.pickup != null) _pin(m.pickup!, const MapPin.pickup()),
-              if (m.drop != null) _pin(m.drop!, const MapPin.drop()),
+              // With a name chip the chip marks the place (below); otherwise the dot / pin does.
+              if (m.pickup != null && m.pickupLabel == null)
+                Marker(point: m.pickup!, width: PickupHalo.size, height: PickupHalo.size, child: const PickupHalo()),
+              if (m.drop != null && m.dropLabel == null)
+                Marker(
+                  point: m.drop!,
+                  width: _dropPinSize,
+                  height: _dropPinSize,
+                  alignment: Alignment.topCenter,
+                  child: const DropPin(size: _dropPinSize),
+                ),
               for (final v in widget.vehicles)
                 Marker(
                   point: v.position,
@@ -630,7 +692,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
                   height: v.large ? 56 : 36,
                   child: VehicleMarker(type: v.type, heading: v.heading, large: v.large),
                 ),
-              ..._placeLabels(m),
+              ..._chipMarkers(m, context),
               ...m.extraMarkers,
             ],
           ),

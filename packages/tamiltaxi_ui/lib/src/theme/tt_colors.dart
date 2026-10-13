@@ -27,12 +27,12 @@ abstract final class TtColors {
   static const error = Color(0xFFB91C1C);
   static const sos = Color(0xFFDC2626);
 
-  /// Drop markers (the map pin, list pins), like RedTaxi's; the pickup is [success] green.
+  /// Drop markers (map and list pins); the pickup is [success] green.
   static const drop = Color(0xFFDC2626);
 
-  /// Map route: a light slate line, and the dark stretch that runs along it on route previews (like RedTaxi's).
-  static const route = Color(0xFF94A3B8);
-  static const routeRun = navy900;
+  /// Map route, like Ola's: a light slate line, and the darker slate that fills it on route previews.
+  static const route = navy300;
+  static const routeRun = Color(0xFF475569);
 
   // Status tints (10% fill used by banners and pills)
   static const successTint = Color(0xFFDCFCE7);
