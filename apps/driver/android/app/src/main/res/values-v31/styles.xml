@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ system splash: brand colour + the white தமிழ் / Taxi name (drawable-xxxhdpi/splash_icon.png,
-         288 dp at 4x: the name inside the 192 dp icon circle). -->
+    <!-- Android 12+ system splash: white + the Tamil Taxi Driver logo (drawable-xxxhdpi/splash_icon.png, 288 dp at 4x:
+         the logo 129 dp wide, inside the 192 dp icon circle; scripts/brand_icons.py). -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
         <item name="android:windowBackground">@drawable/launch_background</item>
     </style>

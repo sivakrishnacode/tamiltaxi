@@ -13,11 +13,14 @@ under apps/<app>/android/app/src/main/res/:
   shows. mipmap-*/ic_launcher_monochrome.png: the same, one colour (Android 13 themed icons; the logo's white
   details stay open).
 - mipmap-*/ic_launcher.png: the legacy icon (Android 7 and older): the logo on a white rounded square.
-- drawable-xxxhdpi/splash_icon.png: Android 12+ system splash, 288 dp at 4x, the logo 136 dp wide (it has to fit
-  the 192 dp circle). drawable-nodpi/splash_logo.png: the same logo for the older launch_background.xml (136 dp).
+- drawable-xxxhdpi/splash_icon.png: Android 12+ system splash, 288 dp at 4x, the logo 136 dp wide or less (it has
+  to fit the 192 dp circle: the driver logo, taller with DRIVER under it, is 129 dp). drawable-nodpi/splash_logo.png:
+  the same logo for the older launch_background.xml.
 
-and a copy of the xxxhdpi ic_launcher.png in packages/tamiltaxi_ui/assets/brand/ for the design gallery.
+and a copy of the xxxhdpi ic_launcher.png in packages/tamiltaxi_ui/assets/brand/ for the design gallery. Driver
+only: apps/driver/assets/brand/tt_icon.png, the floating bubble over other apps (the logo on white, clipped round).
 """
+import math
 import os
 import sys
 
@@ -26,7 +29,7 @@ from PIL import Image, ImageDraw
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DENSITIES = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
 GALLERY = {'passenger': 'launcher_rider.png', 'driver': 'launcher_driver.png'}
-SPLASH_DP = 136  # logo width on both native splashes and on P-01 / D-01
+SPLASH_DP = 136  # logo width on both native splashes and on P-01 / D-01, or less when a tall logo must shrink to fit
 
 
 def make_logo(art, out):
@@ -85,13 +88,18 @@ def main():
         sq.paste(Image.new('RGBA', (s, s), (255, 255, 255, 255)), (0, 0), mask)
         centred(sq, fitted(logo, s * 0.66)).resize((s // 4, s // 4), Image.LANCZOS).save(
             os.path.join(d, 'ic_launcher.png'))
-    splash = centred(Image.new('RGBA', (1152, 1152), (0, 0, 0, 0)), fitted(logo, SPLASH_DP * 4))
+    # The box's diagonal must stay inside the 192 dp circle (a little margin).
+    splash_dp = min(SPLASH_DP, math.floor(190 / math.hypot(1, logo.height / logo.width)))
+    splash = centred(Image.new('RGBA', (1152, 1152), (0, 0, 0, 0)), fitted(logo, splash_dp * 4))
     splash.save(os.path.join(res, 'drawable-xxxhdpi', 'splash_icon.png'), optimize=True)
-    fitted(logo, SPLASH_DP * 4).save(os.path.join(res, 'drawable-nodpi', 'splash_logo.png'), optimize=True)
+    fitted(logo, splash_dp * 4).save(os.path.join(res, 'drawable-nodpi', 'splash_logo.png'), optimize=True)
+    if app == 'driver':
+        bubble = centred(Image.new('RGBA', (192, 192), (255, 255, 255, 255)), fitted(logo, 192 * 0.6))
+        bubble.save(os.path.join(ROOT, 'apps', app, 'assets', 'brand', 'tt_icon.png'))
     gallery = os.path.join(ROOT, 'packages', 'tamiltaxi_ui', 'assets', 'brand', GALLERY[app])
     Image.open(os.path.join(res, 'mipmap-xxxhdpi', 'ic_launcher.png')).save(gallery)
-    h = round(SPLASH_DP * logo.height / logo.width)
-    print(f'{app}: icons and splash written; splash logo {SPLASH_DP} x {h} dp')
+    h = round(splash_dp * logo.height / logo.width)
+    print(f'{app}: icons and splash written; splash logo {splash_dp} x {h} dp')
 
 
 if __name__ == '__main__':

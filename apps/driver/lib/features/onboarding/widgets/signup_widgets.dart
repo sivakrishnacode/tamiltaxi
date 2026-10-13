@@ -366,26 +366,6 @@ class BottomActions extends StatelessWidget {
       );
 }
 
-/// "DRIVER" tag next to the wordmark.
-class DriverTag extends StatelessWidget {
-  const DriverTag({super.key, this.large = false});
-  final bool large;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: EdgeInsets.symmetric(horizontal: large ? 14 : 8, vertical: large ? 4 : 2),
-        decoration: const BoxDecoration(color: TtColors.coral600, borderRadius: TtRadii.pillRadius),
-        child: Text(
-          'DRIVER',
-          style: (large ? context.type.bodySemibold : context.type.caption).copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            letterSpacing: large ? 3 : 1.5,
-          ),
-        ),
-      );
-}
-
 /// Navy header for D-03a / D-03b: back arrow, big title and a subtitle line.
 class AuthHeader extends StatelessWidget {
   const AuthHeader({super.key, required this.title, required this.subtitle});
@@ -428,16 +408,4 @@ class AuthHeader extends StatelessWidget {
           ),
         ),
       );
-}
-
-/// The logo on the driver app's navy screens: white letters with the coral road (the reversed logo).
-class DriverWordmark extends StatelessWidget {
-  const DriverWordmark({super.key, this.size = 48, this.color = Colors.white, this.stacked = true});
-  final double size;
-  final Color color;
-  final bool stacked;
-
-  @override
-  Widget build(BuildContext context) =>
-      TtWordmark(size: size, color: color, roadColor: TtColors.coral500, stacked: stacked);
 }

@@ -42,8 +42,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    # The floating bubble over other apps: the road x on coral (the launcher icon is the kolam set).
-    - assets/brand/tt_icon.png
+    # The Tamil Taxi Driver logo (DriverLogo) and the floating bubble over other apps (tt_icon.png); the launcher icon,
+    # native splashes and the bubble are made from the logo by scripts/brand_icons.py.
+    - assets/brand/
     # Welcome screen picture (D-02), made with ChatGPT; see docs/design/onboarding/.
     - assets/onboarding/
 

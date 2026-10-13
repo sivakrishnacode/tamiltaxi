@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#1E293B</color>
+    <!-- Both native splashes: white behind the Clean White driver logo (D-01 continues it). -->
+    <color name="splash_background">#FFFFFF</color>
 </resources>

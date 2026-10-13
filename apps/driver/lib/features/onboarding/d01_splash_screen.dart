@@ -7,12 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
+import '../../common/driver_logo.dart';
 import '../../common/start_route.dart';
 import '../../router/routes.dart';
-import 'widgets/signup_widgets.dart';
 
-/// D-01 Splash: navy background, the white "தமிழ் / Taxi" name (same art and place as the native splash)
-/// and a coral "DRIVER" tag under it.
+/// D-01 Splash: white background and the Tamil Taxi Driver logo (same picture, size and place as the native splash).
 /// After 1.5 s: signed in → Home, otherwise → D-02 Welcome. With the live API a signed-in driver goes
 /// where their application stands: Home (approved), or D-07 (missing documents, under review or rejected).
 class D01SplashScreen extends ConsumerStatefulWidget {
@@ -68,30 +67,13 @@ class _D01SplashScreenState extends ConsumerState<D01SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: TtColors.navy900,
+        backgroundColor: TtColors.surface,
         body: Stack(
           children: [
-            // The name sits exactly where the native splash drew it (window centre); the tag hangs below it.
-            Semantics(
-              label: 'Tamil Taxi Driver',
-              child: const Column(
-                children: [
-                  Expanded(child: SizedBox.shrink()),
-                  TtAppName(width: 122),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: EdgeInsets.only(top: TtSpacing.l),
-                        child: DriverTag(large: true),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Exactly where the native splash drew it: the window centre, 129 dp wide (scripts/brand_icons.py).
+            const Center(child: DriverLogo(width: 129)),
             SafeArea(
               child: Align(
                 alignment: Alignment.bottomCenter,
@@ -99,7 +81,7 @@ class _D01SplashScreenState extends ConsumerState<D01SplashScreen> {
                   padding: const EdgeInsets.only(bottom: TtSpacing.xxl + TtSpacing.s),
                   child: Text('Rides and deliveries near you',
                       textAlign: TextAlign.center,
-                      style: context.type.body.copyWith(color: TtColors.navy300)),
+                      style: context.type.body.copyWith(color: TtColors.navy700)),
                 ),
               ),
             ),
