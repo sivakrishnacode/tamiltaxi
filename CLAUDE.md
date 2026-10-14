@@ -178,6 +178,7 @@ docs/tech-docs/system-design-notes.md  design learnings vs our system + optimiza
 docs/private/                    owner-only business docs (git-ignored, never publish)
 .github/                         CI workflow, issue + PR templates
 docs/design/                     screenshots of every app screen + index (scripts/export_design.py)
+docs/design/assets/              logos (masters), Play Store icons, vehicle art, pictures, colours: see its README
 scripts/                         flutter.sh / dart.sh (SDK lookup), build_apks.sh, export_design.py, brand_icons.py, vehicle_icons/
 docker-compose.yml               postgres + redis + api + admin (+ `tools` profile: Adminer, Redis Insight)
 ```
@@ -256,3 +257,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 6 Oct 2026 | Key facts: one ride OTP per rider (live), mock codes labelled |
 | 10 Oct 2026 | Rule 1.5: coding behaviour (think first, simplicity, surgical changes, verifiable goals) |
 | 10 Oct 2026 | Rule 1.4: staging deploys (and the AWS steps they need) are pre-approved |
+| 14 Oct 2026 | Repo map: `docs/design/assets/` (logo masters and other design assets) |

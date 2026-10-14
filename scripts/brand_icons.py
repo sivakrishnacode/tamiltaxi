@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Builds an app's launcher icons and splash pictures from its logo (apps/<app>/assets/brand/logo.png).
+"""Builds an app's logo, launcher icons and splash pictures from its master logo in docs/design/assets/logo/.
 
-    python3 scripts/brand_icons.py passenger                  # icons + splash from the committed logo
-    python3 scripts/brand_icons.py passenger --from art.png   # first make the logo from new art (trimmed, opaque)
+    python3 scripts/brand_icons.py passenger                  # from docs/design/assets/logo/tamil-taxi.png
+    python3 scripts/brand_icons.py driver                     # from docs/design/assets/logo/tamil-taxi-driver.png
+    python3 scripts/brand_icons.py passenger --from art.png   # first make the master from new art (trimmed, opaque)
 
 The logo is the "Clean White" Tamil Taxi logo (13 Oct 2026): navy car and தமிழ், coral pin and TAXI, on a transparent
-background, made with ChatGPT from the owner's brand board (the art stays local in docs/private/brand/). It writes,
-under apps/<app>/android/app/src/main/res/:
+background, made with ChatGPT from the owner's brand board (the art stays local in docs/private/brand/). It copies
+the master to apps/<app>/assets/brand/logo.png (the in-app logo), writes the 512 px Play Store icon to
+docs/design/assets/app-icon/, and under apps/<app>/android/app/src/main/res/:
 
 - mipmap-*/ic_launcher_bg.png: plain white (adaptive icon background, 108 dp).
 - mipmap-*/ic_launcher_foreground.png: the logo, 47 % of the 108 dp canvas wide, inside the area every launcher mask
@@ -22,6 +24,7 @@ only: apps/driver/assets/brand/tt_icon.png, the floating bubble over other apps 
 """
 import math
 import os
+import shutil
 import sys
 
 from PIL import Image, ImageDraw
@@ -29,6 +32,8 @@ from PIL import Image, ImageDraw
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DENSITIES = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
 GALLERY = {'passenger': 'launcher_rider.png', 'driver': 'launcher_driver.png'}
+ASSETS = os.path.join(ROOT, 'docs', 'design', 'assets')
+MASTER = {'passenger': 'tamil-taxi', 'driver': 'tamil-taxi-driver'}  # docs/design/assets/logo/<name>.png
 SPLASH_DP = 136  # logo width on both native splashes and on P-01 / D-01, or less when a tall logo must shrink to fit
 
 
@@ -67,10 +72,14 @@ def mono(im):
 
 def main():
     app = sys.argv[1]
-    logo_path = os.path.join(ROOT, 'apps', app, 'assets', 'brand', 'logo.png')
+    master = os.path.join(ASSETS, 'logo', f'{MASTER[app]}.png')
     if '--from' in sys.argv:
-        make_logo(sys.argv[sys.argv.index('--from') + 1], logo_path)
-    logo = Image.open(logo_path).convert('RGBA')
+        make_logo(sys.argv[sys.argv.index('--from') + 1], master)
+    shutil.copyfile(master, os.path.join(ROOT, 'apps', app, 'assets', 'brand', 'logo.png'))
+    logo = Image.open(master).convert('RGBA')
+    # Play Store icon: full white square (the store rounds it), the logo two thirds of it wide.
+    store = centred(Image.new('RGBA', (512, 512), (255, 255, 255, 255)), fitted(logo, 512 * 0.66))
+    store.convert('RGB').save(os.path.join(ASSETS, 'app-icon', f'{MASTER[app]}-512.png'), optimize=True)
     res = os.path.join(ROOT, 'apps', app, 'android', 'app', 'src', 'main', 'res')
     for name, k in DENSITIES.items():
         d = os.path.join(res, f'mipmap-{name}')

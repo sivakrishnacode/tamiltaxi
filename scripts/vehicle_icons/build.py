@@ -1,6 +1,7 @@
 """Builds the apps' vehicle miniatures from three ChatGPT sprite sheets in docs/design/vechile/.
 
     python3 scripts/vehicle_icons/build.py            # writes packages/tamiltaxi_ui/assets/vehicles/<kind>.webp
+                                                      # (and the same into docs/design/assets/vehicles/)
     python3 scripts/vehicle_icons/build.py --preview  # also build/vehicle_icons/preview.png (light + dark rows)
 
 Pink Taxi (rides for women riders with women drivers) uses `<kind>_pink.webp`: the same vehicles with the coral
@@ -17,6 +18,7 @@ placed on one 336 x 240 canvas (the 56 x 40 dp list box at 6x, sharp up to the 9
 baseline, a size per class (two-wheelers smaller than cars) and the same soft ground shadow.
 """
 import os
+import shutil
 import sys
 
 from PIL import Image, ImageDraw, ImageFilter, ImageOps
@@ -24,6 +26,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageOps
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, 'docs', 'design', 'vechile')
 OUT = os.path.join(ROOT, 'packages', 'tamiltaxi_ui', 'assets', 'vehicles')
+ASSETS = os.path.join(ROOT, 'docs', 'design', 'assets', 'vehicles')
 
 # Sheet → asset names in reading order (row by row, left to right as ChatGPT drew them).
 SHEETS = {
@@ -117,6 +120,8 @@ def pink(im):
 def save(name, im):
     path = os.path.join(OUT, f'{name}.webp')
     im.save(path, 'WEBP', quality=90, method=6)
+    # The same file in the design asset library (docs/design/assets/vehicles/).
+    shutil.copyfile(path, os.path.join(ASSETS, f'{name}.webp'))
     print(f'{name}: {im.width}x{im.height}, {os.path.getsize(path) // 1024} KB')
 
 
