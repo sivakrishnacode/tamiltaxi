@@ -21,7 +21,7 @@ export class AuthController {
   @Post('otp')
   @HttpCode(200)
   send(@Body() body: SendOtpDto): Promise<{ expiresInSeconds: number }> {
-    return this.otp.send(AuthService.normalise(body.phone));
+    return this.otp.send(AuthService.normalise(body.phone), body.app);
   }
 
   @RateLimit(LIMITS.authVerify)

@@ -39,6 +39,12 @@ export interface Env {
     readonly riderWorkflowId: string;
     readonly baseUrl: string;
   };
+  /** WATX (WhatsApp Business API) for login codes. Empty key = codes are not sent (dev mode logs them). */
+  readonly watx: {
+    readonly apiKey: string;
+    /** Approved authentication templates, one body parameter (the code). The admin panel uses the passenger one. */
+    readonly otpTemplates: { readonly passenger: string; readonly driver: string };
+  };
 }
 
 function required(name: string): string {
@@ -61,6 +67,10 @@ export function loadEnv(): Env {
   if (devOtpCode && !/^\d{6}$/.test(devOtpCode)) throw new Error('DEV_OTP_CODE must be 6 digits');
   if (nodeEnv === 'production' && isOtpDevMode && !devOtpCode) {
     throw new Error('OTP_DEV_MODE in production needs DEV_OTP_CODE (a secret 6-digit code), or set OTP_DEV_MODE=false');
+  }
+  const watxApiKey = process.env.WATX_API_KEY ?? '';
+  if (nodeEnv === 'production' && !isOtpDevMode && !watxApiKey) {
+    throw new Error('OTP_DEV_MODE=false in production needs WATX_API_KEY, or no login code is ever sent');
   }
   return {
     nodeEnv,
@@ -92,6 +102,13 @@ export function loadEnv(): Env {
       driverWorkflowId: process.env.DIDIT_DRIVER_WORKFLOW_ID ?? '',
       riderWorkflowId: process.env.DIDIT_RIDER_WORKFLOW_ID ?? '',
       baseUrl: process.env.DIDIT_BASE_URL ?? 'https://verification.didit.me',
+    },
+    watx: {
+      apiKey: watxApiKey,
+      otpTemplates: {
+        passenger: process.env.WATX_OTP_TEMPLATE_PASSENGER || 'login_otp_passenger',
+        driver: process.env.WATX_OTP_TEMPLATE_DRIVER || 'login_otp_driver',
+      },
     },
   };
 }

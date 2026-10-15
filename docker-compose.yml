@@ -77,6 +77,11 @@ services:
       DIDIT_WEBHOOK_SECRET: ${DIDIT_WEBHOOK_SECRET:-}
       DIDIT_DRIVER_WORKFLOW_ID: ${DIDIT_DRIVER_WORKFLOW_ID:-}
       DIDIT_RIDER_WORKFLOW_ID: ${DIDIT_RIDER_WORKFLOW_ID:-}
+      # Login codes on WhatsApp through WATX (app.watx.in). Empty key = not sent (OTP_DEV_MODE logs them).
+      WATX_API_KEY: ${WATX_API_KEY:-}
+      # Approved template names; empty = login_otp_passenger / login_otp_driver.
+      WATX_OTP_TEMPLATE_PASSENGER: ${WATX_OTP_TEMPLATE_PASSENGER:-}
+      WATX_OTP_TEMPLATE_DRIVER: ${WATX_OTP_TEMPLATE_DRIVER:-}
     volumes:
       - uploads:/data/uploads
     ports:

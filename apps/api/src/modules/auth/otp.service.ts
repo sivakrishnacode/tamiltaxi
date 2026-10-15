@@ -5,6 +5,8 @@ import type { Env } from '../../core/config/env.js';
 import { ENV } from '../../core/config/env.token.js';
 import { countHit, TooManyRequestsException } from '../../core/rate-limit/rate-limit.js';
 import { RedisService } from '../../core/redis/redis.service.js';
+import type { LoginApp } from './dto/verify-otp.dto.js';
+import { WatxClient } from './watx.client.js';
 
 const OTP_TTL_S = 300;
 const MAX_SENDS = 5;
@@ -20,7 +22,7 @@ const GLOBAL_FAILURES_KEY = 'otp:failures:global';
 export const GLOBAL_LOCK_KEY = 'otp:lock:global';
 
 /**
- * One-time codes in Redis with send and attempt limits. Swap `deliver` for an SMS provider (MSG91, Twilio…).
+ * One-time codes in Redis with send and attempt limits, sent on WhatsApp through WATX when WATX_API_KEY is set.
  *
  * Brute-force guards: per phone (5 sends / 15 min, 5 wrong tries per code), per IP (the `@RateLimit` on the
  * controller), a code must have been sent to the phone in the last 10 min (also with DEV_OTP_CODE, which is the same
@@ -34,9 +36,11 @@ export class OtpService {
   constructor(
     private readonly redis: RedisService,
     @Inject(ENV) private readonly env: Env,
+    private readonly watx: WatxClient,
   ) {}
 
-  async send(phone: string): Promise<{ expiresInSeconds: number }> {
+  /** [app] picks the WhatsApp template (driver or passenger; none = passenger, as older app builds send). */
+  async send(phone: string, app?: LoginApp): Promise<{ expiresInSeconds: number }> {
     const sends = await this.redis.incr(`otp:sends:${phone}`);
     if (sends === 1) await this.redis.expire(`otp:sends:${phone}`, SEND_WINDOW_S);
     if (sends > MAX_SENDS) {
@@ -52,13 +56,13 @@ export class OtpService {
       .set(`otp:sent:${phone}`, '1', 'EX', SENT_WINDOW_S)
       .del(`otp:attempts:${phone}`)
       .exec();
-    this.deliver(phone, code);
+    await this.deliver(phone, code, app);
     return { expiresInSeconds: OTP_TTL_S };
   }
 
   /**
-   * True if [code] is right. Dev mode: only DEV_OTP_CODE when it is set, else any 6 digits except 000000. 401 when no
-   * code was sent to [phone] in the last 10 min; 429 after too many wrong tries (this phone, or everyone at once).
+   * True if [code] is the one sent. Dev mode also takes DEV_OTP_CODE when it is set, else any 6 digits except 000000.
+   * 401 when no code was sent to [phone] in the last 10 min; 429 after too many wrong tries (this phone, or everyone).
    */
   async verify(phone: string, code: string): Promise<boolean> {
     const lockS = await this.redis.ttl(GLOBAL_LOCK_KEY);
@@ -78,7 +82,7 @@ export class OtpService {
       });
     }
     const expected = await this.redis.get(`otp:code:${phone}`);
-    const isValid = this.env.isOtpDevMode ? OtpService.isDevCode(code, this.env.devOtpCode) : expected !== null && expected === code;
+    const isValid = (expected !== null && expected === code) || (this.env.isOtpDevMode && OtpService.isDevCode(code, this.env.devOtpCode));
     if (isValid) await this.redis.del(`otp:code:${phone}`, `otp:attempts:${phone}`, `otp:sent:${phone}`);
     else await this.countFailure();
     return isValid;
@@ -102,8 +106,18 @@ export class OtpService {
     return devOtpCode ? code === devOtpCode : code !== '000000';
   }
 
-  private deliver(phone: string, code: string): void {
+  /**
+   * WhatsApp through WATX when it is set up, with the app's template. Dev mode also logs the code, and a failed send
+   * doesn't stop the sign-in there (DEV_OTP_CODE still works); in live mode it is a 503.
+   */
+  private async deliver(phone: string, code: string, app?: LoginApp): Promise<void> {
     if (this.env.isOtpDevMode) this.logger.log(`OTP for ${phone}: ${code}`);
-    // Production: send via SMS provider here.
+    if (!this.watx.isEnabled) return;
+    const { otpTemplates } = this.env.watx;
+    try {
+      await this.watx.sendTemplate(phone, app === 'driver' ? otpTemplates.driver : otpTemplates.passenger, [code]);
+    } catch (e) {
+      if (!this.env.isOtpDevMode) throw e;
+    }
   }
 }

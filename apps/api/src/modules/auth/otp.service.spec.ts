@@ -1,8 +1,9 @@
-import { Logger } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 
 import type { Env } from '../../core/config/env.js';
 import type { RedisService } from '../../core/redis/redis.service.js';
 import { GLOBAL_LOCK_KEY, GLOBAL_MAX_FAILURES, OtpService } from './otp.service.js';
+import type { WatxClient } from './watx.client.js';
 
 /** The Redis commands OtpService uses, in memory (TTLs are remembered, never counted down). */
 function fakeRedis(): RedisService & { store: Map<string, string> } {
@@ -51,7 +52,10 @@ function fakeRedis(): RedisService & { store: Map<string, string> } {
   return r as unknown as RedisService & { store: Map<string, string> };
 }
 
-const otp = (env: Partial<Env>, redis = fakeRedis()): OtpService => new OtpService(redis, { isOtpDevMode: true, devOtpCode: '', ...env } as Env);
+const TEMPLATES = { passenger: 'login_otp_passenger', driver: 'login_otp_driver' };
+/** WATX off unless [watx] is passed. */
+const otp = (env: Partial<Env>, redis = fakeRedis(), watx = { isEnabled: false, sendTemplate: vi.fn() }): OtpService =>
+  new OtpService(redis, { isOtpDevMode: true, devOtpCode: '', watx: { apiKey: '', otpTemplates: TEMPLATES }, ...env } as Env, watx as unknown as WatxClient);
 
 describe('OtpService', () => {
   beforeEach(() => {
@@ -66,11 +70,33 @@ describe('OtpService', () => {
     expect(await s.verify('+919000000001', '123456')).toBe(true);
   });
 
-  it('dev mode with DEV_OTP_CODE: only that code signs in', async () => {
-    const s = otp({ devOtpCode: '482915' });
+  it('dev mode with DEV_OTP_CODE: that code or the one sent', async () => {
+    const redis = fakeRedis();
+    const s = otp({ devOtpCode: '482915' }, redis);
     await s.send('+919000000001');
-    expect(await s.verify('+919000000001', '123456')).toBe(false);
+    const sent = redis.store.get('otp:code:+919000000001')!;
+    expect(await s.verify('+919000000001', ['123456', '654321'].find((c) => c !== sent)!)).toBe(false);
     expect(await s.verify('+919000000001', '482915')).toBe(true);
+    await s.send('+919000000001');
+    expect(await s.verify('+919000000001', redis.store.get('otp:code:+919000000001')!)).toBe(true);
+  });
+
+  it("sends the code on WhatsApp with the app's template (passenger when the app doesn't say)", async () => {
+    const redis = fakeRedis();
+    const watx = { isEnabled: true, sendTemplate: vi.fn().mockResolvedValue(undefined) };
+    const s = otp({ isOtpDevMode: false }, redis, watx);
+    await s.send('+919000000006', 'driver');
+    expect(watx.sendTemplate).toHaveBeenLastCalledWith('+919000000006', 'login_otp_driver', [redis.store.get('otp:code:+919000000006')]);
+    await s.send('+919000000007');
+    expect(watx.sendTemplate).toHaveBeenLastCalledWith('+919000000007', 'login_otp_passenger', [redis.store.get('otp:code:+919000000007')]);
+  });
+
+  it('a failed WhatsApp send is an error in live mode, but not in dev mode (DEV_OTP_CODE still signs in)', async () => {
+    const watx = { isEnabled: true, sendTemplate: vi.fn().mockRejectedValue(new ServiceUnavailableException()) };
+    await expect(otp({ isOtpDevMode: false }, fakeRedis(), watx).send('+919000000008')).rejects.toMatchObject({ status: 503 });
+    const dev = otp({ devOtpCode: '482915' }, fakeRedis(), watx);
+    await dev.send('+919000000008');
+    expect(await dev.verify('+919000000008', '482915')).toBe(true);
   });
 
   it('live mode: only the code that was sent', async () => {
