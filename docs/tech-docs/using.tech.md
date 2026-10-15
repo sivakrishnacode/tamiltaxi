@@ -2077,6 +2077,17 @@ saw it.
 Then admin only at `2cdcc95` (the banner × wording; `releases/2cdcc95`, rollback image
 `tamiltaxi-admin:rollback-20261015-2cdcc95`): healthy, login 200, the page says "hides one until the app restarts".
 
+**Deployed 15 Oct 2026 (third):** API and admin at `74cc68b`: automations (6k; migration `automations` applied on
+start), the admin sidebar in tabs and Settings in two panes (6b). A 3.5 MB slim release (`releases/74cc68b`: the
+API's `dist/`, `prisma/` and `src/generated/` and the admin's `apps/admin` over the running images; no package files or
+Dockerfiles had changed). The local API image build failed in `npm ci` (ECONNRESET on mobile data), so the API outputs
+were built locally exactly as the Dockerfile does (`prisma generate && nest build`; the generated client has no native
+binaries). Backup: `/opt/tamiltaxi/backups/20261015-74cc68b` (database dump, compose files, Caddyfile, `.env`);
+rollback images `tamiltaxi-api:rollback-20261015-74cc68b` / `tamiltaxi-admin:rollback-20261015-74cc68b` (tag them
+back to `:local`, then `up -d --no-build api admin`). Checked live: `/health`, app-config and admin login 200;
+`GET /admin/automations` answers zero counts; a campaign scheduled for 2030 was created, cancelled and deleted (never
+sent), a past time got 400; the signed-in Automations page renders. `rido-sg` also allows `157.50.7.24` (SSH, 15 Oct).
+
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
 [staging-kyc-delete-policy.json](staging-kyc-delete-policy.json). The `rido` AWS profile cannot administer IAM.
