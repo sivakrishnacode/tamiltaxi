@@ -1968,6 +1968,17 @@ then `up -d --no-build api admin`). Checked live: `/health`, app-config and admi
 the signed-in `GET /admin/settings` has `offerFanOut` 3, and for test driver `+919100000601` `GET /trips/offers` 200
 and an accept of an unknown trip 409. No trips were booked. `rido-sg` also allows `117.96.215.176` (SSH, 10 Oct).
 
+**Deployed 15 Oct 2026:** API only at `6aad7ba` (admin unchanged at `21ed3a6`): login codes on WhatsApp through WATX,
+see "Login codes on WhatsApp" in 6. `WATX_API_KEY` added to `/opt/tamiltaxi/.env` (value in the git-ignored
+`credentials.local.md`); `OTP_DEV_MODE` stays true, so the WhatsApp code and `DEV_OTP_CODE` both sign in. A 0.5 MB
+slim release (`releases/6aad7ba`: only `dist/` over the running image; no package files, Dockerfiles or migrations had
+changed since `21ed3a6`). Backup: `/opt/tamiltaxi/backups/20261015-6aad7ba` (database dump, compose files, Caddyfile,
+`.env`); rollback image `tamiltaxi-api:rollback-20261015-6aad7ba` (tag it back to `:local`, then `up -d --no-build api`;
+removing the `WATX_API_KEY` line alone stops the messages). Checked live: `/health`, app-config and admin login 200;
+`POST /auth/otp` with an unknown `app` 400; from inside the API container WATX accepts the key (a made-up template to a
+malformed number reached Meta and was refused there; a wrong key gets 401). No WhatsApp message was sent. `rido-sg` also
+allows `49.206.113.163` (SSH, 15 Oct).
+
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
 [staging-kyc-delete-policy.json](staging-kyc-delete-policy.json). The `rido` AWS profile cannot administer IAM.
