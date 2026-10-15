@@ -5,13 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
+import 'package:tamiltaxi_whatsapp_otp/tamiltaxi_whatsapp_otp.dart';
 
 import '../../router/routes.dart';
 import '../../state/live_trip.dart';
 import '../../state/session_actions.dart';
 
 /// P-04 OTP verification: 6-box input, resend countdown, Verify.
-/// Any 6 digits work except 000000 ("Incorrect OTP" + shake).
+/// Any 6 digits work except 000000 ("Incorrect OTP" + shake). A code WhatsApp hands over (zero-tap / one-tap
+/// templates) fills the boxes and verifies.
 class P04OtpScreen extends ConsumerStatefulWidget {
   const P04OtpScreen({super.key, this.phone = '98765 43210', this.showcase = false});
 
@@ -28,16 +30,31 @@ class _P04OtpScreenState extends ConsumerState<P04OtpScreen> {
   static const _resendAfter = 30;
 
   Timer? _timer;
+  StreamSubscription<String>? _whatsApp;
   late int _secondsLeft = widget.showcase ? 24 : _resendAfter;
   late String _otp = widget.showcase ? '48291' : '';
   bool _verifying = false;
   bool _error = false;
   int _shake = 0;
+  /// Bumped when WhatsApp fills the code, so [OtpInput] starts again from it.
+  int _autofills = 0;
 
   @override
   void initState() {
     super.initState();
-    if (!widget.showcase) _startCountdown();
+    if (widget.showcase) return;
+    _startCountdown();
+    _whatsApp = WhatsAppOtp.codes.listen(_onWhatsAppCode);
+  }
+
+  void _onWhatsAppCode(String code) {
+    if (!RegExp(r'^\d{6}$').hasMatch(code) || _verifying) return;
+    setState(() {
+      _otp = code;
+      _error = false;
+      _autofills++;
+    });
+    _verify();
   }
 
   void _startCountdown() {
@@ -53,6 +70,7 @@ class _P04OtpScreenState extends ConsumerState<P04OtpScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _whatsApp?.cancel();
     super.dispose();
   }
 
@@ -62,6 +80,7 @@ class _P04OtpScreenState extends ConsumerState<P04OtpScreen> {
   Future<void> _resend() async {
     _startCountdown();
     try {
+      await WhatsAppOtp.expectCode();
       await ref.read(authRepositoryProvider).sendOtp(_phoneDigits);
     } catch (e) {
       if (mounted) showTtSnack(context, apiErrorMessage(e));
@@ -149,6 +168,7 @@ class _P04OtpScreenState extends ConsumerState<P04OtpScreen> {
                     ),
                     const SizedBox(height: TtSpacing.l),
                     OtpInput(
+                      key: ValueKey(_autofills),
                       initialValue: _otp,
                       autofocus: !widget.showcase,
                       hasError: _error,

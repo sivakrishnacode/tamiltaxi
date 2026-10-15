@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
+import 'package:tamiltaxi_whatsapp_otp/tamiltaxi_whatsapp_otp.dart';
 
 import '../../router/routes.dart';
 import '../../state/live_trip.dart';
@@ -43,6 +44,8 @@ class _P03PhoneScreenState extends ConsumerState<P03PhoneScreen> {
     setState(() => _sending = true);
     final formatted = '${_digits.substring(0, 5)} ${_digits.substring(5)}';
     try {
+      // WhatsApp hands the code straight to P-04 once it knows the app is waiting for one.
+      await WhatsAppOtp.expectCode();
       // The API takes digits only; the OTP screen shows the formatted number.
       await ref.read(authRepositoryProvider).sendOtp(_digits);
     } catch (e) {

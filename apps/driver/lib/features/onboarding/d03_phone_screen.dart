@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
+import 'package:tamiltaxi_whatsapp_otp/tamiltaxi_whatsapp_otp.dart';
 
 import '../../common/showcase.dart';
 import '../../router/routes.dart';
@@ -47,6 +48,8 @@ class _D03PhoneScreenState extends ConsumerState<D03PhoneScreen> {
     final formatted = '${_digits.substring(0, 5)} ${_digits.substring(5)}';
     setState(() => _sending = true);
     try {
+      // WhatsApp hands the code straight to D-03b once it knows the app is waiting for one.
+      await WhatsAppOtp.expectCode();
       // The API wants +91 and 10 digits; the seed repository takes the formatted number.
       await ref.read(driverRepositoryProvider).sendOtp(ref.read(isLiveApiProvider) ? apiPhone(formatted) : formatted);
     } on Exception catch (e) {

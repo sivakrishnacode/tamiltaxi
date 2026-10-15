@@ -172,6 +172,7 @@ packages/
   tamiltaxi_ui/      @tamiltaxi/ui         theme, widgets (TtMap, TtButton…), illustrations, fonts
   tamiltaxi_data/    @tamiltaxi/data       models, seed, fare engine, repositories (mock + api), simulator
   flutter_overlay_window/        vendored plugin for the driver floating bubble
+  tamiltaxi_whatsapp_otp/        Android plugin: WhatsApp OTP autofill (zero-tap / one-tap login codes) in both apps
 docs/tech-docs/using.tech.md     technical reference (source of truth)
 docs/COST_AND_SCALING.md         running cost per trip, free tiers, P-10 ETA + OSRM plans, scaling stages
 docs/tech-docs/system-design-notes.md  design learnings vs our system + optimization backlog (SD-n)
@@ -258,3 +259,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 10 Oct 2026 | Rule 1.5: coding behaviour (think first, simplicity, surgical changes, verifiable goals) |
 | 10 Oct 2026 | Rule 1.4: staging deploys (and the AWS steps they need) are pre-approved |
 | 14 Oct 2026 | Repo map: `docs/design/assets/` (logo masters and other design assets) |
+| 15 Oct 2026 | Repo map: `packages/tamiltaxi_whatsapp_otp` (WhatsApp OTP autofill plugin) |

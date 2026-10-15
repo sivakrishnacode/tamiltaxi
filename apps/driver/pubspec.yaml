@@ -14,6 +14,8 @@ dependencies:
     path: ../../packages/tamiltaxi_ui
   tamiltaxi_data:
     path: ../../packages/tamiltaxi_data
+  tamiltaxi_whatsapp_otp:
+    path: ../../packages/tamiltaxi_whatsapp_otp
   go_router: ^17.5.0
   flutter_riverpod: ^3.4.3
   flutter_map: ^8.3.2

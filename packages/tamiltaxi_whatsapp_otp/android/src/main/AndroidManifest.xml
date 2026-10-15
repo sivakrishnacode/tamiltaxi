@@ -1,0 +1,32 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 11+: lets the handshake reach WhatsApp and WhatsApp Business. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
+    <application>
+        <!-- Zero-tap: WhatsApp broadcasts the code. -->
+        <receiver
+            android:name="com.tamiltaxi.whatsapp_otp.OtpCodeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.whatsapp.otp.OTP_RETRIEVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- One-tap: WhatsApp's Autofill button opens this, invisibly, on top of the app. -->
+        <activity
+            android:name="com.tamiltaxi.whatsapp_otp.OtpCodeActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="com.whatsapp.otp.OTP_RETRIEVED" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
+import 'package:tamiltaxi_whatsapp_otp/tamiltaxi_whatsapp_otp.dart';
 
 import '../../common/showcase.dart';
 import '../../common/start_route.dart';
@@ -14,7 +15,7 @@ import '../../state/live_helpers.dart';
 import 'widgets/signup_widgets.dart';
 
 /// D-03b OTP verification: 6 boxes, a 30 s resend countdown and "Verify".
-/// 000000 → "Incorrect OTP" + shake. Sign-up → D-04; log-in → Home as Karthik.
+/// 000000 → "Incorrect OTP" + shake. A code WhatsApp hands over (zero-tap / one-tap templates) fills the boxes and verifies. Sign-up → D-04; log-in → Home as Karthik.
 /// Live API: a phone that is already a driver goes where the application stands (Home or D-07) from either entry; a new phone continues to Registration (D-07).
 class D03bOtpScreen extends ConsumerStatefulWidget {
   const D03bOtpScreen({
@@ -38,16 +39,31 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
   static const _resendAfter = 30;
 
   Timer? _timer;
+  StreamSubscription<String>? _whatsApp;
   late int _secondsLeft = widget.showcase ? 24 : _resendAfter;
   late String _code = widget.showcase ? '6103' : '';
   bool _error = false;
   int _shake = 0;
   bool _verifying = false;
+  /// Bumped when WhatsApp fills the code, so [OtpInput] starts again from it.
+  int _autofills = 0;
 
   @override
   void initState() {
     super.initState();
-    if (!widget.showcase) _startCountdown();
+    if (widget.showcase) return;
+    _startCountdown();
+    _whatsApp = WhatsAppOtp.codes.listen(_onWhatsAppCode);
+  }
+
+  void _onWhatsAppCode(String code) {
+    if (!RegExp(r'^\d{6}$').hasMatch(code) || _verifying) return;
+    setState(() {
+      _code = code;
+      _error = false;
+      _autofills++;
+    });
+    _verify();
   }
 
   void _startCountdown() {
@@ -63,6 +79,7 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _whatsApp?.cancel();
     super.dispose();
   }
 
@@ -73,6 +90,7 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
     if (widget.showcase) return showTtSnack(context, kPreviewNote);
     _startCountdown();
     try {
+      await WhatsAppOtp.expectCode();
       await ref.read(driverRepositoryProvider).sendOtp(_apiPhone);
       if (mounted) showTtSnack(context, 'OTP resent');
     } catch (e) {
@@ -178,6 +196,7 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   OtpInput(
+                    key: ValueKey(_autofills),
                     length: 6,
                     initialValue: _code,
                     hasError: _error,
