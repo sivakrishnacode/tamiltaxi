@@ -2025,6 +2025,8 @@ then `up -d --no-build api admin`). Checked live: `/health`, app-config and admi
 `/promos`, its picture came back `image/png` with the year-long immutable cache and `nosniff`, the admin page listed
 it as Scheduled with its thumbnail (`/promo-images/<id>` 200), and Delete removed it (picture 404 after). No rider ever
 saw it.
+Then admin only at `2cdcc95` (the banner × wording; `releases/2cdcc95`, rollback image
+`tamiltaxi-admin:rollback-20261015-2cdcc95`): healthy, login 200, the page says "hides one until the app restarts".
 
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
