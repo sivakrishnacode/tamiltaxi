@@ -70,6 +70,50 @@ Future<String?> routeForTripPush(WidgetRef ref, Map<String, String> data) async 
   return restoreActiveTrip(ref);
 }
 
+/// Where a tapped trip suggestion goes (the API's automations: "Siva, Ooty?" after fares were checked but nothing was
+/// booked, or "Going to Tidel Park?" before a usual trip): the trip ready to book, P-35 for outstation, else P-10 with
+/// the usual vehicle chosen. The pushed pickup is used for a usual trip, or when the phone's location isn't known
+/// yet. Null (stay put) while signed out or a trip is on or being booked.
+String? routeForSuggestionPush(WidgetRef ref, Map<String, String> data) {
+  if (!ref.read(authRepositoryProvider).isLoggedIn || isBusyWithTrip(ref)) return null;
+  final drop = _pushedPlace(data, 'drop');
+  if (drop == null) return Routes.search;
+  final flow = ref.read(rideFlowProvider.notifier);
+  final pickup = _pushedPlace(data, 'pickup');
+  if (pickup != null && (data['kind'] == 'routine' || ref.read(rideFlowProvider).pickup.isUnknownPickup)) flow.setPickup(pickup);
+  flow.setDrop(drop);
+  if (data['mode'] == 'OUTSTATION') {
+    flow.startMode(const ModeRequest(mode: RideMode.outstation));
+    return Routes.outstation;
+  }
+  flow.clearMode();
+  final vehicle = knownVehicleKind(data['vehicle']);
+  if (vehicle != null) flow.selectVehicle(vehicle);
+  return Routes.chooseVehicle;
+}
+
+/// A place sent in a push as `<prefix>Name`, `<prefix>Address`, `<prefix>Lat`, `<prefix>Lng`; null without a point.
+Place? _pushedPlace(Map<String, String> data, String prefix) {
+  final lat = double.tryParse(data['${prefix}Lat'] ?? '');
+  final lng = double.tryParse(data['${prefix}Lng'] ?? '');
+  if (lat == null || lng == null) return null;
+  final name = (data['${prefix}Name'] ?? '').trim();
+  return Place(
+    id: 'push-$prefix-${lat.toStringAsFixed(5)},${lng.toStringAsFixed(5)}',
+    name: name.isEmpty ? 'Pinned location' : name,
+    address: data['${prefix}Address'] ?? '',
+    location: LatLng(lat, lng),
+  );
+}
+
+/// Where a tapped campaign (a festival or weekend push from the admin) goes: the screen it names, else Home.
+String routeForCampaignPush(Map<String, String> data) => switch (data['target']) {
+      'OUTSTATION' => Routes.outstation,
+      'RENTAL' => Routes.rental,
+      'PARCEL' => Routes.parcel,
+      _ => Routes.ride,
+    };
+
 /// A finished trip from a notification: still to rate (and nothing else on) → its P-19 / PP-10 with the driver and
 /// fare; rated, or another trip on → its details (P-22).
 Future<String> openFinishedTrip(WidgetRef ref, String tripId) async {

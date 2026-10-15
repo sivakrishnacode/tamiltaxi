@@ -10,6 +10,7 @@ export 'src/api/api_mappers.dart'
         apiPhone,
         parcelFromJson,
         enumToApi,
+        knownVehicleKind,
         rideRequestFromOffer,
         rideRequestFromTrip,
         shiftingQuoteFromJson,

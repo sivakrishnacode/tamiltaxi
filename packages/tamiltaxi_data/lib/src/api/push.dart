@@ -11,7 +11,8 @@ import 'api_client.dart';
 /// Which app this is (the API keeps one device list per app).
 enum PushApp { passenger, driver }
 
-/// A notification's data: `type` (trip, chat, offer, kyc, announcement, safety, sos), `tripId`, `status`, `channel`.
+/// A notification's data: `type` (trip, chat, offer, kyc, announcement, safety, sos, suggest, campaign), `tripId`,
+/// `status`, `channel`.
 typedef PushData = Map<String, String>;
 
 /// Android channels; ids match the API's `PushChannel`.
@@ -25,6 +26,8 @@ const _channels = [
   AndroidNotificationChannel('announcements', 'Announcements', description: 'News and offers from Tamil Taxi', importance: Importance.defaultImportance),
   AndroidNotificationChannel('safety', 'Safety',
       description: 'SOS alerts and "Is everything OK?" checks during a ride', importance: Importance.max, playSound: true, enableVibration: true),
+  AndroidNotificationChannel('suggestions', 'Trip suggestions',
+      description: 'Reminders about a trip you looked up, your usual rides and festival travel', importance: Importance.defaultImportance),
 ];
 
 /// Firebase Cloud Messaging for the Tamil Taxi apps.
