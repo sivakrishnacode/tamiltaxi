@@ -32,7 +32,7 @@ class ApiAuthRepository implements AuthRepository {
   void markOnboardingSeen() => api.session.markOnboardingSeen();
 
   @override
-  Future<void> sendOtp(String phone) => api.post('/auth/otp', {'phone': apiPhone(phone)});
+  Future<void> sendOtp(String phone) => api.post('/auth/otp', {'phone': apiPhone(phone), 'app': 'passenger'});
 
   /// `app: 'passenger'`: the API signs this phone in as a rider (the same phone can also be a driver).
   @override
@@ -354,7 +354,7 @@ class ApiDriverRepository implements DriverRepository {
   bool get isLoggedIn => api.session.isLoggedIn && (api.session.driverId ?? '').isNotEmpty;
 
   @override
-  Future<void> sendOtp(String phone) => api.post('/auth/otp', {'phone': apiPhone(phone)});
+  Future<void> sendOtp(String phone) => api.post('/auth/otp', {'phone': apiPhone(phone), 'app': 'driver'});
 
   /// existingUser = already a driver; newUser = continue to sign-up (the token is kept for [register]). Sent with
   /// `app: 'driver'`, so the API checks the driver account (blocked drivers, the driver id in the token).
