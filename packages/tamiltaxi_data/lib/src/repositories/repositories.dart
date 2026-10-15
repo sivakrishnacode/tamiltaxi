@@ -80,6 +80,10 @@ abstract interface class PlacesRepository {
   /// Address at [point] (used by "Pin on map" and the device location).
   Future<Place> reverseGeocode(LatLng point);
   bool isInServiceArea(LatLng point);
+
+  /// [isInServiceArea], asking the API when it doesn't know [point] yet (a recent place): false only when it says
+  /// so. Never throws (booking is checked again by the API).
+  Future<bool> checkServiceArea(LatLng point);
 }
 
 /// Ride vehicles, quotes, and the passenger's trip history (rides and parcels).

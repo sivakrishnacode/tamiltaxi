@@ -10,6 +10,7 @@ import '../../common/device_location.dart';
 import '../../router/routes.dart';
 import '../../state/ride_flow.dart';
 import '../states/s04_no_internet_screen.dart';
+import 'widgets/outstation_offer_sheet.dart';
 
 /// Id prefix of live-API search suggestions (`kApiPlacePrefix` in tamiltaxi_data, not exported).
 const _suggestionPrefix = 'api:';
@@ -169,6 +170,14 @@ class _P08SearchScreenState extends ConsumerState<P08SearchScreen> {
       _search(_drop.text);
       return;
     }
+    // A drop beyond the city (Ooty from Coimbatore): a local ride can't go there, so offer outstation instead.
+    final places = ref.read(placesRepositoryProvider);
+    if (places.isInServiceArea(ref.read(rideFlowProvider).pickup.location) && !await places.checkServiceArea(p.location)) {
+      if (!mounted || await offerOutstation(context, ref, p) || !mounted) return;
+      _dropFocus.requestFocus();
+      return;
+    }
+    if (!mounted) return;
     ref.read(rideFlowProvider.notifier).setDrop(p);
     context.push(Routes.chooseVehicle);
   }

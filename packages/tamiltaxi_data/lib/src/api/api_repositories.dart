@@ -197,6 +197,19 @@ class ApiPlacesRepository implements PlacesRepository {
   @override
   bool isInServiceArea(LatLng point) => _serviceArea[_key(point)] ?? true;
 
+  /// `GET /geo/check` (H3 lookup, no Google call) for a point not seen yet; true when it can't be reached.
+  @override
+  Future<bool> checkServiceArea(LatLng point) async {
+    final known = _serviceArea[_key(point)];
+    if (known != null) return known;
+    try {
+      final res = _map(await api.get('/geo/check', query: {'lat': point.latitude, 'lng': point.longitude}));
+      return _serviceArea[_key(point)] = res['isServiceable'] != false;
+    } on Exception {
+      return true;
+    }
+  }
+
   static String _key(LatLng p) => '${p.latitude.toStringAsFixed(4)},${p.longitude.toStringAsFixed(4)}';
 }
 

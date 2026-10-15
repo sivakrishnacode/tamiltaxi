@@ -9,6 +9,7 @@ import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 import '../../common/device_location.dart';
 import '../../router/routes.dart';
 import '../../state/ride_flow.dart';
+import 'widgets/outstation_offer_sheet.dart';
 
 /// P-09 Pin on map: move the map under a fixed coral pin; the address card follows
 /// (reverse geocoded). "Confirm drop" → P-10, or S-08 when the pin is outside Coimbatore.
@@ -130,9 +131,18 @@ class _P09PinOnMapScreenState extends ConsumerState<P09PinOnMapScreen> {
     _lookUp(at);
   }
 
-  void _confirm() {
+  Future<void> _confirm() async {
     final places = ref.read(placesRepositoryProvider);
     final demo = ref.read(demoSettingsProvider);
+    final isDrop = !widget.pickOnly && !widget.forPickup;
+    // A drop pinned beyond the city, from a pickup inside it: outstation instead of "not available".
+    if (isDrop &&
+        !demo.outsideServiceArea &&
+        !places.isInServiceArea(_place.location) &&
+        places.isInServiceArea(ref.read(rideFlowProvider).pickup.location)) {
+      await offerOutstation(context, ref, _place);
+      return;
+    }
     if (demo.outsideServiceArea || !places.isInServiceArea(_place.location)) {
       context.push(Routes.serviceUnavailable, extra: demo.outsideServiceArea ? null : _place.location);
       return;

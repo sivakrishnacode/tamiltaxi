@@ -194,6 +194,9 @@ class MockPlacesRepository with _Latency implements PlacesRepository {
   @override
   bool isInServiceArea(LatLng point) =>
       const Distance().as(LengthUnit.Kilometer, Seed.cityCentre, point) <= Seed.serviceRadiusKm;
+
+  @override
+  Future<bool> checkServiceArea(LatLng point) async => isInServiceArea(point);
 }
 
 class MockRideRepository with _Latency implements RideRepository {

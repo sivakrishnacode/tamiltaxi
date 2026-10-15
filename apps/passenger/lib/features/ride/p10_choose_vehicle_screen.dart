@@ -13,6 +13,7 @@ import '../../state/passenger_session.dart';
 import '../../state/ride_flow.dart';
 import 'p10b_who_is_riding_sheet.dart';
 import 'p11_fare_details_sheet.dart';
+import 'widgets/outstation_offer_sheet.dart';
 
 /// P-10 Choose vehicle: route map, a slim "Choose a ride · For me" row, Pink Taxi for women riders (a woman driver,
 /// first or only; the list turns pink), one 60 dp row per tier ("3 min away · Drop 9:24 PM", Fastest; only the
@@ -69,6 +70,11 @@ class _P10ChooseVehicleScreenState extends ConsumerState<P10ChooseVehicleScreen>
         : !places.isInServiceArea(state.drop.location)
             ? state.drop.location
             : null;
+    // Only the drop is beyond the city: outstation instead (P-35 replaces this screen).
+    if (!demoOutside && outsidePoint == state.drop.location) {
+      await offerOutstation(context, ref, state.drop, replace: true);
+      return;
+    }
     if (demoOutside || outsidePoint != null) {
       context.push(Routes.serviceUnavailable, extra: demoOutside ? null : outsidePoint);
       return;
