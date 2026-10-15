@@ -188,7 +188,7 @@ Flutter app layout: `lib/router` (go_router 17, **pinned**: 18 needs `material_u
 controllers), `lib/features/<feature>/` (one file per screen, named after its frame ID, e.g. `P10ChooseVehicleScreen`),
 `lib/features/design_gallery/` (frame registry + demo controls).
 
-API modules: admin, app-config, auth, drivers, fares, geo (H3), health, kyc (Didit identity checks), maps, notifications (FCM), places, realtime, settings,
+API modules: admin, app-config, auth, drivers, fares, geo (H3), health, kyc (Didit identity checks), maps, notifications (FCM), places, promos (splash and Home banners), realtime, settings,
 subscriptions, support, trips, users.
 
 ---

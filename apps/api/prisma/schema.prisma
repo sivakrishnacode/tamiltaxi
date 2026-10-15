@@ -821,6 +821,36 @@ model Announcement {
   createdAt DateTime             @default(now())
 }
 
+/// Where a promo picture shows in the passenger app (6j).
+enum PromoPlacement {
+  /// Full screen while the app opens (festivals), Rapido style. The newest live one wins.
+  SPLASH
+  /// Home, under "More ways to travel": a row the rider swipes through.
+  BANNER
+}
+
+/// Admin pictures in the passenger app (6j): the splash and the Home banners. The picture is kept in the row (a few
+/// small images: no bucket, and it is backed up with the database); `GET /v1/promos/:id/image` serves it publicly.
+model Promo {
+  id        String         @id @default(cuid())
+  placement PromoPlacement
+  /// What the picture says: read by screen readers, shown in the admin list.
+  title     String
+  image     Bytes
+  /// image/jpeg, image/png or image/webp (checked against the bytes on upload).
+  imageType String
+  /// Banners: opened in the browser on tap (https). Null = picture only.
+  linkUrl   String?
+  /// Banners: lower first, then newest first.
+  sortOrder Int            @default(0)
+  isActive  Boolean        @default(true)
+  startsAt  DateTime       @default(now())
+  endsAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  @@index([placement, isActive])
+}
+
 /// Key-value platform settings (e.g. currentMultiplier, searchRadiusKm, offerSeconds).
 model AppSetting {
   key       String   @id

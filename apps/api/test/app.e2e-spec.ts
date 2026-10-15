@@ -2089,4 +2089,73 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(await redis.exists('h3:surge:stale-cell')).toBe(0);
     for (const c of await redis.smembers(SURGE_CELLS_KEY)) expect(await redis.exists(`h3:surge:${c}`)).toBe(1);
   });
+
+  it('admin splash and banners: upload, the passenger app reads them, hide and delete', async () => {
+    const admin = await adminAuth();
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+
+    // The picture's bytes decide its type: an HTML page called banner.png is refused.
+    await http
+      .post('/v1/admin/promos')
+      .set(admin)
+      .field('placement', 'BANNER')
+      .field('title', 'Not a picture')
+      .attach('image', Buffer.from('<html><script>alert(1)</script>'), { filename: 'banner.png', contentType: 'image/png' })
+      .expect(400);
+    await http.post('/v1/admin/promos').set(admin).field('placement', 'BANNER').field('title', 'No picture').expect(400);
+    await http
+      .post('/v1/admin/promos')
+      .set(admin)
+      .field('placement', 'BANNER')
+      .field('title', 'Plain http')
+      .field('linkUrl', 'http://example.com')
+      .attach('image', png, { filename: 'b.png', contentType: 'image/png' })
+      .expect(400);
+
+    const banner = await http
+      .post('/v1/admin/promos')
+      .set(admin)
+      .field('placement', 'BANNER')
+      .field('title', 'Drive with Tamil Taxi')
+      .field('linkUrl', 'https://tamiltaxi.example/drive')
+      .field('sortOrder', '1')
+      .attach('image', png, { filename: 'b.png', contentType: 'image/png' })
+      .expect(201);
+    expect(banner.body).toMatchObject({ placement: 'BANNER', sortOrder: 1, isActive: true, linkUrl: 'https://tamiltaxi.example/drive' });
+    expect(banner.body).not.toHaveProperty('image');
+    const splash = await http
+      .post('/v1/admin/promos')
+      .set(admin)
+      .field('placement', 'SPLASH')
+      .field('title', 'Happy Diwali')
+      .field('linkUrl', 'https://ignored.example')
+      .attach('image', png, { filename: 's.png', contentType: 'image/png' })
+      .expect(201);
+    expect(splash.body.linkUrl).toBeNull();
+
+    // Public: no sign-in (the splash shows before it).
+    const live = await http.get('/v1/promos').expect(200);
+    expect(live.body.splash).toMatchObject({ id: splash.body.id, imagePath: `/promos/${splash.body.id}/image` });
+    expect(live.body.banners.map((b: { id: string }) => b.id)).toContain(banner.body.id);
+    const img = await http.get(`/v1/promos/${banner.body.id}/image`).expect(200);
+    expect(img.headers['content-type']).toBe('image/png');
+    expect(img.headers['cache-control']).toContain('immutable');
+    expect(img.headers['x-content-type-options']).toBe('nosniff');
+    expect(Buffer.from(img.body as Buffer).equals(png)).toBe(true);
+    await http.get('/v1/promos/nope/image').expect(404);
+
+    // Riders can't manage them.
+    await http.get('/v1/admin/promos').set(quoter).expect(403);
+
+    await http.patch(`/v1/admin/promos/${banner.body.id}`).set(admin).send({ isActive: false, sortOrder: 4 }).expect(200);
+    const after = await http.get('/v1/promos').expect(200);
+    expect(after.body.banners.map((b: { id: string }) => b.id)).not.toContain(banner.body.id);
+    const listed = await http.get('/v1/admin/promos').set(admin).expect(200);
+    expect(listed.body.find((p: { id: string }) => p.id === banner.body.id)).toMatchObject({ isActive: false, sortOrder: 4 });
+
+    await http.delete(`/v1/admin/promos/${banner.body.id}`).set(admin).expect(204);
+    await http.delete(`/v1/admin/promos/${splash.body.id}`).set(admin).expect(204);
+    await http.get(`/v1/promos/${banner.body.id}/image`).expect(404);
+    expect((await prisma.auditLog.count({ where: { entity: 'promos', entityId: banner.body.id } })) >= 2).toBe(true);
+  });
 });
