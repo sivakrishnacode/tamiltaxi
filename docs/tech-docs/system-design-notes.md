@@ -180,6 +180,25 @@ the nearest driver first say. The batch assignment still puts each driver first
 in only one rider's queue. Revisit when supply is dense: with many drivers close by, one at a time sends the nearest
 car and spends fewer driver taps. Gap found: a driver who loses the race sees the card vanish with no reason (SD-17).
 
+### 15 Oct 2026: out-of-city drops and reminder pushes (Rapido, Ola)
+
+Source: the owner's phone. Rapido: a local search for a town beyond the city opens "Book Outstation Instead" with
+Continue as Outstation / Change Drop, instead of failing later. Ola: a few minutes after the owner looked up Ooty and
+didn't book, a push "Siva, Ooty? Drivers are available. Confirm now to get an Ola Outstation cab right at your
+doorstep."; another app pushed "Native Poga Plan Ah? Just tap. Book One-Way Drop!" before a festival.
+
+| | Them | Us (15 Oct 2026) |
+|---|---|---|
+| Drop beyond the city | Sheet at once on the search screen | Same idea: `OutstationOfferSheet` on P-08 / P-09 (P-10 as a fallback); recents checked with `GET /geo/check` |
+| Looked up, didn't book | One push minutes later, named and about the place | `reminder.search` job after `searchReminderDelayMin` (10), only if no trip was booked since the quote |
+| Usual trips | Not seen yet | `reminder.routine-scan` every 5 min: the same drop at the same time on ≥ 3 days in 28 → a push 15 min before |
+| Festival pushes | Marketing pushes to everyone | Admin › Automations › Campaigns: scheduled topic push that opens Outstation, Rentals, Parcel or Home |
+| Not annoying | Unknown | Quiet hours (22:00–08:00 IST), at most 2 reminders a rider a day, one per place a day, own Android channel |
+
+Learned: reminders only pay off if they are rare and right; we log each one (`Reminder`) and show "booked within an
+hour" per kind in the admin, so we can switch off what doesn't convert. Gaps: no in-app opt-out (only the Android
+channel, SD-18); campaigns go to every rider, not per city (SD-19).
+
 ## 4. Optimization backlog
 
 Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week or more).
@@ -203,3 +222,5 @@ Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week o
 | SD-15 | **Location stream:** the gateway appends fixes to a Redis Stream; consumers (dispatch index, trip room, breadcrumbs, safety) read it. Not Kafka (cost) | Absorbs bursts and lets new consumers (analytics, ETA learning) read GPS without slowing ingest | A second heavy consumer, or ingest latency under load | M |
 | SD-16 | **Launch-grade operations:** nightly `pg_dump` to S3 (already in the launch checklist), an external uptime check with alerts (free tier), JSON logs shipped off the box, and a restore drill | One box and no off-box backup means one disk failure loses everything | Before public launch | S–M |
 | SD-17 | **Tell the driver who lost the race:** send `trip.offer_closed` with a reason when another driver took the request, and show "Another driver took this ride" instead of a card that just vanishes (or a 409 "no longer available" after tapping Accept) | Losing races is normal with several drivers at once; a reason keeps drivers from thinking the app glitched | Drivers ask where requests went, or before raising `offerFanOut` | S |
+| SD-18 | **Reminder opt-out in the app:** an Account › Notifications switch for "Trip suggestions" (stored on the user, checked before every reminder and campaign), besides the Android channel | Riders who find reminders pushy can stop them without losing trip updates; Play policy friendly | First complaint about reminders, or before marketing pushes grow | S |
+| SD-19 | **Campaigns per city:** subscribe phones to a `passengers-<cityId>` topic (from their last pickup) and let a campaign pick cities | A Pongal push for Coimbatore shouldn't reach a second city with other festivals | When a second city goes live | S |

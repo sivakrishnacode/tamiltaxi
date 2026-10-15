@@ -8,7 +8,7 @@ import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { AppKind } from '../../generated/prisma/enums.js';
 
 /** Android notification channels, created by the apps with the same ids. */
-export type PushChannel = 'ride_requests' | 'trip_updates' | 'chat' | 'account' | 'announcements' | 'safety';
+export type PushChannel = 'ride_requests' | 'trip_updates' | 'chat' | 'account' | 'announcements' | 'safety' | 'suggestions';
 
 export interface PushMessage {
   title: string;

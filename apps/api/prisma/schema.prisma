@@ -282,6 +282,8 @@ model User {
   /// Admin notes about this person (driver or rider), and the ones this admin wrote.
   adminNotes         AdminNote[]            @relation("AdminNotesAbout")
   notesWritten       AdminNote[]            @relation("AdminNotesBy")
+  /// Automated pushes this rider got (search and usual-trip reminders).
+  reminders          Reminder[]
 
   /// Admin lists: riders / accounts by role, newest first.
   @@index([role, createdAt])
@@ -888,4 +890,57 @@ model DeviceToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, app])
+}
+
+/// Automated passenger pushes (automations module): a fare quote left without a booking, or a usual trip coming up.
+enum ReminderKind {
+  /// "Siva, Ooty?": `searchReminderDelayMin` after a quote with no booking.
+  SEARCH
+  /// "Going to Brookefields?": `routineLeadMin` before the rider's usual booking time to a usual drop.
+  ROUTINE
+}
+
+/// One automated reminder sent to a rider. Counts the daily cap (`reminderDailyCap`) and the admin's sent / booked stats.
+model Reminder {
+  id     String       @id @default(cuid())
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind   ReminderKind
+  title  String
+  body   String
+  /// The drop it was about (dedupe: one reminder per drop per day).
+  place  String?
+  sentAt DateTime     @default(now())
+
+  @@index([userId, sentAt])
+  @@index([sentAt])
+}
+
+/// The passenger screen a campaign push opens on tap.
+enum CampaignTarget {
+  HOME
+  OUTSTATION
+  RENTAL
+  PARCEL
+}
+
+enum CampaignStatus {
+  SCHEDULED
+  SENT
+  CANCELLED
+}
+
+/// A festival / weekend push to every passenger (the `passengers` topic) that an admin writes and schedules.
+model Campaign {
+  id        String         @id @default(cuid())
+  title     String
+  body      String
+  /// The passenger screen a tap opens.
+  target    CampaignTarget @default(HOME)
+  sendAt    DateTime
+  status    CampaignStatus @default(SCHEDULED)
+  sentAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  @@index([status, sendAt])
 }

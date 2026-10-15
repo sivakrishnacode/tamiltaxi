@@ -188,7 +188,7 @@ Flutter app layout: `lib/router` (go_router 17, **pinned**: 18 needs `material_u
 controllers), `lib/features/<feature>/` (one file per screen, named after its frame ID, e.g. `P10ChooseVehicleScreen`),
 `lib/features/design_gallery/` (frame registry + demo controls).
 
-API modules: admin, app-config, auth, drivers, fares, geo (H3), health, kyc (Didit identity checks), maps, notifications (FCM), places, promos (splash and Home banners), realtime, settings,
+API modules: admin, app-config, auth, automations (reminder pushes and campaigns), drivers, fares, geo (H3), health, kyc (Didit identity checks), maps, notifications (FCM), places, promos (splash and Home banners), realtime, settings,
 subscriptions, support, trips, users.
 
 ---
@@ -260,3 +260,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 10 Oct 2026 | Rule 1.4: staging deploys (and the AWS steps they need) are pre-approved |
 | 14 Oct 2026 | Repo map: `docs/design/assets/` (logo masters and other design assets) |
 | 15 Oct 2026 | Repo map: `packages/tamiltaxi_whatsapp_otp` (WhatsApp OTP autofill plugin) |
+| 15 Oct 2026 | API modules: `automations` (reminder pushes and campaigns) |

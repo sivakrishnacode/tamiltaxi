@@ -1,8 +1,11 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
 
+import type { AuthUser } from '../../core/auth/auth-user.js';
+import { CurrentUser } from '../../core/auth/current-user.decorator.js';
 import { Public } from '../../core/auth/public.decorator.js';
 import { LIMITS, RateLimit } from '../../core/rate-limit/rate-limit.decorator.js';
-import { RideMode, TripKind } from '../../generated/prisma/enums.js';
+import { RideMode, Role, TripKind } from '../../generated/prisma/enums.js';
+import { AutomationsService } from '../automations/automations.service.js';
 import { QuoteRequestDto } from './dto/quote-request.dto.js';
 import { ShiftingQuoteDto } from './dto/shifting.dto.js';
 import { GeoService } from '../geo/geo.service.js';
@@ -26,6 +29,7 @@ export class FaresController {
   constructor(
     private readonly fares: FaresService,
     private readonly geo: GeoService,
+    private readonly automations: AutomationsService,
   ) {}
 
   /**
@@ -50,7 +54,7 @@ export class FaresController {
   @RateLimit(LIMITS.faresQuote)
   @Post('quote')
   @HttpCode(200)
-  async quote(@Body() body: QuoteRequestDto): Promise<{ quotes: QuoteWithEta[] }> {
+  async quote(@Body() body: QuoteRequestDto, @CurrentUser() user: AuthUser): Promise<{ quotes: QuoteWithEta[] }> {
     const mode = body.rideMode ?? RideMode.LOCAL;
     if (mode !== RideMode.LOCAL) {
       // Rental / outstation: the cab tiers, each with the terms it agrees to (`modeTerms`).
@@ -64,11 +68,22 @@ export class FaresController {
         leaveAt: body.scheduledAt ? new Date(body.scheduledAt) : new Date(),
         returnAt: body.returnAt ? new Date(body.returnAt) : null,
       });
-      return { quotes: await this.fares.withPickupEta(quotes, body.pickup, { womenOnly: body.womenOnly ?? false }) };
+      const withEta = await this.fares.withPickupEta(quotes, body.pickup, { womenOnly: body.womenOnly ?? false });
+      this.searched(user, body, mode);
+      return { quotes: withEta };
     }
     if (!body.drop) throw new BadRequestException('Choose where you are going');
     const quotes = await this.fares.quoteAll({ pickup: body.pickup, drop: body.drop, kind: body.kind ?? TripKind.RIDE });
-    return { quotes: await this.fares.withPickupEta(quotes, body.pickup, { womenOnly: body.womenOnly ?? false }) };
+    const withEta = await this.fares.withPickupEta(quotes, body.pickup, { womenOnly: body.womenOnly ?? false });
+    this.searched(user, body, mode);
+    return { quotes: withEta };
+  }
+
+  /** A rider's local or outstation ride quote with a drop: "Siva, Ooty?" later unless they book (automations). */
+  private searched(user: AuthUser, body: QuoteRequestDto, mode: RideMode): void {
+    if (user.role !== Role.PASSENGER || (body.kind ?? TripKind.RIDE) !== TripKind.RIDE || !body.drop) return;
+    if (mode !== RideMode.LOCAL && mode !== RideMode.OUTSTATION) return;
+    this.automations.searched({ userId: user.userId, mode, pickup: body.pickup, drop: body.drop });
   }
 
   /**

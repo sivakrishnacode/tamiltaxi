@@ -4,6 +4,7 @@ import { CoreModule } from './core/core.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AppConfigModule } from './modules/app-config/app-config.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { AutomationsModule } from './modules/automations/automations.module.js';
 import { DriversModule } from './modules/drivers/drivers.module.js';
 import { KycModule } from './modules/kyc/kyc.module.js';
 import { FaresModule } from './modules/fares/fares.module.js';
@@ -43,6 +44,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     SafetyModule,
     SupportModule,
     AdminModule,
+    AutomationsModule,
     NotificationsModule,
   ],
 })

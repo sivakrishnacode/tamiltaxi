@@ -124,6 +124,25 @@ export const SETTING_DEFAULTS = {
   deviationM: 150,
   nightStartHour: 22,
   nightEndHour: 5,
+  /**
+   * Automations (automations module): reminder pushes to riders, Ola / Rapido style. Search: a fare quote (local or
+   * outstation ride with a drop) not booked within [searchReminderDelayMin] minutes → "Siva, Ooty?".
+   */
+  searchReminderEnabled: true,
+  searchReminderDelayMin: 10,
+  /**
+   * Usual trip: completed local rides to the same drop at about the same time of day (±20 min, weekdays or weekends)
+   * on at least [routineMinTrips] different days in the last 28 days (the latest within 14) → "Going to <drop>?"
+   * [routineLeadMin] minutes before the usual booking time.
+   */
+  routineReminderEnabled: true,
+  routineMinTrips: 3,
+  routineLeadMin: 15,
+  /** No reminders from [reminderQuietStartHour]:00 to [reminderQuietEndHour]:00 IST (wraps past midnight). */
+  reminderQuietStartHour: 22,
+  reminderQuietEndHour: 8,
+  /** Most automated reminders (search + usual trip) a rider gets per IST day. Admin campaigns don't count. */
+  reminderDailyCap: 2,
   /** Support phone shown in the apps. */
   supportPhone: '+91 422 000 0000',
   /** Paid driver plans. Off = the app is free: no plan screens, no plan check when going online. */
