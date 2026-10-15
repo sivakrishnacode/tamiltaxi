@@ -1391,8 +1391,8 @@ Admin › Platform › **Splash & banners** (`/promos`).
   on the phone (`SplashPromo`, app support directory + SharedPreferences): it fades in over the logo intro, stays 2 s,
   then the app routes on. Each start fetches `GET /promos` and downloads a new splash for the next start (a withdrawn
   one is deleted), so a new splash shows from the second launch. Home (P-07) shows the banners under "More ways to
-  travel" (`HomeBanners`): a 2 : 1 row the rider swipes, page dots, × closes one on that phone
-  (`tamiltaxi.closedBanners`), a tap opens the link in the browser. Mock mode and the Design gallery show none.
+  travel" (`HomeBanners`): a 2 : 1 row the rider swipes, page dots, × hides one until the app restarts (kept in
+  memory only, so it is back on the next start), a tap opens the link in the browser. Mock mode and the Design gallery show none.
 
 ## 6e. Website (apps/web)
 

@@ -1,28 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Banner ids the rider closed with ×, kept on the phone.
-final closedBannersProvider = AsyncNotifierProvider<ClosedBanners, Set<String>>(ClosedBanners.new);
+/// Banner ids the rider closed with × since the app started: in memory only, so they are back after a restart.
+final closedBannersProvider = NotifierProvider<ClosedBanners, Set<String>>(ClosedBanners.new);
 
-class ClosedBanners extends AsyncNotifier<Set<String>> {
-  static const _key = 'tamiltaxi.closedBanners';
-
+class ClosedBanners extends Notifier<Set<String>> {
   @override
-  Future<Set<String>> build() async => {...?(await SharedPreferences.getInstance()).getStringList(_key)};
+  Set<String> build() => {};
 
-  Future<void> close(String id) async {
-    final closed = {...?state.value, id};
-    state = AsyncData(closed);
-    await (await SharedPreferences.getInstance()).setStringList(_key, closed.toList());
-  }
+  void close(String id) => state = {...state, id};
 }
 
-/// Home banners (6j): the admin's pictures under "More ways to travel", swiped through like Rapido's. × closes one
-/// on this phone; a tap opens its link in the browser. Nothing at all while there are none.
+/// Home banners (6j): the admin's pictures under "More ways to travel", swiped through like Rapido's. × hides one
+/// until the app restarts; a tap opens its link in the browser. Nothing at all while there are none.
 class HomeBanners extends ConsumerStatefulWidget {
   const HomeBanners({super.key});
 
@@ -42,10 +35,10 @@ class _HomeBannersState extends ConsumerState<HomeBanners> {
 
   @override
   Widget build(BuildContext context) {
-    final closed = ref.watch(closedBannersProvider).value;
+    final closed = ref.watch(closedBannersProvider);
     final banners = ref.watch(promosProvider).value?.banners ?? const <Promo>[];
     final now = DateTime.now();
-    final shown = closed == null ? const <Promo>[] : [for (final b in banners) if (!closed.contains(b.id) && b.isLiveAt(now)) b];
+    final shown = [for (final b in banners) if (!closed.contains(b.id) && b.isLiveAt(now)) b];
     if (shown.isEmpty) return const SizedBox.shrink();
     final page = _page.clamp(0, shown.length - 1);
     return Padding(

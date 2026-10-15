@@ -1,9 +1,8 @@
-// Home banners (6j): the admin's live pictures in a row the rider swipes through, with page dots; × closes one on
-// this phone and it stays closed.
+// Home banners (6j): the admin's live pictures in a row the rider swipes through, with page dots; × hides one until
+// the app restarts.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_passenger/features/ride/widgets/home_banners.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
@@ -40,9 +39,7 @@ Future<ProviderContainer> _pump(WidgetTester tester, List<Promo> banners) async 
 Finder get _dots => find.descendant(of: find.byType(Row), matching: find.byType(AnimatedContainer));
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
-
-  testWidgets('shows the live banners with a dot each; × closes one for good', (tester) async {
+  testWidgets('shows the live banners with a dot each; × hides one until the app restarts', (tester) async {
     final container = await _pump(tester, [_banner('a'), _banner('b'), _banner('old', endsAt: DateTime(2026, 1, 2))]);
     expect(find.bySemanticsLabel('Banner a'), findsOneWidget);
     expect(_dots, findsNWidgets(2), reason: 'the ended banner is left out');
@@ -52,13 +49,12 @@ void main() {
     expect(find.bySemanticsLabel('Banner a'), findsNothing);
     expect(find.bySemanticsLabel('Banner b'), findsOneWidget);
     expect(_dots, findsNothing, reason: 'one banner left: no dots');
-    expect((await SharedPreferences.getInstance()).getStringList('tamiltaxi.closedBanners'), ['a']);
 
-    // A new start reads the closed ones back.
+    // A restart (the providers start again) brings it back.
     container.invalidate(closedBannersProvider);
     await tester.pump();
-    await tester.pump();
-    expect(find.bySemanticsLabel('Banner a'), findsNothing);
+    expect(find.bySemanticsLabel('Banner a'), findsOneWidget);
+    expect(_dots, findsNWidgets(2));
   });
 
   testWidgets('no banners: nothing on Home at all', (tester) async {

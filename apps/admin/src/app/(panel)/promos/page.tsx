@@ -61,8 +61,8 @@ export default async function PromosPage() {
               Home banners
             </h2>
             <p className="text-sm text-muted-foreground">
-              Riders swipe through the live ones on Home, under “More ways to travel”, lowest order first. Each has an ×
-              to close it on that phone; a tap opens its link.
+              Riders swipe through the live ones on Home, under “More ways to travel”, lowest order first. Its × hides
+              one until the app restarts; a tap opens its link.
             </p>
           </div>
           {banners.length === 0 ? (
