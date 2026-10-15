@@ -5,6 +5,7 @@ import {
   GaugeIcon,
   HexagonIcon,
   IdCardIcon,
+  ImagesIcon,
   LayoutDashboardIcon,
   LifeBuoyIcon,
   MegaphoneIcon,
@@ -80,6 +81,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/cities", label: "Cities & zones", icon: HexagonIcon },
       { href: "/announcements", label: "Announcements", icon: MegaphoneIcon },
+      { href: "/promos", label: "Splash & banners", icon: ImagesIcon },
       { href: "/settings", label: "Settings", icon: SettingsIcon },
     ],
   },

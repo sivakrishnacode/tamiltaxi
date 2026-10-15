@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { ApiError, adminApi, type AnnouncementInput, type CityInput, type FareInput, type ZoneInput } from "@/lib/api";
+import { promoInputError } from "@/lib/promos";
 import { validateSettings, type SettingsInput } from "@/lib/validation";
 import {
   AUDIENCES,
@@ -381,6 +382,58 @@ export async function setAnnouncementActive(id: string, isActive: boolean): Prom
 
 export async function deleteAnnouncement(id: string): Promise<ActionResult> {
   const res = await run(() => adminApi.deleteAnnouncement(id), "Announcement deleted", ["/announcements"]);
+  return plain(res);
+}
+
+// Splash & banners (6j) ----------------------------------------------------------------------------------------------
+
+/** FormData: placement, title, image, and linkUrl, sortOrder, startsAt, endsAt (ISO) when set. */
+export async function createPromo(form: FormData): Promise<ActionResult> {
+  const text = (key: string) => {
+    const v = form.get(key);
+    return typeof v === "string" ? v.trim() : "";
+  };
+  const image = form.get("image");
+  const file = image instanceof File ? image : null;
+  const input = {
+    placement: text("placement"),
+    title: text("title"),
+    image: file,
+    linkUrl: text("linkUrl"),
+    sortOrder: text("sortOrder"),
+    startsAt: text("startsAt"),
+    endsAt: text("endsAt"),
+  };
+  const error = promoInputError(input);
+  if (error) return { ok: false, error };
+  // Only the fields that are set: the API refuses an empty link or date.
+  const out = new FormData();
+  out.set("placement", input.placement);
+  out.set("title", input.title);
+  if (input.placement === "BANNER") {
+    if (input.linkUrl) out.set("linkUrl", input.linkUrl);
+    if (input.sortOrder) out.set("sortOrder", input.sortOrder);
+  }
+  if (input.startsAt) out.set("startsAt", input.startsAt);
+  if (input.endsAt) out.set("endsAt", input.endsAt);
+  out.set("image", file!, file!.name);
+  const res = await run(() => adminApi.createPromo(out), input.placement === "SPLASH" ? "Splash published" : "Banner published", ["/promos"]);
+  return plain(res);
+}
+
+export async function setPromoActive(id: string, isActive: boolean): Promise<ActionResult> {
+  const res = await run(() => adminApi.updatePromo(id, { isActive }), isActive ? "Picture shown" : "Picture hidden", ["/promos"]);
+  return plain(res);
+}
+
+export async function setBannerOrder(id: string, sortOrder: number): Promise<ActionResult> {
+  if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 999) return { ok: false, error: "Order is a number from 0 to 999" };
+  const res = await run(() => adminApi.updatePromo(id, { sortOrder }), "Order saved", ["/promos"]);
+  return plain(res);
+}
+
+export async function deletePromo(id: string): Promise<ActionResult> {
+  const res = await run(() => adminApi.deletePromo(id), "Picture deleted", ["/promos"]);
   return plain(res);
 }
 

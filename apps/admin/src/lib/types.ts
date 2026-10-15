@@ -819,6 +819,24 @@ export interface Announcement {
   readonly createdAt: string;
 }
 
+/** Where a picture shows in the passenger app (6j). */
+export type PromoPlacement = "SPLASH" | "BANNER";
+
+/** GET /admin/promos: the passenger app's splash and Home banners (promos.service.ts). */
+export interface Promo {
+  readonly id: string;
+  readonly placement: PromoPlacement;
+  readonly title: string;
+  /** Under the API: `/promos/<id>/image` (the panel shows it through `/promo-images/<id>`). */
+  readonly imagePath: string;
+  readonly linkUrl: string | null;
+  readonly sortOrder: number;
+  readonly isActive: boolean;
+  readonly startsAt: string;
+  readonly endsAt: string | null;
+  readonly createdAt: string;
+}
+
 /** GET/PUT /admin/settings (settings.defaults.ts). */
 export interface Settings {
   readonly currentMultiplier: number;

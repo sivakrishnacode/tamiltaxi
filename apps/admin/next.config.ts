@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   turbopack: { root: repoRoot },
   poweredByHeader: false,
+  // Splash and banner pictures (up to 2 MB) go through a Server Action; the default limit is 1 MB.
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
 };
 
 export default nextConfig;

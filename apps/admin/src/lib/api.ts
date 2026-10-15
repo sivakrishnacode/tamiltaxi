@@ -18,6 +18,7 @@ import type {
   ApprovalsPage,
   Announcement,
   AnnouncementAudience,
+  Promo,
   AuditLog,
   City,
   CityDetail,
@@ -95,7 +96,9 @@ async function signOutAndRedirect(reason: "expired" | "blocked" = "expired"): Pr
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", query, body, auth = true } = options;
   const headers: Record<string, string> = { accept: "application/json" };
-  if (body !== undefined) headers["content-type"] = "application/json";
+  // A FormData body (an upload) sets its own multipart content type.
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) headers["content-type"] = "application/json";
   if (auth) {
     const token = await getToken();
     if (!token) return signOutAndRedirect();
@@ -107,7 +110,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     res = await fetch(apiUrl(apiBaseUrl(), path, query), {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),
     });
@@ -332,6 +335,12 @@ export const adminApi = {
   setAnnouncementActive: (id: string, isActive: boolean) =>
     apiFetch<Announcement>(`/admin/announcements/${enc(id)}`, { method: "PATCH", body: { isActive } }),
   deleteAnnouncement: (id: string) => apiFetch<null>(`/admin/announcements/${enc(id)}`, { method: "DELETE" }),
+  promos: () => apiFetch<Promo[]>("/admin/promos"),
+  /** Multipart: placement, title, linkUrl?, sortOrder?, startsAt?, endsAt? and the picture as `image`. */
+  createPromo: (form: FormData) => apiFetch<Promo>("/admin/promos", { method: "POST", body: form }),
+  updatePromo: (id: string, data: { isActive?: boolean; sortOrder?: number }) =>
+    apiFetch<Promo>(`/admin/promos/${enc(id)}`, { method: "PATCH", body: data }),
+  deletePromo: (id: string) => apiFetch<null>(`/admin/promos/${enc(id)}`, { method: "DELETE" }),
   settings: () => apiFetch<SettingsRecord>("/admin/settings"),
   updateSettings: (data: Record<string, number | boolean | string | undefined>) =>
     apiFetch<SettingsRecord>("/admin/settings", { method: "PUT", body: data }),
