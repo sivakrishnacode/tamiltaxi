@@ -19,6 +19,7 @@ import '../../state/ride_flow.dart';
 import '../states/s05_location_denied_screen.dart';
 import '../states/s07_loading_skeletons.dart';
 import '../states/s08_service_unavailable_screen.dart';
+import 'widgets/home_banners.dart';
 import 'widgets/upcoming_trip_card.dart';
 
 /// P-07 Home (Ride tab): full map around the pickup with nearby vehicles, a top pill with the greeting and where
@@ -381,6 +382,7 @@ class _P07HomeScreenState extends ConsumerState<P07HomeScreen> {
               onParcel: () => context.go(Routes.parcel),
               onMovers: () => context.go(Routes.shifting),
             ),
+            if (!widget.showcase) const HomeBanners(),
             const SizedBox(height: TtSpacing.s),
           ],
         ),

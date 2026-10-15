@@ -20,6 +20,7 @@ export 'src/api/api_repositories.dart';
 export 'src/api/app_config.dart';
 export 'src/api/demand_map.dart';
 export 'src/api/live_services.dart';
+export 'src/api/promos.dart';
 export 'src/api/push.dart';
 export 'src/api/realtime_client.dart';
 export 'src/api/safety.dart';

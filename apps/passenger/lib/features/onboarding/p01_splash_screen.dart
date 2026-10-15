@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 import '../../common/rider_logo.dart';
 import '../../router/routes.dart';
 import '../../state/session_actions.dart';
+import '../../state/splash_promo.dart';
 
 /// P-01 Splash: white background, the Tamil Taxi logo (same picture, size and place as the native splash, so the
 /// hand-off is seamless) and the tagline.
@@ -18,6 +20,9 @@ import '../../state/session_actions.dart';
 /// A 2 s intro ([SimTimings.intro]) plays from the native splash's exact frame: the logo gives a small, soft
 /// bounce, then the tagline rises in. Then it routes to onboarding, sign-in or Home. With "Remove animations" on it
 /// shows the last frame for [SimTimings.splash] instead.
+///
+/// The admin's splash picture (6j), when one is live and already on the phone, fades in over all this and stays
+/// [_pictureFor] before routing on; each start also fetches the next one ([SplashPromo]).
 class P01SplashScreen extends ConsumerStatefulWidget {
   const P01SplashScreen({super.key, this.showcase = false});
 
@@ -31,7 +36,12 @@ class P01SplashScreen extends ConsumerStatefulWidget {
 class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTickerProviderStateMixin {
   /// The native splashes' logo width (scripts/brand_icons.py).
   static const _logoWidth = 136.0;
+  static const _pictureFor = Duration(seconds: 2);
   Timer? _timer;
+  Timer? _pictureTimer;
+  ({File file, String title})? _picture;
+  Future<void>? _pictureLookup;
+  bool _routed = false;
   late final AnimationController _intro = AnimationController(
     vsync: this,
     duration: ref.read(simTimingProvider)(SimTimings.intro),
@@ -47,20 +57,39 @@ class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTi
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    if (!widget.showcase && ref.read(isLiveApiProvider)) _pictureLookup = _showPicture();
     // Gallery: the last frame (tap to replay). Animations off: the last frame, then on as before.
     if (widget.showcase || MediaQuery.disableAnimationsOf(context)) {
       _intro.value = 1;
-      if (!widget.showcase) _timer = Timer(ref.read(simTimingProvider)(SimTimings.splash), _next);
+      if (!widget.showcase) _timer = Timer(ref.read(simTimingProvider)(SimTimings.splash), _afterIntro);
       return;
     }
     _intro.addStatusListener((status) {
-      if (status == AnimationStatus.completed) _next();
+      if (status == AnimationStatus.completed) _afterIntro();
     });
     _intro.forward();
   }
 
+  /// On to the app, unless the splash picture is showing: its own timer moves on.
+  Future<void> _afterIntro() async {
+    await _pictureLookup;
+    if (_picture == null) _next();
+  }
+
+  Future<void> _showPicture() async {
+    unawaited(ref.read(promosProvider.future).then((p) => SplashPromo.sync(p.splash), onError: (Object _) {}));
+    final picture = await SplashPromo.current();
+    if (picture == null || !mounted) return;
+    var isBroken = false;
+    await precacheImage(FileImage(picture.file), context, onError: (_, _) => isBroken = true);
+    if (isBroken || !mounted) return;
+    setState(() => _picture = picture);
+    _pictureTimer = Timer(_pictureFor, _next);
+  }
+
   Future<void> _next() async {
-    if (!mounted) return;
+    if (!mounted || _routed) return;
+    _routed = true;
     final auth = ref.read(authRepositoryProvider);
     if (!auth.hasSeenOnboarding) {
       context.go(Routes.onboarding);
@@ -96,6 +125,7 @@ class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTi
   @override
   void dispose() {
     _timer?.cancel();
+    _pictureTimer?.cancel();
     _intro.dispose();
     super.dispose();
   }
@@ -149,6 +179,19 @@ class _P01SplashScreenState extends ConsumerState<P01SplashScreen> with SingleTi
                       ],
                     ),
                   ),
+                  if (_picture case final picture?)
+                    Positioned.fill(
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 300),
+                        builder: (context, v, child) => Opacity(opacity: v, child: child),
+                        child: Semantics(
+                          image: true,
+                          label: picture.title,
+                          child: Image.file(picture.file, fit: BoxFit.cover, excludeFromSemantics: true),
+                        ),
+                      ),
+                    ),
                 ],
               );
             },
