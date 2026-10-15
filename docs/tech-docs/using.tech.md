@@ -2015,6 +2015,17 @@ removing the `WATX_API_KEY` line alone stops the messages). Checked live: `/heal
 malformed number reached Meta and was refused there; a wrong key gets 401). No WhatsApp message was sent. `rido-sg` also
 allows `49.206.113.163` (SSH, 15 Oct).
 
+**Deployed 15 Oct 2026 (second):** API and admin at `a1c3b05`: Splash & banners (6j; migration `promos` applied on
+start). A 3.5 MB slim release (`releases/a1c3b05`: the API's `dist/`, `prisma/` and `src/generated/` and the admin's
+`apps/admin` over the running images; no package files or Dockerfiles had changed). Backup:
+`/opt/tamiltaxi/backups/20261015-a1c3b05` (database dump, compose files, Caddyfile, `.env`); rollback images
+`tamiltaxi-api:rollback-20261015-a1c3b05` / `tamiltaxi-admin:rollback-20261015-a1c3b05` (tag them back to `:local`,
+then `up -d --no-build api admin`). Checked live: `/health`, app-config and admin login 200; `GET /v1/promos` answers
+`{splash: null, banners: []}`; with an admin token a banner scheduled for 2030 uploaded (201), stayed out of
+`/promos`, its picture came back `image/png` with the year-long immutable cache and `nosniff`, the admin page listed
+it as Scheduled with its thumbnail (`/promo-images/<id>` 200), and Delete removed it (picture 404 after). No rider ever
+saw it.
+
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
 [staging-kyc-delete-policy.json](staging-kyc-delete-policy.json). The `rido` AWS profile cannot administer IAM.
