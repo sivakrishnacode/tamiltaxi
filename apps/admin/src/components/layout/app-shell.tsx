@@ -11,7 +11,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { cn } from "@/lib/utils";
 
 import { CommandPalette } from "./command-palette";
-import { NAV_GROUPS, activeNav, groupOf } from "./nav";
+import { NAV_GROUPS, activePage, groupOf, hasTabs, hrefOf } from "./nav";
+import { PageTabs } from "./page-tabs";
 
 // Collapsed sidebar groups, per browser (a convenience: everything works without storage).
 const COLLAPSED_KEY = "tt-admin-nav-collapsed";
@@ -54,7 +55,7 @@ function SidebarNav({
   tags?: Record<string, React.ReactNode>;
   onNavigate?: () => void;
 }) {
-  const current = activeNav(pathname);
+  const current = activePage(pathname).item;
   const currentGroup = groupOf(current);
   const raw = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => "");
   const collapsed = useMemo(() => new Set(raw ? raw.split("|") : []), [raw]);
@@ -82,7 +83,7 @@ function SidebarNav({
             >
               <span className="flex-1 text-left">{group.label}</span>
               {/* Badges of a closed collection move to its header, so nothing urgent is hidden. */}
-              {!isOpen && group.items.map((item) => <span key={item.href}>{badges?.[item.href]}</span>)}
+              {!isOpen && group.items.map((item) => <span key={item.label}>{badges?.[hrefOf(item)]}</span>)}
               {group !== currentGroup && (
                 <ChevronDownIcon className={cn("size-3.5 transition-transform", !isOpen && "-rotate-90")} aria-hidden />
               )}
@@ -90,12 +91,13 @@ function SidebarNav({
             {isOpen && (
               <ul id={listId} className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
-                  const isActive = item.href === current.href;
+                  const isActive = item === current;
+                  const href = hrefOf(item);
                   const Icon = item.icon;
                   return (
-                    <li key={item.href}>
+                    <li key={item.label}>
                       <Link
-                        href={item.href}
+                        href={href}
                         onClick={onNavigate}
                         aria-current={isActive ? "page" : undefined}
                         className={cn(
@@ -105,8 +107,8 @@ function SidebarNav({
                       >
                         <Icon className="size-4.5" aria-hidden />
                         <span className="flex-1">{item.label}</span>
-                        {tags?.[item.href]}
-                        {badges?.[item.href]}
+                        {tags?.[href]}
+                        {badges?.[href]}
                       </Link>
                     </li>
                   );
@@ -124,19 +126,27 @@ function SidebarNav({
 export function AppShell({
   userMenu,
   badges,
+  tabBadges,
   tags,
   children,
 }: {
   userMenu: React.ReactNode;
-  /** Server-rendered counters next to nav items, keyed by href (e.g. pending KYC); shown on a collapsed group too. */
+  /**
+   * Server-rendered counters next to sidebar items, keyed by the item's link (its first page, e.g. "/drivers" for
+   * approvals + documents together); shown on a collapsed group too.
+   */
   badges?: Record<string, React.ReactNode>;
-  /** Quiet labels next to nav items (e.g. "Off"), only on the item itself. */
+  /** Counters on the page tabs, keyed by page href (e.g. "/kyc"). */
+  tabBadges?: Record<string, React.ReactNode>;
+  /** Quiet labels next to sidebar items (e.g. "Off"), only on the item itself. */
   tags?: Record<string, React.ReactNode>;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [isMenuOpen, setMenuOpen] = useState(false);
-  const section = activeNav(pathname);
+  const { item: section, isExact } = activePage(pathname);
+  // Related pages show as tabs on each of them (not on detail pages like /drivers/abc).
+  const tabs = hasTabs(section) && isExact ? section.pages.map((p) => ({ href: p.href, label: p.label, badge: tabBadges?.[p.href] })) : null;
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
@@ -170,7 +180,10 @@ export function AppShell({
           <CommandPalette pathname={pathname} />
           <div className="ml-auto">{userMenu}</div>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">
+          {tabs && <PageTabs tabs={tabs} active={pathname} label={section.label} />}
+          {children}
+        </main>
       </div>
     </div>
   );

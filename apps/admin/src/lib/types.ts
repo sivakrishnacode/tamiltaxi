@@ -837,6 +837,65 @@ export interface Promo {
   readonly createdAt: string;
 }
 
+/** Reminder pushes: keys of GET/PUT /admin/settings edited on Engage › Automations (older APIs: absent). */
+export interface ReminderSettings {
+  /** "Didn't book": one push [searchReminderDelayMin] minutes after a fare check with no booking. */
+  readonly searchReminderEnabled: boolean;
+  readonly searchReminderDelayMin: number;
+  /** "Usual trip": riders with the same trip at about the same time on [routineMinTrips]+ days, [routineLeadMin] minutes before. */
+  readonly routineReminderEnabled: boolean;
+  readonly routineMinTrips: number;
+  readonly routineLeadMin: number;
+  /** No reminder between these hours (IST), and at most [reminderDailyCap] per rider a day. */
+  readonly reminderQuietStartHour: number;
+  readonly reminderQuietEndHour: number;
+  readonly reminderDailyCap: number;
+}
+
+export type ReminderKind = "SEARCH" | "ROUTINE";
+
+/** Last 7 days of one reminder: pushes sent, and rides booked within an hour of one. */
+export interface ReminderStats {
+  readonly sent7d: number;
+  readonly booked7d: number;
+}
+
+export interface ReminderLog {
+  readonly id: string;
+  readonly kind: ReminderKind;
+  readonly userId: string;
+  readonly userName: string | null;
+  readonly phone: string;
+  readonly title: string;
+  readonly body: string;
+  readonly sentAt: string;
+  /** The rider booked within an hour of the push. */
+  readonly booked: boolean;
+}
+
+/** GET /admin/automations. */
+export interface AutomationsOverview {
+  readonly search: ReminderStats;
+  readonly routine: ReminderStats;
+  readonly recent: ReminderLog[];
+}
+
+/** The passenger-app screen a campaign push opens. */
+export type CampaignTarget = "HOME" | "OUTSTATION" | "RENTAL" | "PARCEL";
+export type CampaignStatus = "SCHEDULED" | "SENT" | "CANCELLED";
+
+/** GET /admin/campaigns item: a push to every rider, now or at [sendAt]. */
+export interface Campaign {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  readonly target: CampaignTarget;
+  readonly sendAt: string;
+  readonly status: CampaignStatus;
+  readonly sentAt: string | null;
+  readonly createdAt: string;
+}
+
 /** GET/PUT /admin/settings (settings.defaults.ts). */
 export interface Settings {
   readonly currentMultiplier: number;

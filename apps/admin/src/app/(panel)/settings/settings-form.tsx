@@ -1,27 +1,35 @@
 "use client";
 
-import { Loader2Icon, SaveIcon, SearchIcon } from "lucide-react";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import {
+  BadgeIndianRupeeIcon,
+  HourglassIcon,
+  LifeBuoyIcon,
+  ListOrderedIcon,
+  PuzzleIcon,
+  RadarIcon,
+  ReceiptIndianRupeeIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+  TimerIcon,
+  TrendingUpIcon,
+  UserCheckIcon,
+  UserXIcon,
+  XIcon,
+  type LucideIcon,
+} from "lucide-react";
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { SaveBar, SettingField, useSettingsDraft, type FieldDef } from "@/components/settings/settings-kit";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { isReminderKey } from "@/lib/automations";
 import { humanize } from "@/lib/format";
 import type { SettingsRecord } from "@/lib/types";
-import { surgeExample, validateSettings, type SettingValue, type SettingsInput } from "@/lib/validation";
+import { cn } from "@/lib/utils";
+import { surgeExample, type SettingValue } from "@/lib/validation";
 
 import { saveSettings } from "../actions";
-
-interface FieldDef {
-  readonly key: string;
-  readonly label: string;
-  readonly hint: string;
-  readonly step?: string;
-  readonly suffix?: string;
-}
 
 interface Group {
   readonly group: string;
@@ -162,9 +170,24 @@ const GROUPS: readonly Group[] = [
 
 const KNOWN = new Set(GROUPS.flatMap((g) => g.fields.map((f) => f.key)));
 
-/** Anchor id of a settings section ("Pricing & surge" → "settings-pricing-surge"). */
-function sectionId(group: string): string {
-  return `settings-${group.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+const ICONS: Record<string, LucideIcon> = {
+  "Pricing & surge": TrendingUpIcon,
+  "Dispatch & ETA": RadarIcon,
+  "Trip timeouts": TimerIcon,
+  "Waiting charge": HourglassIcon,
+  "Cancellation fee": ReceiptIndianRupeeIcon,
+  "Driver approval": UserCheckIcon,
+  "Driver cancellations": UserXIcon,
+  "Driver ranking": ListOrderedIcon,
+  Safety: ShieldCheckIcon,
+  "Driver plans": BadgeIndianRupeeIcon,
+  Support: LifeBuoyIcon,
+  Other: PuzzleIcon,
+};
+
+/** URL slug of a section ("Pricing & surge" → "pricing-surge"), kept in ?section=. */
+function sectionSlug(group: string): string {
+  return group.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 /** Fields whose label, hint or key contain every word of [query] (whole group when its name matches). */
@@ -176,38 +199,15 @@ function matchFields(g: Group, query: string): readonly FieldDef[] {
   return g.fields.filter((f) => has(`${f.label} ${f.hint} ${f.key}`));
 }
 
-type Draft = Record<string, string | boolean>;
-
-function toDraft(s: Record<string, SettingValue>): Draft {
-  return Object.fromEntries(Object.entries(s).map(([k, v]) => [k, typeof v === "boolean" ? v : String(v)]));
-}
-
-/** Converts the draft back using each key's type in the API response. */
-function fromDraft(d: Draft, types: Record<string, SettingValue>): SettingsInput {
-  return Object.fromEntries(
-    Object.entries(d).map(([k, v]) => {
-      const t = typeof types[k];
-      if (t === "boolean") return [k, v === true];
-      if (t === "number") return [k, String(v).trim() === "" ? Number.NaN : Number(v)];
-      return [k, String(v).trim()];
-    }),
-  ) as SettingsInput;
-}
-
 /**
- * Form over GET/PUT /admin/settings. Every key the API returns is rendered: known ones in their groups,
- * anything newer in "Other", so new settings never go missing. Only changed keys are sent.
+ * Form over GET/PUT /admin/settings, one section at a time (?section=). Every key the API returns is rendered: known
+ * ones in their sections, anything newer in "Other", so new settings never go missing; reminder keys are edited on
+ * Engage › Automations instead. One draft for all sections, so switching never loses an edit; only changed keys are sent.
  */
-export function SettingsForm({ initial }: { initial: SettingsRecord }) {
-  const types = initial as Record<string, SettingValue>;
-  const [draft, setDraft] = useState<Draft>(() => toDraft(types));
-  const [saved, setSaved] = useState<Draft>(() => toDraft(types));
-  const [isPending, startTransition] = useTransition();
+export function SettingsForm({ initial, section: initialSection }: { initial: SettingsRecord; section?: string }) {
+  const [types] = useState(() => Object.fromEntries(Object.entries(initial).filter(([k]) => !isReminderKey(k))) as Record<string, SettingValue>);
+  const form = useSettingsDraft(types, saveSettings);
   const [find, setFind] = useState("");
-  const parsed = fromDraft(draft, types);
-  const errors = validateSettings(parsed);
-  const hasErrors = Object.keys(errors).length > 0;
-  const changed = Object.keys(draft).filter((k) => draft[k] !== saved[k]);
 
   const other: Group | null = (() => {
     const keys = Object.keys(types).filter((k) => !KNOWN.has(k));
@@ -216,134 +216,137 @@ export function SettingsForm({ initial }: { initial: SettingsRecord }) {
       : null;
   })();
   const allGroups = [...GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => f.key in types) })), ...(other ? [other] : [])].filter((g) => g.fields.length);
-  const groups = allGroups.map((g) => ({ ...g, fields: matchFields(g, find) })).filter((g) => g.fields.length);
-  // Unsaved changes per section, so a filtered view never hides an edit.
-  const changedIn = (g: Group) => g.fields.filter((f) => changed.includes(f.key)).length;
+  const [section, setSection] = useState(() => allGroups.find((g) => sectionSlug(g.group) === initialSection)?.group ?? allGroups[0]?.group);
+  const current = allGroups.find((g) => g.group === section) ?? allGroups[0];
+  const isSearching = find.trim().length > 0;
+  const found = isSearching ? allGroups.map((g) => ({ ...g, fields: matchFields(g, find) })).filter((g) => g.fields.length) : [];
+  const shown = isSearching ? found : current ? [current] : [];
+  // Unsaved changes per section, so an edit in a hidden section is never forgotten.
+  const changedIn = (g: Group) => g.fields.filter((f) => form.changed.includes(f.key)).length;
+  const editedSections = allGroups.filter((g) => changedIn(g) > 0).map((g) => g.group);
 
-  const sens = Number(draft.surgeSensitivity);
-  const cap = Number(draft.maxMultiplier);
+  function open(group: string) {
+    setSection(group);
+    setFind("");
+    // Native history keeps the section in the URL (links and reloads open it) without a server round trip.
+    window.history.replaceState(null, "", `?section=${sectionSlug(group)}`);
+  }
+
+  const sens = Number(form.draft.surgeSensitivity);
+  const cap = Number(form.draft.maxMultiplier);
   const example = Number.isFinite(sens) && Number.isFinite(cap) ? surgeExample(3, sens, cap) : null;
 
   return (
-    <form
-      noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (hasErrors || changed.length === 0) return;
-        const patch = Object.fromEntries(changed.map((k) => [k, parsed[k]])) as SettingsInput;
-        startTransition(async () => {
-          const res = await saveSettings(patch);
-          if (res.ok) {
-            setSaved(draft);
-            toast.success(res.message);
-          } else toast.error(res.error);
-        });
-      }}
-      className="grid gap-4 lg:grid-cols-2"
-    >
-      <div className="sticky top-16 z-20 -mx-1 flex flex-col gap-2 rounded-xl border bg-background/95 p-2 backdrop-blur lg:col-span-2">
+    <form noValidate onSubmit={form.submit} className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-6">
+      <div className="grid gap-3 lg:sticky lg:top-24">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
             value={find}
             onChange={(e) => setFind(e.target.value)}
-            placeholder="Find a setting, e.g. radius, surge, OTP, pause"
-            aria-label="Find a setting"
+            placeholder="Find a setting"
+            aria-label="Find a setting, e.g. radius, surge, pause"
             className="h-9 bg-card pl-9"
           />
         </div>
-        <nav aria-label="Settings sections" className="flex gap-1.5 overflow-x-auto pb-0.5">
+
+        {/* Phones: one select. */}
+        <div className="lg:hidden">
+          <Select value={isSearching ? "" : current?.group} onValueChange={open}>
+            <SelectTrigger className="w-full bg-card" aria-label="Settings section">
+              <SelectValue placeholder={`Matches in ${found.length} section${found.length === 1 ? "" : "s"}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {allGroups.map((g) => {
+                const edits = changedIn(g);
+                return (
+                  <SelectItem key={g.group} value={g.group}>
+                    {g.group}
+                    {edits > 0 ? ` · ${edits} unsaved` : ""}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop: the section list. */}
+        <nav aria-label="Settings sections" className="hidden flex-col gap-0.5 lg:flex">
           {allGroups.map((g) => {
-            const isShown = groups.some((x) => x.group === g.group);
+            const Icon = ICONS[g.group] ?? PuzzleIcon;
             const edits = changedIn(g);
+            const matches = isSearching ? (found.find((x) => x.group === g.group)?.fields.length ?? 0) : null;
+            const isActive = !isSearching && g.group === current?.group;
             return (
-              <a
+              <button
                 key={g.group}
-                href={`#${sectionId(g.group)}`}
-                aria-disabled={!isShown}
-                className={
-                  isShown
-                    ? "inline-flex shrink-0 items-center gap-1 rounded-full border bg-card px-2.5 py-1 text-xs font-medium whitespace-nowrap text-navy-700 hover:border-coral-500/40 hover:text-coral-600"
-                    : "pointer-events-none inline-flex shrink-0 items-center rounded-full border border-dashed px-2.5 py-1 text-xs whitespace-nowrap text-muted-foreground/60"
-                }
+                type="button"
+                onClick={() => open(g.group)}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm font-medium text-navy-700 transition-colors hover:bg-muted hover:text-navy-900",
+                  isActive && "bg-coral-50 text-coral-600 hover:bg-coral-50 hover:text-coral-600",
+                  matches === 0 && "text-muted-foreground/60",
+                )}
               >
-                {g.group}
-                {edits > 0 && <span className="rounded-full bg-coral-600 px-1.5 text-[10px] font-semibold text-white">{edits}</span>}
-              </a>
+                <Icon className="size-4 shrink-0" aria-hidden />
+                <span className="flex-1 truncate">{g.group}</span>
+                {matches !== null && matches > 0 && <span className="text-xs text-muted-foreground tabular-nums">{matches}</span>}
+                {edits > 0 && (
+                  <span className="rounded-full bg-coral-600 px-1.5 text-[10px] font-semibold text-white tabular-nums" aria-label={`${edits} unsaved`}>
+                    {edits}
+                  </span>
+                )}
+              </button>
             );
           })}
         </nav>
       </div>
-      {groups.length === 0 && (
-        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground lg:col-span-2">No setting matches “{find}”.</p>
-      )}
-      {groups.map((g) => (
-        <Card key={g.group} id={sectionId(g.group)} className="scroll-mt-40">
-          <CardHeader>
-            <CardTitle className="font-semibold">{g.group}</CardTitle>
-            <CardDescription>{g.description}</CardDescription>
-            {g.group === "Pricing & surge" && example !== null && (
-              <p className="mt-1 rounded-md bg-coral-50 px-2.5 py-1.5 text-xs text-coral-700">
-                Example: 6 bookings, 2 free drivers → ratio 3 → 1 + {Number.isFinite(sens) ? sens : "?"} × 2 = <b>{example.toFixed(2)}×</b>
-                {draft.dynamicSurgeEnabled === false ? " (dynamic surge is off)" : ""}
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            {g.fields.map((f) => {
-              const error = errors[f.key];
-              const value = draft[f.key];
-              if (typeof types[f.key] === "boolean") {
-                return (
-                  <label key={f.key} className="flex items-start justify-between gap-3 rounded-lg border p-3 sm:col-span-2">
-                    <span>
-                      <span className="block text-sm font-medium text-navy-900">{f.label}</span>
-                      <span className="block text-xs text-muted-foreground">{f.hint}</span>
-                    </span>
-                    <Switch checked={value === true} onCheckedChange={(v) => setDraft((d) => ({ ...d, [f.key]: v }))} aria-label={f.label} />
-                  </label>
-                );
-              }
-              const isNumber = typeof types[f.key] === "number";
-              return (
-                <div key={f.key} className="grid content-start gap-1.5">
-                  <Label htmlFor={f.key}>{f.label}</Label>
-                  <div className="relative">
-                    <Input
-                      id={f.key}
-                      type={isNumber ? "number" : f.key === "supportPhone" ? "tel" : "text"}
-                      inputMode={isNumber ? "decimal" : undefined}
-                      step={f.step}
-                      value={String(value ?? "")}
-                      onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
-                      aria-invalid={!!error}
-                      aria-describedby={`${f.key}-hint`}
-                      className={f.suffix ? "pr-14" : undefined}
-                    />
-                    {f.suffix && (
-                      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">{f.suffix}</span>
-                    )}
-                  </div>
-                  <p id={`${f.key}-hint`} className={error ? "text-xs text-error" : "text-xs text-muted-foreground"}>
-                    {error ?? f.hint}
-                  </p>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ))}
-      <Card className={changed.length ? "sticky bottom-3 z-20 shadow-lg lg:col-span-2" : "lg:col-span-2"}>
-        <CardFooter className="justify-between gap-3 border-t-0 bg-transparent">
-          <p className="text-sm text-muted-foreground">
-            {hasErrors ? "Fix the highlighted fields to save." : changed.length ? `${changed.length} unsaved change${changed.length > 1 ? "s" : ""}.` : "All changes saved."}
+
+      <div className="grid min-w-0 gap-4">
+        {isSearching && (
+          <p className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span>
+              {found.length
+                ? `${found.reduce((n, g) => n + g.fields.length, 0)} setting${found.reduce((n, g) => n + g.fields.length, 0) === 1 ? "" : "s"} match “${find.trim()}”`
+                : `No setting matches “${find.trim()}”.`}
+            </span>
+            <button type="button" onClick={() => setFind("")} className="inline-flex items-center gap-1 text-xs font-medium text-navy-700 hover:text-coral-600">
+              <XIcon className="size-3.5" aria-hidden /> Clear
+            </button>
           </p>
-          <Button type="submit" disabled={changed.length === 0 || hasErrors || isPending}>
-            {isPending ? <Loader2Icon className="animate-spin" /> : <SaveIcon />} Save settings
-          </Button>
-        </CardFooter>
-      </Card>
+        )}
+        {shown.map((g) => {
+          const Icon = ICONS[g.group] ?? PuzzleIcon;
+          return (
+            <Card key={g.group}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2.5 text-lg font-semibold text-navy-900">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-coral-50 text-coral-600">
+                    <Icon className="size-4" aria-hidden />
+                  </span>
+                  {g.group}
+                </CardTitle>
+                <CardDescription className="max-w-3xl leading-relaxed">{g.description}</CardDescription>
+                {g.group === "Pricing & surge" && example !== null && (
+                  <p className="mt-1 w-fit rounded-md bg-coral-50 px-2.5 py-1.5 text-xs text-coral-700">
+                    Example: 6 bookings, 2 free drivers → ratio 3 → 1 + {Number.isFinite(sens) ? sens : "?"} × 2 = <b>{example.toFixed(2)}×</b>
+                    {form.draft.dynamicSurgeEnabled === false ? " (dynamic surge is off)" : ""}
+                  </p>
+                )}
+              </CardHeader>
+              <CardContent className="grid gap-x-6 gap-y-5 border-t pt-5 sm:grid-cols-2">
+                {g.fields.map((f) => (
+                  <SettingField key={f.key} field={f} form={form} />
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <SaveBar form={form} where={editedSections.join(", ")} className="lg:col-span-2" />
     </form>
   );
 }

@@ -65,6 +65,14 @@ const RULES: Record<string, (v: SettingValue) => string | null> = {
   deviationM: (v) => (inRange(v, 50, 2000, true) ? null : "Off-route distance must be 50–2,000 whole metres"),
   nightStartHour: (v) => (inRange(v, 0, 23, true) ? null : "Night starts must be an hour 0–23"),
   nightEndHour: (v) => (inRange(v, 0, 23, true) ? null : "Night ends must be an hour 0–23"),
+  searchReminderEnabled: (v) => (typeof v === "boolean" ? null : "The didn't-book reminder must be on or off"),
+  searchReminderDelayMin: (v) => (inRange(v, 1, 240, true) ? null : "Send after must be 1–240 whole minutes"),
+  routineReminderEnabled: (v) => (typeof v === "boolean" ? null : "The usual-trip reminder must be on or off"),
+  routineMinTrips: (v) => (inRange(v, 2, 28, true) ? null : "Usual trip after must be 2–28 days (they are counted over 4 weeks)"),
+  routineLeadMin: (v) => (inRange(v, 5, 120, true) ? null : "Remind before must be 5–120 whole minutes"),
+  reminderQuietStartHour: (v) => (inRange(v, 0, 23, true) ? null : "Quiet from must be an hour 0–23"),
+  reminderQuietEndHour: (v) => (inRange(v, 0, 23, true) ? null : "Quiet until must be an hour 0–23"),
+  reminderDailyCap: (v) => (inRange(v, 1, 10, true) ? null : "Daily cap must be 1–10 reminders"),
   supportPhone: (v) => (typeof v === "string" && /^\+?[\d\s-]{8,20}$/.test(v.trim()) ? null : "Enter a phone number like +91 422 000 0000"),
 };
 

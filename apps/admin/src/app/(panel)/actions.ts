@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { ApiError, adminApi, type AnnouncementInput, type CityInput, type FareInput, type ZoneInput } from "@/lib/api";
+import { campaignInputError, isReminderKey, type CampaignInput } from "@/lib/automations";
 import { promoInputError } from "@/lib/promos";
 import { validateSettings, type SettingsInput } from "@/lib/validation";
 import {
@@ -18,6 +19,7 @@ import {
   DRIVER_VEHICLE_KINDS,
   VEHICLE_KINDS,
   ZONE_KINDS,
+  type CampaignTarget,
   type City,
   type DriverProfileInput,
   type DriverStatus,
@@ -445,6 +447,38 @@ export async function saveSettings(input: SettingsInput): Promise<ActionResult> 
   if (first) return { ok: false, error: first };
   const res = await run(() => adminApi.updateSettings(input), "Settings saved", ["/settings", "/live"]);
   return plain(res);
+}
+
+// Automations (reminders) and campaigns ------------------------------------------------------------------------------
+
+/** Only the reminder keys of the settings (Engage › Automations); the Settings page saves the rest. */
+export async function saveReminderSettings(input: SettingsInput): Promise<ActionResult> {
+  if (Object.keys(input).some((k) => !isReminderKey(k))) return { ok: false, error: "Only reminder settings can be saved here" };
+  const errors = validateSettings(input);
+  const first = Object.values(errors)[0];
+  if (first) return { ok: false, error: first };
+  return plain(await run(() => adminApi.updateSettings(input), "Reminders saved", ["/automations"]));
+}
+
+/** A push to every rider: now, or at [sendAt] (ISO). */
+export async function createCampaign(input: CampaignInput): Promise<ActionResult> {
+  const error = campaignInputError(input);
+  if (error) return { ok: false, error };
+  const data = {
+    title: input.title.trim(),
+    body: input.body.trim(),
+    target: input.target as CampaignTarget,
+    sendAt: input.sendAt ? new Date(input.sendAt).toISOString() : undefined,
+  };
+  return plain(await run(() => adminApi.createCampaign(data), data.sendAt ? "Campaign scheduled" : "Campaign sent to every rider", ["/automations/campaigns"]));
+}
+
+export async function cancelCampaign(id: string): Promise<ActionResult> {
+  return plain(await run(() => adminApi.cancelCampaign(id), "Campaign cancelled: it won't be sent", ["/automations/campaigns"]));
+}
+
+export async function deleteCampaign(id: string): Promise<ActionResult> {
+  return plain(await run(() => adminApi.deleteCampaign(id), "Campaign deleted", ["/automations/campaigns"]));
 }
 
 // Learned travel speeds -----------------------------------------------------------------------------------------------

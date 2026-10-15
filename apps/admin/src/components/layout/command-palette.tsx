@@ -9,9 +9,15 @@ import { paletteItems, type PaletteGroup, type PalettePage } from "@/lib/palette
 import type { SearchResults } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-import { DEFAULT_SEARCH, NAV_GROUPS, activeNav, groupOf } from "./nav";
+import { DEFAULT_SEARCH, NAV_PAGES, activePage, hasTabs, type NavGroup, type NavItem } from "./nav";
 
-const PAGES: readonly PalettePage[] = NAV_GROUPS.flatMap((g) => g.items.map((i) => ({ href: i.href, label: i.label, group: g.label, searchHint: i.searchHint })));
+/** Where a page sits, shown next to it: "People › Drivers" for a tab, the group for a single page. */
+function placeOf(item: NavItem, group: NavGroup): string {
+  return hasTabs(item) ? `${group.label} › ${item.label}` : group.label;
+}
+
+// Every page, each tab included, so "approvals" or "payments" still finds its page.
+const PAGES: readonly PalettePage[] = NAV_PAGES.map(({ page, item, group }) => ({ href: page.href, label: page.label, group: placeOf(item, group), searchHint: page.searchHint }));
 
 const GROUP_ICON: Record<PaletteGroup, typeof SearchIcon> = {
   Search: SearchIcon,
@@ -39,8 +45,8 @@ export function CommandPalette({ pathname }: { pathname: string }) {
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const section = activeNav(pathname);
-  const current: PalettePage = { href: section.href, label: section.label, group: groupOf(section).label, searchHint: pathname === section.href ? section.searchHint : undefined };
+  const open = activePage(pathname);
+  const current: PalettePage = { href: open.page.href, label: open.page.label, group: open.item.label, searchHint: open.isExact ? open.page.searchHint : undefined };
   const fallback: PalettePage = { href: DEFAULT_SEARCH.href, label: DEFAULT_SEARCH.label, group: "Drivers", searchHint: DEFAULT_SEARCH.searchHint };
   const items = paletteItems({ q, current, fallbackSearch: fallback, pages: PAGES, results });
 

@@ -20,6 +20,9 @@ import type {
   AnnouncementAudience,
   Promo,
   AuditLog,
+  AutomationsOverview,
+  Campaign,
+  CampaignTarget,
   City,
   CityDetail,
   CancellationDue,
@@ -230,6 +233,14 @@ export interface AnnouncementInput {
   readonly endsAt?: string;
 }
 
+export interface CampaignCreateInput {
+  readonly title: string;
+  readonly body: string;
+  readonly target?: CampaignTarget;
+  /** ISO; absent = send now. The API refuses a time in the past (400). */
+  readonly sendAt?: string;
+}
+
 /** Typed endpoints of the admin API (apps/api/src/modules/admin/admin.controller.ts). */
 export const adminApi = {
   stats: () => apiFetch<AdminStats>("/admin/stats"),
@@ -341,6 +352,12 @@ export const adminApi = {
   updatePromo: (id: string, data: { isActive?: boolean; sortOrder?: number }) =>
     apiFetch<Promo>(`/admin/promos/${enc(id)}`, { method: "PATCH", body: data }),
   deletePromo: (id: string) => apiFetch<null>(`/admin/promos/${enc(id)}`, { method: "DELETE" }),
+  // Engage › Automations: reminder numbers and festival/weekend campaigns
+  automations: () => apiFetch<AutomationsOverview>("/admin/automations"),
+  campaigns: () => apiFetch<Campaign[]>("/admin/campaigns"),
+  createCampaign: (data: CampaignCreateInput) => apiFetch<Campaign>("/admin/campaigns", { method: "POST", body: data }),
+  cancelCampaign: (id: string) => apiFetch<Campaign>(`/admin/campaigns/${enc(id)}/cancel`, { method: "POST" }),
+  deleteCampaign: (id: string) => apiFetch<null>(`/admin/campaigns/${enc(id)}`, { method: "DELETE" }),
   settings: () => apiFetch<SettingsRecord>("/admin/settings"),
   updateSettings: (data: Record<string, number | boolean | string | undefined>) =>
     apiFetch<SettingsRecord>("/admin/settings", { method: "PUT", body: data }),
