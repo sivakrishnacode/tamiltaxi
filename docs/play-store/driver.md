@@ -107,8 +107,12 @@ The app declares two foreground service types. The console asks, for each, what 
 | `FOREGROUND_SERVICE_LOCATION` | Location sharing / navigation (user-initiated) | "While a driver is online or on a trip, the app shares the driver's location with our dispatch and with the rider of the current trip. The driver starts it by tapping Go online and stops it by going offline; a notification shows the whole time." |
 | `FOREGROUND_SERVICE_SPECIAL_USE` | Special use | "A floating bubble and an incoming ride request card shown over other apps while the driver is online, so drivers who use navigation or other apps don't miss ride requests. No other foreground service type covers an overlay that must stay alive while the app is in the background." |
 
-Video: open the app → Go online → the notification appears → press Home and open Google Maps → the bubble stays on top
-→ a ride request card appears over Maps → accept it.
+Video: `dist/tamiltaxi-driver-fgs-video.mp4` (git-ignored, 46 s, recorded 16 Oct 2026 on a phone against staging):
+Go online → the location notification → Home, open another app (Calculator) → the bubble stays on top → tap it to
+come back → Go offline, and the notification goes. The map, the profile photo, the Wi-Fi name and the home screen are
+blurred; captions name each step. Upload it to YouTube as **Unlisted** and paste the same link for both permissions.
+It doesn't show a request card over another app (that needs a staging rider near the phone); record that part too if
+Google asks.
 
 `FOREGROUND_SERVICE_SPECIAL_USE` is the declaration most likely to be questioned. If Google rejects it, the fallback is
 to drop the overlay service and rely on the full-screen request alert.
