@@ -701,7 +701,10 @@ Never commit real `.env` files.
   and verify. Without the handshake, or without WhatsApp, the message shows Copy code and the rider types it. The
   templates name the package and its signature hash, which only matches APKs signed with the debug keystore on the
   build laptop (what release APKs use): passenger `OQje1c76xHw`, driver `7nA4P/uF07l`. Installs from Google Play are
-  signed with Play's app signing key, which has another hash: add it to both templates in WATX before Play testers sign in.
+  signed with Play's app signing key, which has another hash: passenger (16 Oct 2026, Play Console › App signing)
+  `h2WEARKO5f3`, SHA-1 `37:05:1E:7C:F0:F4:6A:1F:21:43:00:79:59:E0:96:57:61:49:DB:7B`; Play's quantum-ready copies
+  `tedTg5qm/3F` (SHA-1 `3E:B9:63:08:…:0D:2D`) and `4xRQYepqQ14`. These go in the WATX template and the Maps key's Android
+  restriction next to the debug ones. Hash = first 11 chars of base64(SHA-256("<package> <certificate DER as hex>")).
 
 ---
 
