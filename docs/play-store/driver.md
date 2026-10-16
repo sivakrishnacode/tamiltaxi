@@ -129,3 +129,13 @@ to allow it (`apps/driver/lib/overlay/background_permissions.dart`).
 - No `ACCESS_BACKGROUND_LOCATION`: location in the background runs through the location foreground service above, so
   there is no background-location declaration.
 - Camera and microphone: no form (the microphone comes with the Didit SDK).
+
+## Release
+
+Closed testing (the same "Prelaunch testers" list as the rider app): upload `dist/tamiltaxi-driver-0.1.0-1.aab`
+(built 16 Oct 2026 after the WhatsApp-number wording, upload key checked). Release name: Play's suggestion,
+`1 (0.1.0)`. Release notes (en-IN):
+
+```
+First release of Tamil Taxi Driver: get ride, parcel and house-shifting requests in Coimbatore and keep 100% of every fare. 0% commission, no subscription.
+```
