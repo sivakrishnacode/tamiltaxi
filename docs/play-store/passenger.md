@@ -105,7 +105,7 @@ misrepresentation policy rejects apps that look government-run when they aren't.
 ### Privacy policy
 
 ```
-https://tamiltaxi.co.in/privacy/
+https://www.tamiltaxi.co.in/privacy/
 ```
 
 Live today (redirects to www.tamiltaxi.co.in). Fix it before you submit, so it matches the app and the Data safety form
@@ -183,8 +183,8 @@ If the console still shows it: **My app is not a publicly available COVID-19 con
 | Does your app collect or share any of the required user data types? | **Yes** |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS to `api.65-0-233-253.sslip.io`, Google, Firebase and Didit; release builds allow HTTPS only) |
 | Which of the following methods of account creation does your app support? | **Username and other authentication** (phone number + one-time code) |
-| Delete account URL | `https://tamiltaxi.co.in/delete-account/` |
-| Can users request deletion of some data without deleting their account? | **Yes**: saved places, emergency contacts, email and gender can be removed in the app; anything else by email to support |
+| Delete account URL | `https://www.tamiltaxi.co.in/delete-account/` (the `www` address loads without a redirect) |
+| Can users request deletion of some data without deleting their account? | **No** (optional question). Riders can remove saved places, emergency contacts, email and gender in the app, but a Yes needs a web page with the steps, and `/delete-account/` only covers closing the account |
 | Committed to the Families Policy? | Not shown (18+ app) |
 | Independent security review? | No |
 
