@@ -55,7 +55,11 @@ function fakeRedis(): RedisService & { store: Map<string, string> } {
 const TEMPLATES = { passenger: 'login_otp_passenger', driver: 'login_otp_driver' };
 /** WATX off unless [watx] is passed. */
 const otp = (env: Partial<Env>, redis = fakeRedis(), watx = { isEnabled: false, sendTemplate: vi.fn() }): OtpService =>
-  new OtpService(redis, { isOtpDevMode: true, devOtpCode: '', watx: { apiKey: '', otpTemplates: TEMPLATES }, ...env } as Env, watx as unknown as WatxClient);
+  new OtpService(
+    redis,
+    { isOtpDevMode: true, devOtpCode: '', reviewPhones: [], reviewOtpCode: '', watx: { apiKey: '', otpTemplates: TEMPLATES }, ...env } as Env,
+    watx as unknown as WatxClient,
+  );
 
 describe('OtpService', () => {
   beforeEach(() => {
@@ -106,6 +110,19 @@ describe('OtpService', () => {
     const sent = redis.store.get('otp:code:+919000000002')!;
     expect(await s.verify('+919000000002', sent === '123456' ? '654321' : '123456')).toBe(false);
     expect(await s.verify('+919000000002', sent)).toBe(true);
+  });
+
+  it('review phones: no WhatsApp message, and OTP_REVIEW_CODE signs them in, in live mode too', async () => {
+    const watx = { isEnabled: true, sendTemplate: vi.fn().mockResolvedValue(undefined) };
+    const s = otp({ isOtpDevMode: false, reviewPhones: ['+919876500001'], reviewOtpCode: '482915' }, fakeRedis(), watx);
+    await s.send('+919876500001');
+    expect(watx.sendTemplate).not.toHaveBeenCalled();
+    expect(await s.verify('+919876500001', '482915')).toBe(true);
+    // Not for other phones, and still only after a send.
+    await s.send('+919000000009');
+    expect(watx.sendTemplate).toHaveBeenCalledTimes(1);
+    expect(await s.verify('+919000000009', '482915')).toBe(false);
+    await expect(s.verify('+919876500001', '482915')).rejects.toMatchObject({ status: 401 });
   });
 
   it('refuses a verify for a phone no code was sent to (the static dev code works only after a send), and a code signs in once', async () => {

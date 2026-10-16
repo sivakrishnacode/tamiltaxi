@@ -43,8 +43,9 @@ Worth knowing:
 
 - **New personal developer accounts** must run a closed test with at least 12 testers for 14 days in a row before
   they can apply for production. Organisation accounts (D-U-N-S number) skip this. Start the closed test early.
-- **Review login.** Reviewers sign in with the staging `DEV_OTP_CODE`, which only works while `OTP_DEV_MODE=true`.
-  Before you switch to live codes, keep one review number with a fixed code.
+- **Review login.** Reviewers sign in with review numbers (`OTP_REVIEW_PHONES` on staging: no WhatsApp message is
+  sent to them) and the fixed `OTP_REVIEW_CODE`, which keeps working after live codes are switched on. Add a new review
+  number there before you give it out: any other number gets a real WhatsApp code.
 - **Name.** The ruling party's manifesto promised a government "Tamil Taxi app". The listing says Tamil Taxi is
   independent. Check the trademark question before launch, and don't run government-scheme banners in the app
   while the listing is in review, so it doesn't look government-run.

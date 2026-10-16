@@ -15,6 +15,13 @@ export interface Env {
    * allowed only outside production, so a public server never accepts any code.
    */
   readonly devOtpCode: string;
+  /**
+   * Store-review logins (OTP_REVIEW_PHONES, +91…): never sent a WhatsApp code, so a reviewer typing a made-up number
+   * texts nobody. They sign in with [reviewOtpCode], in live mode too. Their accounts must hold only test data.
+   */
+  readonly reviewPhones: readonly string[];
+  /** OTP_REVIEW_CODE: the 6-digit code [reviewPhones] sign in with. Required when there are review phones. */
+  readonly reviewOtpCode: string;
   readonly corsOrigins: readonly string[];
   /** Server-side Google Maps Platform key (Places, Geocoding, Routes). Empty = local fallback. */
   readonly googleMapsApiKey: string;
@@ -53,6 +60,15 @@ function required(name: string): string {
   return value;
 }
 
+/** A comma-separated list of phones (10 digits or +91…) as +91…. */
+function phoneList(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `+91${p.replace(/^\+91/, '')}`);
+}
+
 /** Reads and validates the environment once at start-up. */
 export function loadEnv(): Env {
   // Local dev: read apps/api/.env if present (Docker passes real env vars instead).
@@ -68,6 +84,12 @@ export function loadEnv(): Env {
   if (nodeEnv === 'production' && isOtpDevMode && !devOtpCode) {
     throw new Error('OTP_DEV_MODE in production needs DEV_OTP_CODE (a secret 6-digit code), or set OTP_DEV_MODE=false');
   }
+  const reviewPhones = phoneList(process.env.OTP_REVIEW_PHONES);
+  const reviewOtpCode = process.env.OTP_REVIEW_CODE ?? '';
+  if (reviewOtpCode && (!/^\d{6}$/.test(reviewOtpCode) || reviewOtpCode === '000000')) {
+    throw new Error('OTP_REVIEW_CODE must be 6 digits, not 000000');
+  }
+  if (reviewPhones.length > 0 && !reviewOtpCode) throw new Error('OTP_REVIEW_PHONES needs OTP_REVIEW_CODE');
   const watxApiKey = process.env.WATX_API_KEY ?? '';
   if (nodeEnv === 'production' && !isOtpDevMode && !watxApiKey) {
     throw new Error('OTP_DEV_MODE=false in production needs WATX_API_KEY, or no login code is ever sent');
@@ -81,13 +103,11 @@ export function loadEnv(): Env {
     jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '30d',
     isOtpDevMode,
     devOtpCode,
+    reviewPhones,
+    reviewOtpCode,
     corsOrigins: (process.env.CORS_ORIGINS ?? '*').split(',').map((o) => o.trim()),
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
-    adminPhones: (process.env.ADMIN_PHONES ?? '')
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .map((p) => `+91${p.replace(/^\+91/, '')}`),
+    adminPhones: phoneList(process.env.ADMIN_PHONES),
     uploadDir: process.env.UPLOAD_DIR ?? './uploads',
     s3Bucket: process.env.S3_BUCKET ?? '',
     s3Region: process.env.S3_REGION ?? process.env.AWS_REGION ?? 'ap-south-1',

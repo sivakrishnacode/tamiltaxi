@@ -122,8 +122,8 @@ Live today (redirects to www.tamiltaxi.co.in). Fix it before you submit, so it m
 | Field | Answer |
 |---|---|
 | Name | `Rider sign-in` |
-| Username / phone | `+919876500001` (any Indian mobile number works; a new number creates a new rider) |
-| Password / code | the staging `DEV_OTP_CODE` from `docs/tech-docs/credentials.local.md` (never write it in this repo) |
+| Username / phone | `+919876500001` (a review number: no WhatsApp message is sent to it) |
+| Password / code | the staging `OTP_REVIEW_CODE` (same value as `DEV_OTP_CODE`) from `docs/tech-docs/credentials.local.md` (never write it in this repo) |
 | Any other information | text below |
 
 ```
@@ -134,8 +134,8 @@ A booking needs a driver online nearby, so a test booking may end with "No drive
 
 The box takes at most 500 characters. Tick "Sign in details… provide full access to all the features": nothing in the app is paid.
 
-This only works while the API keeps `OTP_DEV_MODE=true` with `DEV_OTP_CODE` set (true on staging today). If you
-switch to live codes, keep one review number that always accepts a fixed code, or reviewers can't sign in.
+The number is in the staging `OTP_REVIEW_PHONES`, so it gets no WhatsApp message and signs in with `OTP_REVIEW_CODE`,
+also after live codes are switched on. Give reviewers only review numbers: any other number gets a real WhatsApp code.
 
 ### Ads
 

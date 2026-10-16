@@ -28,6 +28,9 @@ export const GLOBAL_LOCK_KEY = 'otp:lock:global';
  * controller), a code must have been sent to the phone in the last 10 min (also with DEV_OTP_CODE, which is the same
  * for every phone), and a global brake: more than [GLOBAL_MAX_FAILURES] wrong codes in 10 min across all phones (a
  * spread-out guessing run) pauses every verify for 10 min.
+ *
+ * Review phones (OTP_REVIEW_PHONES) go through the same steps and guards but get no WhatsApp message; they sign in
+ * with OTP_REVIEW_CODE.
  */
 @Injectable()
 export class OtpService {
@@ -56,12 +59,14 @@ export class OtpService {
       .set(`otp:sent:${phone}`, '1', 'EX', SENT_WINDOW_S)
       .del(`otp:attempts:${phone}`)
       .exec();
-    await this.deliver(phone, code, app);
+    if (this.env.reviewPhones.includes(phone)) this.logger.log(`Review phone ${phone}: no WhatsApp code sent`);
+    else await this.deliver(phone, code, app);
     return { expiresInSeconds: OTP_TTL_S };
   }
 
   /**
-   * True if [code] is the one sent. Dev mode also takes DEV_OTP_CODE when it is set, else any 6 digits except 000000.
+   * True if [code] is the one sent. Dev mode also takes DEV_OTP_CODE when it is set, else any 6 digits except 000000;
+   * a review phone also takes OTP_REVIEW_CODE.
    * 401 when no code was sent to [phone] in the last 10 min; 429 after too many wrong tries (this phone, or everyone).
    */
   async verify(phone: string, code: string): Promise<boolean> {
@@ -82,7 +87,10 @@ export class OtpService {
       });
     }
     const expected = await this.redis.get(`otp:code:${phone}`);
-    const isValid = (expected !== null && expected === code) || (this.env.isOtpDevMode && OtpService.isDevCode(code, this.env.devOtpCode));
+    const isValid =
+      (expected !== null && expected === code) ||
+      (this.env.isOtpDevMode && OtpService.isDevCode(code, this.env.devOtpCode)) ||
+      (this.env.reviewPhones.includes(phone) && code === this.env.reviewOtpCode);
     if (isValid) await this.redis.del(`otp:code:${phone}`, `otp:attempts:${phone}`, `otp:sent:${phone}`);
     else await this.countFailure();
     return isValid;

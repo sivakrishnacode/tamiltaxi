@@ -57,7 +57,7 @@ Questions? Use Help & support in the app or write to support@tamiltaxi.co.in.
 | Field | Answer |
 |---|---|
 | Phone | `+919100000101` (Arun Kumar, an approved test cab driver from `npm run seed:test-drivers -w @tamiltaxi/api`) |
-| Code | the staging `DEV_OTP_CODE` (see `docs/tech-docs/credentials.local.md`) |
+| Code | the staging `OTP_REVIEW_CODE` (same value as `DEV_OTP_CODE`, see `docs/tech-docs/credentials.local.md`); the number is a review number, so no WhatsApp message is sent to it |
 
 ```
 Enter the password above as the 6-digit one-time code: it always works. This driver is already approved, so no identity check is needed. Tap "Go online" on Home. Requests only arrive when a rider in Coimbatore books, so request screens may not appear during review.

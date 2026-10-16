@@ -56,6 +56,9 @@ services:
       OTP_DEV_MODE: ${OTP_DEV_MODE:-true}
       # With OTP_DEV_MODE in production (NODE_ENV above) this 6-digit code is the only one that signs in. Required.
       DEV_OTP_CODE: ${DEV_OTP_CODE:-}
+      # Store-review numbers (comma-separated): never sent a WhatsApp code, they sign in with OTP_REVIEW_CODE.
+      OTP_REVIEW_PHONES: ${OTP_REVIEW_PHONES:-}
+      OTP_REVIEW_CODE: ${OTP_REVIEW_CODE:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       SEED_ON_START: ${SEED_ON_START:-true}
       # Server key for Places / Geocoding / Routes (restrict by IP). Empty = local fallback.
