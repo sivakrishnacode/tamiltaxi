@@ -1,43 +1,42 @@
 #!/usr/bin/env python3
-"""Google Play store graphics for the rider app: framed phone and tablet screenshots, feature graphic, icon.
+"""Google Play store graphics for both apps: framed phone and tablet screenshots, feature graphic, icon.
 
-Inputs (docs/play-store/raw/):
-  <name>.png        phone captures, 1080 × 2392, of Design gallery frames (seed data) with real Google Maps:
-                      home P-07, choose-ride P-10, driver-on-the-way P-13, ride-safety P-16, pay-driver P-19,
-                      parcel PP-01. To retake them on an Android phone:
+Inputs (docs/play-store/raw/<app>/, app = passenger or driver):
+  <name>.png        phone captures, 1080 × 2392, of Design gallery frames (seed data) with real Google Maps; the
+                      frame IDs are in APPS below. To retake them on an Android phone:
                       1. scripts/flutter.sh build apk --release --target-platform android-arm64 \
                            --dart-define=TT_LIVE_API=false --dart-define=TT_DESIGN_GALLERY=true; adb install -r …
-                      2. adb shell pm revoke com.tamiltaxi.passenger android.permission.ACCESS_FINE_LOCATION
-                         (and ..._COARSE_...): without location the pickup is the seed place, not where the phone
-                         is. Sign in (any number and code in mock mode), "Enter location manually".
+                      2. adb shell pm revoke com.tamiltaxi.<app> android.permission.ACCESS_FINE_LOCATION
+                         (and ..._COARSE_...): without location the map shows the seed place, not where the phone
+                         is. Sign in (any number and code in mock mode); rider: "Enter location manually"; driver: the
+                         prefilled sign-up (Continue, Save, Verify, Take photo, Use photo) is approved in seconds.
                       3. Clean status bar: adb shell settings put global sysui_demo_allowed 1, then
                          am broadcast -a com.android.systemui.demo -e command enter / clock / battery / network;
                          heads_up_notifications_enabled 0 so no banner lands on a shot.
                       4. Account › Design gallery › search the frame ID › open it, wait ~8 s for the map, then
-                         adb exec-out screencap -p > docs/play-store/raw/<name>.png
+                         adb exec-out screencap -p > docs/play-store/raw/<app>/<name>.png
                       Afterwards reinstall the normal build and undo steps 2 and 3.
   feature-art.png   ChatGPT (Codex CLI) background art for the feature graphic: no text, empty on the left.
 
-Outputs (docs/play-store/passenger/):
+Outputs (docs/play-store/<app>/):
   phone/NN-<name>.png        1440 × 2560 (9:16)
   tablet-7in/NN-<name>.png   1920 × 1080 (16:9)
   tablet-10in/NN-<name>.png  2560 × 1440 (16:9)
   feature-graphic.png        1024 × 500
-  icon-512.png               copy of docs/design/assets/app-icon/tamil-taxi-512.png
+  icon-512.png               copy of the app's Play Store icon in docs/design/assets/app-icon/
 
-Run: python3 scripts/store_screenshots.py
+Run: python3 scripts/store_screenshots.py [passenger|driver]   (both when no app is given)
 """
+from dataclasses import dataclass
 from pathlib import Path
 import shutil
+import sys
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-RAW = ROOT / "docs/play-store/raw"
-OUT = ROOT / "docs/play-store/passenger"
 FONTS = ROOT / "packages/tamiltaxi_ui/assets/google_fonts"
-LOGO = ROOT / "docs/design/assets/logo/tamil-taxi.png"
-ICON = ROOT / "docs/design/assets/app-icon/tamil-taxi-512.png"
+ASSETS = ROOT / "docs/design/assets"
 
 NAVY = (30, 41, 59)
 SLATE = (71, 85, 105)
@@ -46,19 +45,58 @@ BG_TOP = (255, 246, 241)
 BG_BOTTOM = (255, 226, 214)
 FRAME = (15, 23, 42)
 
-# Raw capture, caption (*word* = coral), subline. In listing order.
-SHOTS = [
-    ("home", "Bike, auto or cab\nin *two taps*", "Rides across Coimbatore"),
-    ("choose-ride", "See the fare\n*before you book*", "Locked when you book. No surprises"),
-    ("driver-on-the-way", "Watch your driver\n*arrive live*", "Call or chat, start with your ride OTP"),
-    ("ride-safety", "Ride safe with\n*SOS and trip sharing*", "Share your live trip with family"),
-    ("pay-driver", "Drivers keep *100%*\nof your fare", "0% commission. Pay by cash or UPI"),
-    ("parcel", "Send parcels\n*across town*", "Bike to truck, plus Packers & Movers"),
-]
+
+@dataclass(frozen=True)
+class App:
+    logo: Path
+    icon: Path
+    # Raw capture (with its Design gallery frame), caption (*word* = coral), subline. In listing order.
+    shots: list[tuple[str, str, str]]
+    feature_caption: str
+    feature_sub: str
+    # How big the art sits on the feature graphic: small enough that its subject clears the text on the left.
+    feature_scale: float = 0.56
+
+
+APPS = {
+    "passenger": App(
+        logo=ASSETS / "logo/tamil-taxi.png",
+        icon=ASSETS / "app-icon/tamil-taxi-512.png",
+        shots=[
+            ("home", "Bike, auto or cab\nin *two taps*", "Rides across Coimbatore"),  # P-07
+            ("choose-ride", "See the fare\n*before you book*", "Locked when you book. No surprises"),  # P-10
+            ("driver-on-the-way", "Watch your driver\n*arrive live*", "Call or chat, start with your ride OTP"),  # P-13
+            ("ride-safety", "Ride safe with\n*SOS and trip sharing*", "Share your live trip with family"),  # P-16
+            ("pay-driver", "Drivers keep *100%*\nof your fare", "0% commission. Pay by cash or UPI"),  # P-19
+            ("parcel", "Send parcels\n*across town*", "Bike to truck, plus Packers & Movers"),  # PP-01
+        ],
+        feature_caption="Rides & parcels\nwith *0% commission*",
+        feature_sub="Bike · Auto · Cab · Parcel · Coimbatore",
+    ),
+    "driver": App(
+        logo=ASSETS / "logo/tamil-taxi-driver.png",
+        icon=ASSETS / "app-icon/tamil-taxi-driver-512.png",
+        shots=[
+            ("online", "Go online, get\n*rides near you*", "Busy areas shown on your map"),  # D-14
+            ("ride-request", "See the fare\n*before you accept*", "Pickup, drop and distance up front"),  # D-15
+            ("to-pickup", "Head to\n*your rider*", "Navigate, call or chat in one tap"),  # D-16
+            ("collect", "Keep *100%*\nof every fare", "0% commission. Riders pay you directly"),  # D-19
+            ("earnings", "See what\n*you earned*", "Every trip, day and week"),  # D-23
+            ("delivery", "Parcels and\n*house moves* too", "More work between rides"),  # D-21
+        ],
+        feature_caption="Drive and keep\n*100% of every fare*",
+        feature_sub="0% commission · No subscription",
+        feature_scale=0.5,
+    ),
+}
 
 # Notification icons right of the clock on the capture phone (its demo mode doesn't hide them), in 1080-wide
 # capture pixels: covered with the empty status-bar strip just right of them.
 ICONS_BOX = (178, 28, 305, 98)
+
+# Blurred on these captures, in capture pixels: the driver's UPI QR would pay a seed UPI ID that may be someone's real
+# one if scanned off the store listing. Blur a retaken raw capture the same way before committing it (the repo is public).
+BLUR = {("driver", "collect"): (271, 558, 809, 1096)}
 
 
 def font(name: str, size: int) -> ImageFont.FreeTypeFont:
@@ -148,12 +186,12 @@ def phone_shot(shot: Image.Image, caption: str, sub: str) -> Image.Image:
     return img
 
 
-def tablet_shot(shot: Image.Image, caption: str, sub: str, W: int, H: int) -> Image.Image:
+def tablet_shot(app: App, shot: Image.Image, caption: str, sub: str, W: int, H: int) -> Image.Image:
     s = H / 1440
     img = gradient(W, H, vertical=False)
     left = round(170 * s)
     text_w = round(W * 0.5) - left
-    logo = Image.open(LOGO).convert("RGBA")
+    logo = Image.open(app.logo).convert("RGBA")
     logo = logo.resize((round(logo.width * 190 * s / logo.height), round(190 * s)), Image.LANCZOS)
     top = round(400 * s)
     img.paste(logo, (left, top), logo)
@@ -164,40 +202,50 @@ def tablet_shot(shot: Image.Image, caption: str, sub: str, W: int, H: int) -> Im
     return img
 
 
-def feature_graphic() -> Image.Image:
+def feature_graphic(app: App, raw: Path) -> Image.Image:
     W, H = 1024, 500
-    art = Image.open(RAW / "feature-art.png").convert("RGB")
-    # The art at 56% of its size against the right edge (vehicles clear of the text), its cream left edge
+    art = Image.open(raw / "feature-art.png").convert("RGB")
+    # The art against the right edge at app.feature_scale (its subject clear of the text), its cream left edge
     # stretched over the rest.
-    scale = 0.56
+    scale = app.feature_scale
     band_h = round(H / scale)
     top = (art.height - band_h) // 2
     art = art.crop((0, top, art.width, top + band_h)).resize((round(art.width * scale), H), Image.LANCZOS)
     img = Image.new("RGB", (W, H))
     img.paste(art.crop((0, 0, 1, H)).resize((W - art.width, H)), (0, 0))
     img.paste(art, (W - art.width, 0))
-    logo = Image.open(LOGO).convert("RGBA")
+    logo = Image.open(app.logo).convert("RGBA")
     logo = logo.resize((round(logo.width * 160 / logo.height), 160), Image.LANCZOS)
     img.paste(logo, (64, 64), logo)
-    y = draw_caption(img, "Rides & parcels\nwith *0% commission*", 64, 262, 36, "left", 420)
-    draw_sub(img, "Bike · Auto · Cab · Parcel · Coimbatore", 64, y + 8, 19, "left", 420)
+    y = draw_caption(img, app.feature_caption, 64, 262, 36, "left", 420)
+    draw_sub(img, app.feature_sub, 64, y + 8, 19, "left", 420)
     return img
 
 
-def main() -> None:
+def build(name: str) -> None:
+    app = APPS[name]
+    raw = ROOT / "docs/play-store/raw" / name
+    out = ROOT / "docs/play-store" / name
     for d in ("phone", "tablet-7in", "tablet-10in"):
-        (OUT / d).mkdir(parents=True, exist_ok=True)
-    for i, (name, caption, sub) in enumerate(SHOTS, 1):
-        shot = clean_status_bar(Image.open(RAW / f"{name}.png"))
-        stem = f"{i:02d}-{name}.png"
-        phone_shot(shot, caption, sub).save(OUT / "phone" / stem, optimize=True)
-        tablet_shot(shot, caption, sub, 1920, 1080).save(OUT / "tablet-7in" / stem, optimize=True)
-        tablet_shot(shot, caption, sub, 2560, 1440).save(OUT / "tablet-10in" / stem, optimize=True)
-        print("framed", stem)
-    if (RAW / "feature-art.png").exists():
-        feature_graphic().save(OUT / "feature-graphic.png", optimize=True)
-        print("feature-graphic.png")
-    shutil.copyfile(ICON, OUT / "icon-512.png")
+        (out / d).mkdir(parents=True, exist_ok=True)
+    for i, (shot_name, caption, sub) in enumerate(app.shots, 1):
+        shot = clean_status_bar(Image.open(raw / f"{shot_name}.png"))
+        if box := BLUR.get((name, shot_name)):
+            shot.paste(shot.crop(box).filter(ImageFilter.GaussianBlur(12)), box[:2])
+        stem = f"{i:02d}-{shot_name}.png"
+        phone_shot(shot, caption, sub).save(out / "phone" / stem, optimize=True)
+        tablet_shot(app, shot, caption, sub, 1920, 1080).save(out / "tablet-7in" / stem, optimize=True)
+        tablet_shot(app, shot, caption, sub, 2560, 1440).save(out / "tablet-10in" / stem, optimize=True)
+        print(name, "framed", stem)
+    if (raw / "feature-art.png").exists():
+        feature_graphic(app, raw).save(out / "feature-graphic.png", optimize=True)
+        print(name, "feature-graphic.png")
+    shutil.copyfile(app.icon, out / "icon-512.png")
+
+
+def main() -> None:
+    for name in sys.argv[1:] or list(APPS):
+        build(name)
 
 
 if __name__ == "__main__":

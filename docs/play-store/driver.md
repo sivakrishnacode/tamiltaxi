@@ -2,7 +2,7 @@
 
 Package `com.tamiltaxi.driver` · version 0.1.0 (1) · target SDK 36 · min SDK 24 · checked against the code on
 16 Oct 2026. Only what differs from the rider app is written out; for everything else use
-[passenger.md](passenger.md). Store graphics for this app aren't made yet.
+[passenger.md](passenger.md). Store graphics are in [driver/](driver/), made the same way as the rider's.
 
 ## Store listing
 
@@ -42,6 +42,15 @@ Tamil Taxi is an independent service. It is not run by, or affiliated with, the 
 
 Questions? Use Help & support in the app or write to support@tamiltaxi.co.in.
 ```
+
+**Graphics** (files in [`driver/`](driver/)):
+
+| Field | File |
+|---|---|
+| App icon | `driver/icon-512.png` |
+| Feature graphic | `driver/feature-graphic.png` (ChatGPT art: label it as AI-made, like the icon) |
+| Phone screenshots | `driver/phone/01…06`: online with busy areas, ride request, going to pickup, collect 100%, earnings, delivery on the way |
+| 7-inch / 10-inch tablet screenshots | `driver/tablet-7in/01…06`, `driver/tablet-10in/01…06` |
 
 ## App access
 

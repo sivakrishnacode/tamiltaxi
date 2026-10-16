@@ -8,11 +8,14 @@ Everything Play Console asks for, answered from the code, plus the store graphic
 | [passenger.md](passenger.md) | Tamil Taxi (rider): store listing text, every App content answer, Data safety form, release notes |
 | [driver.md](driver.md) | Tamil Taxi Driver: what differs from the rider app, and the extra declarations (foreground services, full-screen alerts) |
 | [passenger/](passenger/) | Rider store graphics: `icon-512.png`, `feature-graphic.png`, `phone/` (6), `tablet-7in/` (6), `tablet-10in/` (6) |
+| [driver/](driver/) | Driver store graphics, the same set |
+| [raw/](raw/) | The phone captures and ChatGPT art the graphics are framed from, one folder per app |
 
-The screenshots are the real rider app on an Android phone with Google Maps: Design gallery frames in mock mode, with
+The screenshots are the real apps on an Android phone with Google Maps: Design gallery frames in mock mode, with
 the phone's location turned off for the app so every place is a seed place. `scripts/store_screenshots.py` paints out
 the phone's notification icons and frames each one with a caption. Names, numbers, places and fares in them are demo
-data. The feature graphic's art was made with ChatGPT; the logo and text on it are ours.
+data; the driver's UPI QR is blurred so nobody pays the demo UPI ID. The feature graphics' art was made with
+ChatGPT; the logos and text on them are ours.
 
 ## Before you submit
 
@@ -64,8 +67,8 @@ Then repeat for the driver app with [driver.md](driver.md).
 ## Refreshing the screenshots
 
 ```bash
-python3 scripts/store_screenshots.py      # raw phone captures in docs/play-store/raw/ → framed PNGs in passenger/
+python3 scripts/store_screenshots.py [passenger|driver]   # raw/<app>/ captures → framed PNGs in <app>/
 ```
 
-Captions are in the script's `SHOTS` list. The top of the script says how to retake the raw captures (mock-mode build
+Captions are in the script's `APPS` table. The top of the script says how to retake the raw captures (mock-mode build
 with the Design gallery, location off, clean status bar, `adb`).
