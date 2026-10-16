@@ -706,8 +706,10 @@ Never commit real `.env` files.
   build laptop (what release APKs use): passenger `OQje1c76xHw`, driver `7nA4P/uF07l`. Installs from Google Play are
   signed with Play's app signing key, which has another hash: passenger (16 Oct 2026, Play Console › App signing)
   `h2WEARKO5f3`, SHA-1 `37:05:1E:7C:F0:F4:6A:1F:21:43:00:79:59:E0:96:57:61:49:DB:7B`; Play's quantum-ready copies
-  `tedTg5qm/3F` (SHA-1 `3E:B9:63:08:…:0D:2D`) and `4xRQYepqQ14`. These go in the WATX template and the Maps key's Android
-  restriction next to the debug ones. Hash = first 11 chars of base64(SHA-256("<package> <certificate DER as hex>")).
+  `tedTg5qm/3F` (SHA-1 `3E:B9:63:08:…:0D:2D`) and `4xRQYepqQ14`; driver (16 Oct 2026) `6YXSOQUbnwa`, SHA-1
+  `F2:7A:89:04:52:BE:1E:13:31:91:BC:9A:FD:1D:C7:16:AC:EA:A1:2D`; quantum-ready `zBkmRuObWGN` (SHA-1
+  `B6:66:32:02:8F:61:C7:F2:23:1D:E3:72:D2:6C:47:1E:43:56:7B:93`) and `Ak690VpcT7f`. These go in the WATX template and
+  the Maps key's Android restriction next to the debug ones. Hash = first 11 chars of base64(SHA-256("<package> <certificate DER as hex>")).
 
 ---
 
