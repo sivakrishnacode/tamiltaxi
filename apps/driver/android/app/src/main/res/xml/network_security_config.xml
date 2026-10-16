@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- HTTPS everywhere, except the staging API server (plain HTTP until it has a domain + TLS). -->
+<!-- HTTPS only. Debug builds allow plain HTTP to a local API (src/debug/res/xml/network_security_config.xml). -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">65.0.233.253</domain>
-    </domain-config>
 </network-security-config>

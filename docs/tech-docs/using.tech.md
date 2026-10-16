@@ -1633,8 +1633,9 @@ cells, zones, fares) is a `City` row added in the admin panel.
 - **Delivery OTP:** only the sender's app has it (the driver's trip reads hide it). The sender sees it on PP-08 and PP-09
   and sends it to the receiver with the tracking (SMS); at the drop D-22a asks the receiver for it and offers "Call the
   sender" (the booking account) when they don't have it, unless the sender is the receiver.
-- **Android:** cleartext HTTP is allowed only for the staging IP (`res/xml/network_security_config.xml`); switch to
-  HTTPS and remove it once there's a domain.
+- **Android:** release builds allow HTTPS only (`res/xml/network_security_config.xml`; the staging IP's plain-HTTP
+  exception was removed on 16 Oct 2026 for Google Play's "encrypted in transit"). Debug builds still allow plain HTTP
+  to a local API (`src/debug/res/xml/network_security_config.xml`).
 
 ## 7c. Push notifications (FCM)
 

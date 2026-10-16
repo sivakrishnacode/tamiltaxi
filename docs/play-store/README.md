@@ -34,9 +34,7 @@ Must fix, or the upload or review fails:
    fill in Data safety; the two must agree.
 4. **Support mailbox.** `support@tamiltaxi.co.in` is the public contact on the listing, the website and the apps.
    It must exist and be read.
-5. **Plain HTTP exception.** `network_security_config.xml` in both apps still allows HTTP to `65.0.233.253` (the
-   old `:3000` address). The apps use HTTPS, but remove the exception so "encrypted in transit" is true without
-   exceptions.
+5. **Plain HTTP exception: done (16 Oct 2026).** Release builds of both apps allow HTTPS only.
 
 Worth knowing:
 

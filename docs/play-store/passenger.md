@@ -179,7 +179,7 @@ If the console still shows it: **My app is not a publicly available COVID-19 con
 | Question | Answer |
 |---|---|
 | Does your app collect or share any of the required user data types? | **Yes** |
-| Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS to `api.65-0-233-253.sslip.io`, Google, Firebase and Didit). See README: the network config still allows plain HTTP to the old IP address; remove that exception before release |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS to `api.65-0-233-253.sslip.io`, Google, Firebase and Didit; release builds allow HTTPS only) |
 | Which of the following methods of account creation does your app support? | **Username and other authentication** (phone number + one-time code) |
 | Delete account URL | `https://tamiltaxi.co.in/delete-account/` |
 | Can users request deletion of some data without deleting their account? | **Yes**: saved places, emergency contacts, email and gender can be removed in the app; anything else by email to support |
