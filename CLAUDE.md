@@ -180,6 +180,7 @@ docs/private/                    owner-only business docs (git-ignored, never pu
 .github/                         CI workflow, issue + PR templates
 docs/design/                     screenshots of every app screen + index (scripts/export_design.py)
 docs/design/assets/              logos (masters), Play Store icons, vehicle art, pictures, colours: see its README
+docs/play-store/                 Play Console answers (both apps), rider store graphics, pre-upload checklist
 scripts/                         flutter.sh / dart.sh (SDK lookup), build_apks.sh, export_design.py, brand_icons.py, vehicle_icons/
 docker-compose.yml               postgres + redis + api + admin (+ `tools` profile: Adminer, Redis Insight)
 ```
@@ -261,3 +262,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 14 Oct 2026 | Repo map: `docs/design/assets/` (logo masters and other design assets) |
 | 15 Oct 2026 | Repo map: `packages/tamiltaxi_whatsapp_otp` (WhatsApp OTP autofill plugin) |
 | 15 Oct 2026 | API modules: `automations` (reminder pushes and campaigns) |
+| 16 Oct 2026 | Repo map: `docs/play-store/` (Google Play submission answers and graphics) |
