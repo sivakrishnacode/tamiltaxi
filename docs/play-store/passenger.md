@@ -214,7 +214,7 @@ and SOS go to contacts the rider picks), and disclosures the law requires.
 | Contacts › Contacts | Yes (emergency contacts the rider adds; the receiver's name and number for a parcel) | Optional | App functionality |
 | App activity › In-app search history | Yes (place searches; a fare checked but not booked) | Required | App functionality; Personalization; Advertising or marketing (the "Ooty?" reminder after an unbooked fare) |
 | App activity › Other user-generated content | Yes (ratings and comments for drivers, parcel and moving details) | Optional | App functionality; Fraud prevention, security and compliance |
-| Device or other IDs | Yes (notification token per device) | Required | App functionality |
+| Device or other IDs | Yes (notification token per device; it also carries reminder and campaign pushes) | Required | App functionality; Advertising or marketing |
 
 **Not collected:** Health and fitness, Financial › User payment info (the rider pays in their own UPI app), Credit
 score, Other financial info, Videos, Audio (the Didit SDK declares the microphone permission; our code never records),
