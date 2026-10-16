@@ -2102,6 +2102,17 @@ back to `:local`, then `up -d --no-build api admin`). Checked live: `/health`, a
 `GET /admin/automations` answers zero counts; a campaign scheduled for 2030 was created, cancelled and deleted (never
 sent), a past time got 400; the signed-in Automations page renders. `rido-sg` also allows `157.50.7.24` (SSH, 15 Oct).
 
+**Deployed 16 Oct 2026:** API only at `824a1c1` (admin unchanged at `74cc68b`): store-review numbers, see "Login codes on
+WhatsApp" in 6. `/opt/tamiltaxi/.env` gained `OTP_REVIEW_PHONES=+919876500001,+919100000101` (the Play reviewer rider
+and driver) and `OTP_REVIEW_CODE` (the same value as `DEV_OTP_CODE`); `docker-compose.yml` passes both. A 0.5 MB slim
+release (`releases/824a1c1`: only the API's `dist/` over the running image; no package files, Dockerfiles or
+migrations had changed since `74cc68b`). Backup: `/opt/tamiltaxi/backups/20261016-824a1c1` (database dump, compose
+files, Caddyfile, `.env`); rollback image `tamiltaxi-api:rollback-20261016-824a1c1` (tag it back to `:local`, then
+`up -d --no-build api`). Checked live: `/health`, app-config and admin login 200; `POST /auth/otp` for both review
+numbers 200 with "Review phone …: no WhatsApp code sent" in the log; a wrong code 401; the review code signs in the
+rider and Arun Kumar (DRIVER); a malformed phone 400. The log showed no sign-in on either number before the change.
+`rido-sg` also allows `49.206.116.183` (SSH, 16 Oct).
+
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
 [staging-kyc-delete-policy.json](staging-kyc-delete-policy.json). The `rido` AWS profile cannot administer IAM.
