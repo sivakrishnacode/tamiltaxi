@@ -87,7 +87,7 @@ class _P04OtpScreenState extends ConsumerState<P04OtpScreen> {
       return;
     }
     if (!mounted) return;
-    showTtSnack(context, 'OTP resent', success: true);
+    showTtSnack(context, 'OTP resent on WhatsApp', success: true);
   }
 
   void _edit() {
@@ -150,10 +150,10 @@ class _P04OtpScreenState extends ConsumerState<P04OtpScreen> {
                   children: [
                     Text('Verify OTP', style: t.display),
                     const SizedBox(height: TtSpacing.xs),
+                    Text('We sent a 6-digit OTP on WhatsApp to', style: t.body.copyWith(color: TtColors.navy700)),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text('Sent to ', style: t.body.copyWith(color: TtColors.navy700)),
                         Text('+91 ${widget.phone}', style: TtTextStyles.tabular(t.bodySemibold)),
                         TextButton(
                           onPressed: _edit,

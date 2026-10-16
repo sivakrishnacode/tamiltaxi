@@ -75,9 +75,11 @@ class _D03PhoneScreenState extends ConsumerState<D03PhoneScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AuthHeader(
-            title: widget.signup ? 'Enter your mobile number' : 'Welcome back',
+            title: widget.signup ? 'Enter your WhatsApp number' : 'Welcome back',
             subtitle: Text(
-              widget.signup ? "We'll send you a 6-digit OTP" : "Log in with your registered number. We'll send a 6-digit OTP",
+              widget.signup
+                  ? "We'll send you a 6-digit OTP on WhatsApp"
+                  : "Log in with your registered WhatsApp number. We'll send a 6-digit OTP on WhatsApp",
               style: t.body.copyWith(color: TtColors.navy300),
             ),
           ),
@@ -89,6 +91,7 @@ class _D03PhoneScreenState extends ConsumerState<D03PhoneScreen> {
                 children: [
                   PhoneInput(
                     controller: _phone,
+                    label: 'WhatsApp number',
                     autofocus: !widget.showcase,
                     onChanged: (_) => setState(() {}),
                     onSubmitted: (_) => _send(),

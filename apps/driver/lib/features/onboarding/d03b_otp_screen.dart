@@ -92,7 +92,7 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
     try {
       await WhatsAppOtp.expectCode();
       await ref.read(driverRepositoryProvider).sendOtp(_apiPhone);
-      if (mounted) showTtSnack(context, 'OTP resent');
+      if (mounted) showTtSnack(context, 'OTP resent on WhatsApp');
     } catch (e) {
       if (mounted) {
         showTtSnack(
@@ -165,26 +165,31 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
         children: [
           AuthHeader(
             title: 'Verify OTP',
-            subtitle: Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Sent to ', style: t.body.copyWith(color: TtColors.navy300)),
-                Text('+91 ${widget.phone}', style: TtTextStyles.tabular(t.bodySemibold.copyWith(color: Colors.white))),
-                Text(' · ', style: t.body.copyWith(color: TtColors.navy300)),
-                Semantics(
-                  button: true,
-                  label: 'Edit number',
-                  excludeSemantics: true,
-                  child: InkWell(
-                    onTap: () => Navigator.of(context).maybePop(),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-                      child: Center(
-                        widthFactor: 1,
-                        child: Text('Edit', style: t.bodySemibold.copyWith(color: TtColors.coral100)),
+                Text('We sent a 6-digit OTP on WhatsApp to', style: t.body.copyWith(color: TtColors.navy300)),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('+91 ${widget.phone}', style: TtTextStyles.tabular(t.bodySemibold.copyWith(color: Colors.white))),
+                    Text(' · ', style: t.body.copyWith(color: TtColors.navy300)),
+                    Semantics(
+                      button: true,
+                      label: 'Edit number',
+                      excludeSemantics: true,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).maybePop(),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+                          child: Center(
+                            widthFactor: 1,
+                            child: Text('Edit', style: t.bodySemibold.copyWith(color: TtColors.coral100)),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

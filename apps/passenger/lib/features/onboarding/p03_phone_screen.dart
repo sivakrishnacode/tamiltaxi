@@ -77,14 +77,18 @@ class _P03PhoneScreenState extends ConsumerState<P03PhoneScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Enter your mobile number', style: t.display),
+                    Text('Enter your WhatsApp number', style: t.display),
                     const SizedBox(height: TtSpacing.s),
-                    Text("We'll send you a 6-digit OTP", style: t.body.copyWith(color: TtColors.navy700)),
+                    Text("We'll send you a 6-digit OTP on WhatsApp", style: t.body.copyWith(color: TtColors.navy700)),
                     const SizedBox(height: TtSpacing.xxl),
                     ValueListenableBuilder(
                       valueListenable: _controller,
-                      builder: (context, _, _) =>
-                          PhoneInput(controller: _controller, autofocus: !widget.showcase, onSubmitted: (_) => _send()),
+                      builder: (context, _, _) => PhoneInput(
+                        controller: _controller,
+                        label: 'WhatsApp number',
+                        autofocus: !widget.showcase,
+                        onSubmitted: (_) => _send(),
+                      ),
                     ),
                   ],
                 ),
