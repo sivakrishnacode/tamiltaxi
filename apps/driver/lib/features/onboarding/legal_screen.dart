@@ -77,8 +77,8 @@ class LegalScreen extends StatelessWidget {
     (
       'Sharing',
       'Only with the rider on your trip, your emergency contacts when you use SOS, the police or emergency services '
-          'when a safety incident needs it, the services that run the app (AWS, Google Maps, Firebase, Didit and an '
-          'SMS provider), and when the law requires it.',
+          'when a safety incident needs it, the services that run the app (AWS, Google Maps, Firebase, Didit and '
+          'WATX for sign-in codes on WhatsApp), and when the law requires it.',
     ),
     (
       'Your choices',
@@ -105,7 +105,7 @@ class LegalScreen extends StatelessWidget {
           children: [
             Text(privacy ? 'Tamil Taxi Driver Privacy Policy' : 'Tamil Taxi Driver Terms of Service', style: t.h1),
             const SizedBox(height: TtSpacing.xs),
-            Text('Last updated 6 October 2026', style: t.caption.copyWith(color: TtColors.navy500)),
+            Text('Last updated 16 October 2026', style: t.caption.copyWith(color: TtColors.navy500)),
             for (final (title, body) in sections) ...[
               const SizedBox(height: TtSpacing.xl),
               Text(title, style: t.h2),

@@ -16,7 +16,7 @@ export type LegalSection = {
 export type LegalDoc = { title: string; updated: string; intro: string; sections: readonly LegalSection[] };
 
 /** The date on both documents and on the apps' legal screens. */
-export const legalUpdated = "6 October 2026";
+export const legalUpdated = "16 October 2026";
 
 export const privacy: LegalDoc = {
   title: "Privacy policy",
@@ -30,7 +30,7 @@ export const privacy: LegalDoc = {
       heading: "What we collect from riders",
       paragraphs: [],
       list: [
-        "Your mobile number, used to sign in with a one-time code.",
+        "Your mobile number, used to sign in with a one-time code sent on WhatsApp.",
         "Your name and, if you add them, your email, gender, saved places and emergency contacts.",
         "Your trips, parcels and house moves: pickup, drop, route, fare, payment mode (cash or UPI), ratings and " +
           "cancellations, and the details you give for a parcel or a move.",
@@ -70,6 +70,9 @@ export const privacy: LegalDoc = {
         "To sign you in, match riders with nearby drivers, show each side where the other is, work out fares, send " +
           "trip notifications, check that a trip is going as planned (long stops, route changes) and help when " +
           "something goes wrong.",
+        "Riders may also get reminders and offers: about a fare they checked but didn't book, a trip they often " +
+          "take, or travel around a festival, and news from Tamil Taxi. These use your recent searches and trips. " +
+          "Turn them off in your phone's notification settings for Tamil Taxi (Trip suggestions, Announcements).",
       ],
     },
     {
@@ -116,7 +119,7 @@ export const privacy: LegalDoc = {
         "Google Maps Platform: maps, address search and routes.",
         "Firebase Cloud Messaging (Google): notifications.",
         "Didit: identity checks and selfie matching.",
-        "An SMS provider: sign-in codes.",
+        "WATX: sign-in codes, sent on WhatsApp.",
       ],
     },
     {

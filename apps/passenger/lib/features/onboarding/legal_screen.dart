@@ -77,7 +77,9 @@ const _privacy = [
   _Section(
     'How we use it',
     'To find nearby drivers, show your pickup to your driver, calculate fares, share your live trip with '
-        'your emergency contacts when you ask us to, and help you if something goes wrong.',
+        'your emergency contacts when you ask us to, and help you if something goes wrong. We may also remind you '
+        'of a fare you checked or a trip you often take, and send offers; turn these off in your phone\'s '
+        'notification settings (Trip suggestions, Announcements).',
   ),
   _Section(
     'What drivers see',
@@ -89,8 +91,8 @@ const _privacy = [
     'Sharing',
     'We do not sell your data. We share it only with your driver for the current trip, with your emergency contacts '
         'when you share a trip or use SOS, with the police or emergency services when a safety incident needs it, with '
-        'the services that run the app (AWS, Google Maps, Firebase, Didit and an SMS provider), and when the law '
-        'requires it.',
+        'the services that run the app (AWS, Google Maps, Firebase, Didit and WATX for sign-in codes on WhatsApp), '
+        'and when the law requires it.',
   ),
   _Section(
     'Location and camera',
@@ -131,7 +133,7 @@ class LegalScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(TtSpacing.l, TtSpacing.s, TtSpacing.l, TtSpacing.xxl),
           children: [
-            Text('Last updated 6 October 2026', style: t.caption),
+            Text('Last updated 16 October 2026', style: t.caption),
             const SizedBox(height: TtSpacing.m),
             Text(
               isPrivacy
