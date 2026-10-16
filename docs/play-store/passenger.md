@@ -122,15 +122,17 @@ Live today (redirects to www.tamiltaxi.co.in). Fix it before you submit, so it m
 | Field | Answer |
 |---|---|
 | Name | `Rider sign-in` |
-| Username / phone | `9876500001` (any 10-digit Indian mobile number works; a new number creates a new rider) |
+| Username / phone | `+919876500001` (any Indian mobile number works; a new number creates a new rider) |
 | Password / code | the staging `DEV_OTP_CODE` from `docs/tech-docs/credentials.local.md` (never write it in this repo) |
 | Any other information | text below |
 
 ```
-Sign in with the phone number above and the 6-digit one-time code. No WhatsApp or SMS access is needed: this code always works for review.
-The app serves Coimbatore, India. If your device is outside Coimbatore, tap the pickup at the top of Home and search "Gandhipuram", then search "Brookefields Mall" as the drop to see vehicles and fares.
-A ride is only accepted when a driver is online nearby, so a booking made during review may end with "No drivers nearby". Parcels (Home > Parcel) and Packers & Movers work the same way.
+Enter the password above as the 6-digit one-time code: it always works, no SMS or WhatsApp needed.
+The app serves Coimbatore, India. Outside Coimbatore, tap the pickup at the top of Home and search "Gandhipuram", then choose "Brookefields Mall" as the drop to see fares.
+A booking needs a driver online nearby, so a test booking may end with "No drivers nearby".
 ```
+
+The box takes at most 500 characters. Tick "Sign in details… provide full access to all the features": nothing in the app is paid.
 
 This only works while the API keeps `OTP_DEV_MODE=true` with `DEV_OTP_CODE` set (true on staging today). If you
 switch to live codes, keep one review number that always accepts a fixed code, or reviewers can't sign in.
