@@ -27,6 +27,16 @@ val mapsApiKey: String =
         ?: System.getenv("MAPS_API_KEY")
         ?: ""
 
+// Google Play upload key: android/key.properties (git-ignored, see docs/play-store/README.md). Only app bundles
+// (`flutter build appbundle`, what Google Play takes) are signed with it. APKs stay on the debug key, which the Maps
+// key restriction and the WhatsApp autofill templates are tied to.
+val keyProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val hasUploadKey = keyProperties.getProperty("storeFile") != null
+val buildingBundle = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
+
 android {
     namespace = "com.tamiltaxi.passenger"
     compileSdk = flutter.compileSdkVersion
@@ -56,11 +66,21 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
+    signingConfigs {
+        if (hasUploadKey) {
+            create("upload") {
+                storeFile = file(keyProperties.getProperty("storeFile"))
+                storePassword = keyProperties.getProperty("storePassword")
+                keyAlias = keyProperties.getProperty("keyAlias")
+                keyPassword = keyProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Debug keys for APKs, so `flutter run --release` and scripts/build_apks.sh work as before.
+            signingConfig = signingConfigs.getByName(if (buildingBundle && hasUploadKey) "upload" else "debug")
         }
     }
 }

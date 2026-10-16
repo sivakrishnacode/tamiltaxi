@@ -18,9 +18,11 @@ data. The feature graphic's art was made with ChatGPT; the logo and text on it a
 
 Must fix, or the upload or review fails:
 
-1. **Upload key.** Release builds are signed with the debug keystore, and Play rejects bundles signed with a debug
-   certificate. Create an upload keystore (keep it and its passwords out of git, with a backup), point the release
-   `signingConfig` at it through a git-ignored `key.properties`, and build with `flutter build appbundle`.
+1. **Upload key: done (16 Oct 2026).** `flutter build appbundle` signs with the upload key in the git-ignored
+   `android/key.properties` of each app (one keystore for both, outside the repo; path, password and SHA-1 in
+   `docs/tech-docs/credentials.local.md`). **Back the keystore file and its password up off this laptop.** APKs from
+   `build_apks.sh` stay debug-signed. Build: `cd apps/passenger && ../../scripts/flutter.sh build appbundle` →
+   `build/app/outputs/bundle/release/app-release.aab`. Raise `version:` in `pubspec.yaml` for every new upload.
 2. **Play App Signing changes the app's certificate.** Copy the app signing key's SHA-1 from Play Console › Test and
    release › App integrity, then:
    - add it (and the upload key's SHA-1) to the Android restriction of the Google Maps key, or maps stay blank in

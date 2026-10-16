@@ -200,7 +200,8 @@ subscriptions, support, trips, users.
 npm install && npm run get            # deps + flutter pub get + prisma generate
 npm run check                         # analyze + test everything (Turborepo, cached)
 npm run passenger | npm run driver    # flutter run
-./scripts/build_apks.sh [passenger|driver]   # one release APK per app → dist/
+./scripts/build_apks.sh [passenger|driver]   # one release APK per app → dist/ (debug-signed)
+../../scripts/flutter.sh build appbundle     # in apps/<app>: Play bundle, signed with android/key.properties
 python3 scripts/export_design.py      # screenshot every app screen → docs/design/ (+ index)
 
 docker compose up -d                  # full backend stack: API :3000, admin :3001
@@ -234,7 +235,7 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
   Auto Priority ₹80, Mini ₹132, Sedan ₹158, SUV ₹210 (tiers: `using.tech.md` 6f; `CAB` is "Mini").
 - **H3:** res 8 for service areas, zones, the driver index and heatmaps; res 7 for demand and surge; res 9/8/7 for
   learned ETA.
-- **Android:** Impeller is forced to OpenGL ES (Vulkan lagged on MediaTek/Mali). Release signing uses debug keys for now.
+- **Android:** Impeller is forced to OpenGL ES (Vulkan lagged on MediaTek/Mali). Release APKs use the debug keys; Play bundles use the upload key in `android/key.properties` (git-ignored).
 - **Local Redis runs on port 6380** on this machine (set in `.env`).
 - **Staging:** single EC2 at `65.0.233.253`: `https://api.65-0-233-253.sslip.io/v1`, `https://admin.65-0-233-253.sslip.io` (Caddy, compose profile `https`; old `:3000` / `:3001` still open). Images are built locally and loaded over
   SSH. For redeploy steps see `using.tech.md` §9b.
@@ -263,3 +264,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 15 Oct 2026 | Repo map: `packages/tamiltaxi_whatsapp_otp` (WhatsApp OTP autofill plugin) |
 | 15 Oct 2026 | API modules: `automations` (reminder pushes and campaigns) |
 | 16 Oct 2026 | Repo map: `docs/play-store/` (Google Play submission answers and graphics) |
+| 16 Oct 2026 | Commands + key facts: Play bundles signed with the upload key; APKs stay debug-signed |

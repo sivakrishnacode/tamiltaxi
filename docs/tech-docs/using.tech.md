@@ -153,6 +153,7 @@ turbo.json            task pipeline
 | `npm run check` | analyze + test (cached by Turborepo) |
 | `npm run build:apk` | Release APKs → `dist/tamiltaxi-passenger.apk`, `dist/tamiltaxi-driver.apk` |
 | `./scripts/build_apks.sh [passenger\|driver]` | Same without Node; one app or both; always **one APK per app** (`dist/tamiltaxi-passenger.apk`, `dist/tamiltaxi-driver.apk`, arm + arm64, old ones deleted); checks the map key is in the APK |
+| `cd apps/passenger && ../../scripts/flutter.sh build appbundle` | Google Play bundle → `build/app/outputs/bundle/release/app-release.aab`, signed with the upload key from `android/key.properties` (same for `apps/driver`); bump `version:` in `pubspec.yaml` before each upload |
 | `npm run passenger` / `npm run driver` | `flutter run` for that app |
 | `python3 scripts/export_design.py` | Renders every screen of both apps (Design gallery frames + the screens added after the design, `test/tool/design_export_test.dart`) and rebuilds `docs/design/` + its index. Needs Pillow |
 | `npm run start:dev -w @tamiltaxi/api` | API with watch mode (needs Postgres + Redis) |
@@ -699,8 +700,8 @@ Never commit real `.env` files.
   `_ci_` was created by `com.whatsapp` / `com.whatsapp.w4b`; P-04 / D-03b listen on `WhatsAppOtp.codes`, fill the boxes
   and verify. Without the handshake, or without WhatsApp, the message shows Copy code and the rider types it. The
   templates name the package and its signature hash, which only matches APKs signed with the debug keystore on the
-  build laptop (what release builds use for now): passenger `OQje1c76xHw`, driver `7nA4P/uF07l`. A real release key or
-  Play App Signing changes the hash: update both templates in WATX then.
+  build laptop (what release APKs use): passenger `OQje1c76xHw`, driver `7nA4P/uF07l`. Installs from Google Play are
+  signed with Play's app signing key, which has another hash: add it to both templates in WATX before Play testers sign in.
 
 ---
 
@@ -1906,7 +1907,11 @@ dialogs rise from the bottom. iOS and macOS keep the Cupertino swipe-back transi
   launcher icon (30 Sep 2026: the road x alone read as the X / Twitter logo, so it is used nowhere on its own).
   The in-app logo elsewhere stays the English `TtWordmark`. Rendered from the separate `tamiltaxi-logo` kit (`round9-creative/final-kolam`, installed with
   `tools/install_kolam_icons.py`), not drawn by hand.
-- Release signing is not configured yet (uses debug keys). Add `android/key.properties` (git-ignored) before store release.
+- Release signing (16 Oct 2026): app bundles (`flutter build appbundle`, for Google Play) are signed with the upload
+  key named in `android/key.properties` (git-ignored; one keystore for both apps, kept outside the repo, details in
+  `credentials.local.md`). APKs (`build_apks.sh`, `flutter run --release`) stay on the debug keys, which the Maps key
+  restriction and the WhatsApp autofill templates match. Without `key.properties` a bundle falls back to the debug
+  keys, which Google Play rejects. Installs from Play carry Play's app signing key instead (see docs/play-store).
 
 ---
 
