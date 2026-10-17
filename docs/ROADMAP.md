@@ -167,6 +167,15 @@ Issue: #12 · Labels: plan, api, admin
 - [ ] Landmarks: a phone check of P-09 / D-16 with real landmarks
 - [ ] CI: APK build artifacts
 
+### Truck drivers' work now that trucks carry no parcels in town
+
+Labels: plan, driver, api
+
+Since 18 Oct 2026 trucks get no parcels in town (like Porter): their work is Packers & Movers and goods to another
+town. Packers & Movers is off by default for every goods vehicle (movers need helpers), so a new truck driver only
+gets goods to another town until they switch it on in Services. Decide: Packers & Movers on by default for trucks,
+or tell truck drivers at sign-up (D-04 / D-05) what they will get.
+
 ### Remove old Rido resources
 
 Issue: #13 · Labels: plan, infra

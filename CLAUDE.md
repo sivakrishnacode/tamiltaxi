@@ -66,7 +66,8 @@ Examples: `feat(driver): show H3 demand hexes on home map`, `fix(api): await Pri
   [docs/RELEASES.md](docs/RELEASES.md) (app versions, staging deploys, each app's "Next release") and
   [docs/ROADMAP.md](docs/ROADMAP.md) (milestones and planned work) are the sources; GitHub mirrors them on push. An app
   change goes under that app's "Next release" in the same commit; planned work is a ROADMAP item, not an issue made
-  by hand. The repo is public: no security gaps, keys, personal data or business plans in issues or releases.
+  by hand. API and admin changes go under **Staging › Next deploy** in RELEASES.md; problems found and work left for
+  later become ROADMAP items. The owner names each release date: until then, changes keep collecting. The repo is public: no security gaps, keys, personal data or business plans in issues or releases.
 - **[docs/tech-docs/system-design-notes.md](docs/tech-docs/system-design-notes.md)** holds system-design learnings
   (talks, posts, competitor apps, load tests, incidents) compared with our system, plus the optimization backlog
   (`SD-n` items with triggers). Each time we learn something about how the system should scale or behave, add a dated
@@ -276,3 +277,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 16 Oct 2026 | Commands + key facts: Play bundles signed with the upload key; APKs stay debug-signed |
 | 17 Oct 2026 | Rule 1.2: app versions, staging deploys and the next release in `docs/RELEASES.md`, mirrored to GitHub releases and milestones |
 | 17 Oct 2026 | Rule 1.2: GitHub SOP `docs/GITHUB.md`; planned work in `docs/ROADMAP.md` (synced to milestones and issues) |
+| 18 Oct 2026 | Rule 1.2: API / admin changes under Staging › Next deploy; found problems become ROADMAP items; owner names release dates |

@@ -143,7 +143,9 @@ the next commit so the file agrees.
 
 ## 10. Routine
 
-- **Every change:** commit as in §2; app changes go under **Next release**; close finished issues with `Closes #N`.
+- **Every change:** commit as in §2; app changes go under **Next release**, API and admin changes under **Staging ›
+  Next deploy** (RELEASES.md); a problem found or work left for later becomes a ROADMAP.md item; close finished
+  issues with `Closes #N`.
 - **Every Play upload:** §7. **Every staging deploy:** §8.
 - **Weekly:** triage new issues (§4), glance at the board, move what's in progress, drop finished milestones.
 

@@ -12,8 +12,12 @@ by `.github/workflows/github-sync.yml` on every push to `main` that changes it).
 - Upload a bundle: raise `version:` in the app's `pubspec.yaml`, turn **Next release** into a version entry with its
   `Release:` line (tag `passenger-vX.Y.Z+N` / `driver-vX.Y.Z+N` at the commit the bundle was built from), start a new
   empty **Next release**, and add the next version's milestone in [ROADMAP.md](ROADMAP.md).
-- Deploy to staging: add an entry under **Staging** (tag `staging-YYYY-MM-DD`, `.2` for a second deploy that day) next
-  to the full record in [using.tech.md](tech-docs/using.tech.md) §9b.
+- Commit an API or admin change: add it under **Staging › Next deploy** in the same commit (or the docs commit right
+  after, with the hash).
+- Deploy to staging: turn **Next deploy** into an entry under **Staging** (tag `staging-YYYY-MM-DD`, `.2` for a second
+  deploy that day) next to the full record in [using.tech.md](tech-docs/using.tech.md) §9b, and start a new empty
+  **Next deploy**.
+- The owner names the date of each Play release; until then changes keep collecting under **Next release**.
 - A Play status changes (review passed, rolled out, production): update the entry's **Status**.
 
 `version: X.Y.Z+N` in `pubspec.yaml`: `X.Y.Z` is the version name people see, `N` the version code. Play refuses a
@@ -28,6 +32,8 @@ pre-releases on GitHub.
 
 - `0907cbe` In-app privacy text: sign-in codes come on WhatsApp; ride reminders.
 - `824a1c1` Sign-in screens ask for the WhatsApp number.
+- `7a6adce` Parcels in town like Porter: **Scooty** added (up to 20 kg; a 5–20 kg parcel picks it), **Truck** removed
+  from the in-town list (still in Packers & Movers and To another town).
 
 ### 0.1.0 (code 1) · 16 Oct 2026
 
@@ -49,6 +55,8 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 - `2b006a6` D-03c Permissions after the OTP and at start-up: precise location, notifications, display over other apps,
   full-screen alerts and no battery limits must all be allowed to continue. Adds the
   `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission (see [driver.md](play-store/driver.md), "Other permissions").
+- `7a6adce` Scooter drivers get Scooty parcels (up to 20 kg): Services and the Rate card say so. Truck drivers: no
+  parcels in town; Services shows "Big loads" (Packers & Movers and goods to another town).
 
 ### 0.1.0 (code 1) · 16 Oct 2026
 
@@ -67,6 +75,15 @@ Release: `driver-v0.1.0+1` at `824a1c1`
 Each deploy's backups, checks and rollback images are in [using.tech.md](tech-docs/using.tech.md) §9b. The first
 deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy, `DEV_OTP_CODE`, the move to
 `/opt/tamiltaxi`) weren't recorded with a commit, so they have no release.
+
+### Next deploy
+
+API and admin changes committed since the last deploy (staging runs `824a1c1` / admin `74cc68b`):
+
+- `7a6adce` Parcels in town like Porter: `SCOOTY_PARCEL` (Parcel on Scooty, up to 20 kg, scooters with Parcels on;
+  migration `20261018060000_scooty_parcel`), no `TRUCK` in parcel quotes, "Book any" or the parcel map, and a truck
+  parcel in town is refused. Admin: "Parcel on Scooty" label and map colour. The Play rider 0.1.0 hides the new
+  Scooty quote (unknown tier) and stops showing Truck once this is deployed.
 
 ### 16 Oct 2026 · API at `824a1c1`
 
