@@ -62,10 +62,11 @@ Examples: `feat(driver): show H3 demand hexes on home map`, `fix(api): await Pri
 - **This file:** update it when a working rule, a key command or the repo layout changes. Keep it short: details go in
   `using.tech.md`.
 - `README.md` is the user-facing intro. Update it for changes that affect setup or how to run things.
-- **[docs/play-store/versions.md](docs/play-store/versions.md)** tracks every app version sent to Google Play. An app
-  change (`apps/passenger`, `apps/driver`, or a package they use) goes under that app's "Next release" in the same
-  commit; a new upload raises `version:` in `pubspec.yaml` and gets its own row. App changes ship together in the next
-  release.
+- **[docs/RELEASES.md](docs/RELEASES.md)** tracks every app version sent to Google Play and every staging deploy;
+  GitHub mirrors it (releases, milestones) on each push. An app change (`apps/passenger`, `apps/driver`, or a package
+  they use) goes under that app's "Next release" in the same commit; a new upload raises `version:` in `pubspec.yaml`
+  and gets its own entry. App changes ship together in the next release. Upcoming work is GitHub issues by milestone
+  (public: no security gaps or business plans).
 - **[docs/tech-docs/system-design-notes.md](docs/tech-docs/system-design-notes.md)** holds system-design learnings
   (talks, posts, competitor apps, load tests, incidents) compared with our system, plus the optimization backlog
   (`SD-n` items with triggers). Each time we learn something about how the system should scale or behave, add a dated
@@ -87,7 +88,8 @@ Examples: `feat(driver): show H3 demand hexes on home map`, `fix(api): await Pri
 - **Staging deploys are pre-approved:** the owner gave Claude standing, explicit permission (10 Oct 2026) to deploy
   the API and admin to the staging EC2 without asking, including the AWS steps a deploy needs (e.g. allowing the
   current IP for SSH in `rido-sg`). Follow `using.tech.md` §9b (database backup, rollback image, health checks) and
-  record each deploy there. Pushing to git still needs to be asked for (1.1).
+  record each deploy there and in [docs/RELEASES.md](docs/RELEASES.md) (Staging). Pushing to git still needs to be
+  asked for (1.1).
 - **Admin is on a new Next.js (16):** read [apps/admin/AGENTS.md](apps/admin/AGENTS.md) and the docs in
   `node_modules/next/dist/docs/` before writing admin code.
 - **Prisma queries are lazy:** `void prisma.x.create(...)` never runs. Always `await` or attach `.catch()`.
@@ -184,6 +186,7 @@ docs/private/                    owner-only business docs (git-ignored, never pu
 .github/                         CI workflow, issue + PR templates
 docs/design/                     screenshots of every app screen + index (scripts/export_design.py)
 docs/design/assets/              logos (masters), Play Store icons, vehicle art, pictures, colours: see its README
+docs/RELEASES.md                 every app version and staging deploy + next release (synced to GitHub releases)
 docs/play-store/                 Play Console answers (both apps), rider store graphics, pre-upload checklist
 scripts/                         flutter.sh / dart.sh (SDK lookup), build_apks.sh, export_design.py, brand_icons.py, vehicle_icons/
 docker-compose.yml               postgres + redis + api + admin (+ `tools` profile: Adminer, Redis Insight)
@@ -269,4 +272,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 15 Oct 2026 | API modules: `automations` (reminder pushes and campaigns) |
 | 16 Oct 2026 | Repo map: `docs/play-store/` (Google Play submission answers and graphics) |
 | 16 Oct 2026 | Commands + key facts: Play bundles signed with the upload key; APKs stay debug-signed |
-| 17 Oct 2026 | Rule 1.2: track app versions and the next release in `docs/play-store/versions.md` |
+| 17 Oct 2026 | Rule 1.2: app versions, staging deploys and the next release in `docs/RELEASES.md`, mirrored to GitHub releases and milestones |

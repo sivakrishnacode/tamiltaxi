@@ -1,0 +1,28 @@
+name: Releases
+
+# Mirrors docs/RELEASES.md on GitHub: releases (and their tags), milestones and the planning labels.
+on:
+  push:
+    branches: [main]
+    paths: [docs/RELEASES.md, scripts/sync_github.py, .github/workflows/releases.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: releases
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync releases and milestones
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/sync_github.py
+        env:
+          GH_TOKEN: ${{ github.token }}

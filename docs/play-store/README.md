@@ -5,7 +5,7 @@ Everything Play Console asks for, answered from the code, plus the store graphic
 
 | File | What |
 |---|---|
-| [versions.md](versions.md) | Every version uploaded to Play (both apps), what it was built from, and the changes waiting for the next one |
+| [../RELEASES.md](../RELEASES.md) | Every version uploaded to Play (both apps), what it was built from, and the changes waiting for the next one |
 | [passenger.md](passenger.md) | Tamil Taxi (rider): store listing text, every App content answer, Data safety form, release notes |
 | [driver.md](driver.md) | Tamil Taxi Driver: what differs from the rider app, and the extra declarations (foreground services, full-screen alerts) |
 | [passenger/](passenger/) | Rider store graphics: `icon-512.png`, `feature-graphic.png`, `phone/` (6), `tablet-7in/` (6), `tablet-10in/` (6) |
