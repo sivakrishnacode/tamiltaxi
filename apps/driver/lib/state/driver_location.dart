@@ -133,9 +133,10 @@ class DriverLocator {
   }
 
   /// Location access now, asking for the permission first when [ask] and Android still shows the prompt.
-  Future<LocationAccess> access({bool ask = false}) async {
+  /// [service] false: only the app's permission counts, not whether the phone's Location switch is on.
+  Future<LocationAccess> access({bool ask = false, bool service = true}) async {
     try {
-      if (!await geo.Geolocator.isLocationServiceEnabled()) return LocationAccess.serviceOff;
+      if (service && !await geo.Geolocator.isLocationServiceEnabled()) return LocationAccess.serviceOff;
       var p = await geo.Geolocator.checkPermission();
       if (p == geo.LocationPermission.denied && ask) p = await geo.Geolocator.requestPermission();
       return switch (p) {

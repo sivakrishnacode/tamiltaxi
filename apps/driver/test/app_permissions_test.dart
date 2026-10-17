@@ -31,14 +31,19 @@ void main() {
   test('lists every missing permission, most important first', () async {
     checker.granted.add(AppPermission.overlay);
     await ctrl().refresh();
-    expect(missing(), [AppPermission.notifications, AppPermission.fullScreen]);
+    expect(missing(), [
+      AppPermission.location,
+      AppPermission.notifications,
+      AppPermission.fullScreen,
+      AppPermission.battery,
+    ]);
   });
 
   test('stays until allowed: a refused request keeps the banner, allowing it later removes it', () async {
     await ctrl().refresh();
     await ctrl().fix(AppPermission.notifications);
     expect(checker.requested, [AppPermission.notifications]);
-    expect(missing().first, AppPermission.notifications, reason: 'still refused');
+    expect(missing(), contains(AppPermission.notifications), reason: 'still refused');
     checker.granted.addAll(AppPermission.values);
     await ctrl().refresh(); // back from settings
     expect(missing(), isEmpty);

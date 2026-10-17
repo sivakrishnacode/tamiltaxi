@@ -138,9 +138,11 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
     resetDriverData(ref);
     if (result == OtpResult.newUser) {
       ref.read(signupProvider.notifier).update((d) => d.copyWith(phone: widget.phone));
+      final route = await permissionsFirst(ref, Routes.documents);
+      if (!mounted) return;
       setState(() => _verifying = false);
       if (!widget.signup) showTtSnack(context, "This number isn't registered yet. Let's sign you up.");
-      context.go(Routes.documents);
+      context.go(route);
       return;
     }
     String route;
@@ -149,6 +151,8 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
     } on Exception {
       route = Routes.home;
     }
+    if (!mounted) return;
+    route = await permissionsFirst(ref, route);
     if (!mounted) return;
     setState(() => _verifying = false);
     if (widget.signup) showTtSnack(context, 'Welcome back!');

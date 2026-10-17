@@ -126,6 +126,9 @@ to allow it (`apps/driver/lib/overlay/background_permissions.dart`).
 ### Other permissions
 
 - Display over other apps (`SYSTEM_ALERT_WINDOW`): no Play form; the driver grants it in Android settings.
+- No battery limits (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, from 17 Oct 2026): no Play form, but Play reviews its use.
+  Ours: ride requests and the online GPS must not be paused by battery saving while the driver is online (the core
+  function); asked on D-03c with Android's own "Allow" dialog.
 - No `ACCESS_BACKGROUND_LOCATION`: location in the background runs through the location foreground service above, so
   there is no background-location declaration.
 - Camera and microphone: no form (the microphone comes with the Didit SDK).

@@ -54,6 +54,7 @@ class _D01SplashScreenState extends ConsumerState<D01SplashScreen> {
       } catch (_) {
         route = Routes.documents;
       }
+      if (route != Routes.welcome && mounted) route = await permissionsFirst(ref, route);
     }
     if (mounted) context.go(route);
   }

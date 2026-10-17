@@ -24,6 +24,7 @@ import '../onboarding/d01_splash_screen.dart';
 import '../onboarding/d02_welcome_screen.dart';
 import '../onboarding/d03_phone_screen.dart';
 import '../onboarding/d03b_otp_screen.dart';
+import '../onboarding/d03c_permissions_screen.dart';
 import '../onboarding/d04_work_type_screen.dart';
 import '../onboarding/d05_choose_vehicle_screen.dart';
 import '../onboarding/d06_personal_details_screen.dart';
@@ -81,6 +82,7 @@ final List<GalleryEntry> galleryEntries = [
   _e('D-02', 'Welcome', _p5, (_) => const D02WelcomeScreen(showcase: true)),
   _e('D-03a', 'Phone number', _p5, (_) => const D03PhoneScreen(showcase: true)),
   _e('D-03b', 'OTP verification', _p5, (_) => const D03bOtpScreen(showcase: true)),
+  _e('D-03c', 'Permissions', _p5, (_) => const D03cPermissionsScreen(showcase: true)),
   _e('D-04', 'Choose work type', _p5, (_) => const D04WorkTypeScreen(showcase: true)),
   _e('D-05', 'Choose vehicle', _p5, (_) => const D05ChooseVehicleScreen(showcase: true)),
   _e('D-06', 'Personal details', _p5, (_) => const D06PersonalDetailsScreen(showcase: true)),

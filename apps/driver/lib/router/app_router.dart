@@ -30,6 +30,7 @@ import '../features/onboarding/d01_splash_screen.dart';
 import '../features/onboarding/d02_welcome_screen.dart';
 import '../features/onboarding/d03_phone_screen.dart';
 import '../features/onboarding/d03b_otp_screen.dart';
+import '../features/onboarding/d03c_permissions_screen.dart';
 import '../features/onboarding/d04_work_type_screen.dart';
 import '../features/onboarding/d05_choose_vehicle_screen.dart';
 import '../features/onboarding/d06_personal_details_screen.dart';
@@ -82,6 +83,10 @@ GoRouter createDriverRouter({
         phone: s.uri.queryParameters['phone'] ?? '98430 12345',
         signup: _signup(s),
       ),
+    ),
+    _full(
+      Routes.permissionsPath,
+      (s) => D03cPermissionsScreen(next: s.uri.queryParameters['next'] ?? Routes.home),
     ),
     _full(Routes.workType, (_) => const D04WorkTypeScreen()),
     _full(Routes.chooseVehicle, (_) => const D05ChooseVehicleScreen()),

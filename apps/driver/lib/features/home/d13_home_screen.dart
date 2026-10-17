@@ -266,7 +266,10 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
     // ------------------------------------------------------------- top card
     Widget? topCard;
     final access = _api ? ref.watch(locationAccessProvider) : LocationAccess.granted;
-    final missing = _api ? ref.watch(missingPermissionsProvider) : const <AppPermission>[];
+    // Location has its own banner above (it covers the phone's Location switch too).
+    final missing = _api
+        ? [for (final p in ref.watch(missingPermissionsProvider)) if (p != AppPermission.location) p]
+        : const <AppPermission>[];
     if (access == LocationAccess.serviceOff ||
         access == LocationAccess.denied ||
         access == LocationAccess.deniedForever ||
@@ -305,11 +308,15 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
           AppPermission.notifications => Symbols.notifications_off_rounded,
           AppPermission.overlay => Symbols.picture_in_picture_alt_rounded,
           AppPermission.fullScreen => Symbols.notifications_active_rounded,
+          AppPermission.battery => Symbols.battery_saver_rounded,
+          AppPermission.location => Symbols.location_off_rounded,
         },
         title: switch (p) {
           AppPermission.notifications => 'Allow notifications',
           AppPermission.overlay => 'Allow "Display over other apps"',
           AppPermission.fullScreen => 'Allow full-screen notifications',
+          AppPermission.battery => 'Remove battery limits',
+          AppPermission.location => 'Allow location access',
         },
         message: switch (p) {
           AppPermission.notifications =>
@@ -318,6 +325,8 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
             'So new requests pop up over maps, music or WhatsApp and you can accept in time. '
                 'Find Tamil Taxi Driver on the next screen and turn it on.',
           AppPermission.fullScreen => 'So a new request lights up the screen when the phone is locked.',
+          AppPermission.battery => "So the phone's battery saver doesn't pause ride requests while you're online.",
+          AppPermission.location => 'Tamil Taxi needs your location to send you ride requests nearby.',
         } +
             (missing.length > 1 ? ' (${missing.length - 1} more after this)' : ''),
         actionLabel: 'Allow',

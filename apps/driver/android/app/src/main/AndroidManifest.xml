@@ -9,16 +9,18 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <!-- Android 13+: the "You're online" notification of that service (asked at runtime when going online). -->
+    <!-- Android 13+: ride requests and the "You're online" notification of that service (asked on D-03c). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- KYC document photos (image_picker camera). -->
     <uses-permission android:name="android.permission.CAMERA"/>
-    <!-- Floating Tamil Taxi bubble and full-screen requests over other apps while online (asked with an explanation;
-         optional). Its overlay runs as a special-use foreground service. -->
+    <!-- Floating Tamil Taxi bubble and full-screen requests over other apps while online (asked on D-03c). Its
+         overlay runs as a special-use foreground service. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <!-- Ride-request notifications open full screen on a locked phone (Android 14+: user-controlled). -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <!-- D-03c "No battery limits": Android's one-tap "Allow" dialog, so battery saving doesn't pause requests. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <application
         android:label="Tamil Taxi Driver"
         android:name="${applicationName}"

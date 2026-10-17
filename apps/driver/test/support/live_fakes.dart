@@ -225,7 +225,7 @@ class FakeLocator extends DriverLocator {
   int asked = 0;
 
   @override
-  Future<LocationAccess> access({bool ask = false}) async {
+  Future<LocationAccess> access({bool ask = false, bool service = true}) async {
     if (ask) asked++;
     return accessResult;
   }

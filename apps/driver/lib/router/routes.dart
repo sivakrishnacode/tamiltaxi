@@ -6,6 +6,9 @@ abstract final class Routes {
   static String phone({required bool signup}) => signup ? '/auth/phone' : '/auth/phone?mode=login';
   static String otp({required String phone, required bool signup}) =>
       '/auth/otp?phone=${Uri.encodeComponent(phone)}${signup ? '' : '&mode=login'}';
+  /// D-03c: every permission ride requests need, then [next].
+  static const permissionsPath = '/permissions';
+  static String permissions({required String next}) => '$permissionsPath?next=${Uri.encodeComponent(next)}';
   static const workType = '/signup/work-type';
   static const chooseVehicle = '/signup/vehicle';
   static const personalDetails = '/signup/details';
