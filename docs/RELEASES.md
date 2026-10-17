@@ -2,18 +2,16 @@
 
 Every version of the two apps sent to Google Play, every staging deploy of the API and admin, and the changes waiting
 for the next one. GitHub mirrors this file: each entry with a `Release:` line becomes a
-[GitHub release](https://github.com/sivakrishnacode/tamiltaxi/releases) with that tag, and the table under
-**Milestones** becomes the repo's milestones (`scripts/sync_github.py`, run by `.github/workflows/releases.yml` on every
-push to `main` that changes this file). Upcoming work lives in
-[GitHub issues](https://github.com/sivakrishnacode/tamiltaxi/issues), grouped by milestone. Security gaps and business
-plans never go there (the repo is public): see `SECURITY.md` and the git-ignored `docs/private/`.
+[GitHub release](https://github.com/sivakrishnacode/tamiltaxi/releases) with that tag (`scripts/sync_github.py`, run
+by `.github/workflows/github-sync.yml` on every push to `main` that changes it). Upcoming work is in
+[ROADMAP.md](ROADMAP.md); how the two fit together: [GITHUB.md](GITHUB.md).
 
 **Keep it current:**
 - Commit an app change (`apps/passenger`, `apps/driver`, or `packages/*` when an app uses it): add it under that
   app's **Next release** in the same commit. App fixes and features ship together in the next release.
 - Upload a bundle: raise `version:` in the app's `pubspec.yaml`, turn **Next release** into a version entry with its
   `Release:` line (tag `passenger-vX.Y.Z+N` / `driver-vX.Y.Z+N` at the commit the bundle was built from), start a new
-  empty **Next release**, and add the next version's milestone below.
+  empty **Next release**, and add the next version's milestone in [ROADMAP.md](ROADMAP.md).
 - Deploy to staging: add an entry under **Staging** (tag `staging-YYYY-MM-DD`, `.2` for a second deploy that day) next
   to the full record in [using.tech.md](tech-docs/using.tech.md) §9b.
 - A Play status changes (review passed, rolled out, production): update the entry's **Status**.
@@ -21,16 +19,6 @@ plans never go there (the repo is public): see `SECURITY.md` and the git-ignored
 `version: X.Y.Z+N` in `pubspec.yaml`: `X.Y.Z` is the version name people see, `N` the version code. Play refuses a
 version code it has seen before, so raise `N` for every upload. Versions below 1.0 and staging deploys show as
 pre-releases on GitHub.
-
----
-
-## Milestones
-
-| Milestone | What it means |
-|---|---|
-| Rider 0.1.1 | The next Tamil Taxi (rider) upload to Google Play |
-| Driver 0.1.1 | The next Tamil Taxi Driver upload to Google Play |
-| Production launch | Both apps on Google Play production in India, with launch-grade operations |
 
 ---
 

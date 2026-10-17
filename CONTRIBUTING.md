@@ -76,6 +76,8 @@ distances. To use Google, see [docs/GOOGLE_MAPS_SETUP.md](docs/GOOGLE_MAPS_SETUP
 
 ## Making a change
 
+How issues, labels, milestones and releases work here: [docs/GITHUB.md](docs/GITHUB.md).
+
 1. **Fork, then branch** from `main`: `feat/driver-demand-chip`, `fix/api-trip-cancel`.
 2. **Keep it to one logical change per pull request.** Split unrelated fixes into separate PRs.
 3. **Match the code around you:** naming, comment density, file layout.

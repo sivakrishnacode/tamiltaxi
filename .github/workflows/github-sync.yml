@@ -1,10 +1,11 @@
-name: Releases
+name: GitHub sync
 
-# Mirrors docs/RELEASES.md on GitHub: releases (and their tags), milestones and the planning labels.
+# Mirrors docs/RELEASES.md (releases and their tags) and docs/ROADMAP.md (milestones and issues) on GitHub, plus the
+# planning labels. See docs/GITHUB.md.
 on:
   push:
     branches: [main]
-    paths: [docs/RELEASES.md, scripts/sync_github.py, .github/workflows/releases.yml]
+    paths: [docs/RELEASES.md, docs/ROADMAP.md, scripts/sync_github.py, .github/workflows/github-sync.yml]
   workflow_dispatch:
 
 permissions:
@@ -12,12 +13,12 @@ permissions:
   issues: write
 
 concurrency:
-  group: releases
+  group: github-sync
   cancel-in-progress: false
 
 jobs:
   sync:
-    name: Sync releases and milestones
+    name: Sync releases, milestones and issues
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
