@@ -1,0 +1,32 @@
+name: Issue planning
+
+# Applies the milestone and labels named in an issue's hidden plan line, for tools that can open issues but not label
+# them (e.g. Claude's GitHub connector). Only the repo owner's own changes count. Example, anywhere in the body:
+#   <!-- plan: milestone=Production launch; labels=launch, infra -->
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  plan:
+    if: github.event.sender.login == github.repository_owner && contains(github.event.issue.body, '<!-- plan:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply milestone and labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          plan=$(printf '%s' "$BODY" | grep -o '<!-- plan:[^>]*-->' | head -1 | sed 's/ *-->$//')
+          milestone=$(printf '%s' "$plan" | sed -n 's/.*milestone=\([^;]*\).*/\1/p' | sed 's/ *$//')
+          labels=$(printf '%s' "$plan" | sed -n 's/.*labels=\([^;]*\).*/\1/p' | sed 's/ *$//; s/, */,/g')
+          args=()
+          if [ -n "$milestone" ]; then args+=(--milestone "$milestone"); fi
+          if [ -n "$labels" ]; then args+=(--add-label "$labels"); fi
+          if [ ${#args[@]} -gt 0 ]; then gh issue edit "$NUMBER" "${args[@]}"; fi
+          echo "#$NUMBER: milestone '$milestone', labels '$labels'"
