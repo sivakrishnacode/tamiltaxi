@@ -183,6 +183,8 @@ class _D06PersonalDetailsScreenState
                   ),
                   const SizedBox(height: TtSpacing.l),
                   TtTextField(
+                    // A field reads its initial value once; keyed by the city, it shows it when the cities load.
+                    key: ValueKey(_city),
                     label: 'City',
                     initialValue: _city,
                     enabled: false,
