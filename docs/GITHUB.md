@@ -24,6 +24,7 @@ Edit the files, not GitHub, for anything they hold. GitHub is where people read,
 | Bugs and ideas from people | GitHub issue forms | Issues (owner triages) |
 | Website deploys | Vercel | Deployments (automatic) |
 | Technical reference | [tech-docs/using.tech.md](tech-docs/using.tech.md) | — |
+| Wiki | Not used: docs live in `docs/`, versioned and reviewed with the code | Off (Settings › Features › Wikis) |
 | Security reports | [SECURITY.md](../SECURITY.md) (private advisory) | **Never** a public issue |
 | Business plans, credentials | git-ignored `docs/private/`, `credentials.local.md` | **Never** |
 

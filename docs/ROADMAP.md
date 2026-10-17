@@ -119,7 +119,7 @@ Keep the upload keystore and its password in two safe places off the build lapto
 
 ### System-design backlog (SD-n)
 
-Labels: plan, api
+Issue: #9 · Labels: plan, api
 
 Each item, its trigger and the reasoning are in
 [system-design-notes.md](https://github.com/sivakrishnacode/tamiltaxi/blob/main/docs/tech-docs/system-design-notes.md).
@@ -143,21 +143,21 @@ Tick an item here when its SD-n is marked Done there.
 
 ### Sign-in codes by SMS when the phone has no WhatsApp
 
-Labels: plan, api, rider, driver
+Issue: #10 · Labels: plan, api, rider, driver
 
 Login codes go only through WhatsApp today. A fallback SMS for phones without WhatsApp, kept cheap (sent only when
 the rider asks for it).
 
 ### Cost plan: self-hosted routing and the P-10 ETA change
 
-Labels: plan, api, infra
+Issue: #11 · Labels: plan, api, infra
 
 The two planned cost changes in [COST_AND_SCALING.md](COST_AND_SCALING.md): the P-10 ETA change (§5) and self-hosted
 OSRM routing (§6).
 
 ### Follow-ups to shipped features
 
-Labels: plan, api, admin
+Issue: #12 · Labels: plan, api, admin
 
 - [ ] GPS path: admin settings for the thresholds, snap-to-road for a nicer path, a per-driver mock-GPS count
 - [ ] Cancellations: decide the fee policy (then show it before riders cancel), a way to waive a due, per-city
@@ -169,7 +169,7 @@ Labels: plan, api, admin
 
 ### Remove old Rido resources
 
-Labels: plan, infra
+Issue: #13 · Labels: plan, infra
 
 - [ ] The `com.rido.*` entries on the Android Maps key
 - [ ] The old Firebase project
