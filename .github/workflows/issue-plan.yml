@@ -1,18 +1,23 @@
 name: Issue planning
 
-# Applies the milestone and labels named in an issue's hidden plan line, for tools that can open issues but not label
-# them (e.g. Claude's GitHub connector). Only the repo owner's own changes count. Example, anywhere in the body:
-#   <!-- plan: milestone=Production launch; labels=launch, infra -->
+# Applies the milestone and labels named in a plan line, for tools that can open issues and comment but not label,
+# set milestones or edit (e.g. Claude's GitHub connector). Only the repo owner's own issues and comments count:
+#   in an issue body:   <!-- plan: milestone=Production launch; labels=launch, infra -->
+#   in a comment:       /plan milestone=Production launch; labels=launch, infra
 on:
   issues:
     types: [opened, edited]
+  issue_comment:
+    types: [created]
 
 permissions:
   issues: write
 
 jobs:
   plan:
-    if: github.event.sender.login == github.repository_owner && contains(github.event.issue.body, '<!-- plan:')
+    if: >-
+      github.event.sender.login == github.repository_owner && !github.event.issue.pull_request &&
+      (contains(github.event.issue.body, '<!-- plan:') || startsWith(github.event.comment.body, '/plan '))
     runs-on: ubuntu-latest
     steps:
       - name: Apply milestone and labels
@@ -20,9 +25,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.issue.number }}
-          BODY: ${{ github.event.issue.body }}
+          TEXT: ${{ github.event_name == 'issue_comment' && github.event.comment.body || github.event.issue.body }}
         run: |
-          plan=$(printf '%s' "$BODY" | grep -o '<!-- plan:[^>]*-->' | head -1 | sed 's/ *-->$//')
+          plan=$(printf '%s\n' "$TEXT" | grep -o -m1 -e '<!-- plan:[^>]*-->' -e '^/plan .*' | head -1 | sed 's/ *-->$//')
           milestone=$(printf '%s' "$plan" | sed -n 's/.*milestone=\([^;]*\).*/\1/p' | sed 's/ *$//')
           labels=$(printf '%s' "$plan" | sed -n 's/.*labels=\([^;]*\).*/\1/p' | sed 's/ *$//; s/, */,/g')
           args=()
