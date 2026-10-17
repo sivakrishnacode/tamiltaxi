@@ -13,6 +13,8 @@ export const PLAN_PRICES: Readonly<Record<VehicleKind, Readonly<Record<PlanPerio
   SEDAN: { DAILY: 59, WEEKLY: 329, MONTHLY: 1199 },
   SUV: { DAILY: 79, WEEKLY: 449, MONTHLY: 1499 },
   GOODS_BIKE: { DAILY: 79, WEEKLY: 449, MONTHLY: 1499 },
+  // Parcel on Scooty: a booking tier, served by scooters.
+  SCOOTY_PARCEL: { DAILY: 79, WEEKLY: 449, MONTHLY: 1499 },
   THREE_WHEELER: { DAILY: 99, WEEKLY: 549, MONTHLY: 1999 },
   MINI_TRUCK: { DAILY: 149, WEEKLY: 799, MONTHLY: 2999 },
   PICKUP: { DAILY: 199, WEEKLY: 1099, MONTHLY: 3999 },

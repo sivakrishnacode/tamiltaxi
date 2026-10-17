@@ -100,6 +100,7 @@ const VEHICLE_LABELS: Record<VehicleKind, string> = {
   SEDAN: "Sedan",
   SUV: "SUV",
   GOODS_BIKE: "Goods bike",
+  SCOOTY_PARCEL: "Parcel on Scooty",
   AUTO_PARCEL: "Parcel on Auto",
   THREE_WHEELER: "3-wheeler",
   MINI_TRUCK: "Mini truck",

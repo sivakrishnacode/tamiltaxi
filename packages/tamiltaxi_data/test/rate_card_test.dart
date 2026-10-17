@@ -26,4 +26,25 @@ void main() {
     expect(VehicleKind.autoParcel.servedBy, [VehicleKind.auto, VehicleKind.threeWheeler]);
     expect(VehicleKind.autoParcel.isDriverVehicle, isFalse);
   });
+
+  test('Parcel on Scooty: up to 20 kg, served by scooters only, never a registered vehicle', () {
+    expect(Seed.vehicle(VehicleKind.scootyParcel).capacityKg, 20);
+    expect(VehicleKind.scootyParcel.isGoods, isTrue);
+    expect(VehicleKind.scootyParcel.isTwoWheeler, isTrue);
+    expect(VehicleKind.scootyParcel.servedBy, [VehicleKind.scooty]);
+    expect(VehicleKind.scootyParcel.isDriverVehicle, isFalse);
+  });
+
+  test("The in-town parcel list is Porter's: Bike, Scooty, Auto, 3-wheeler, Mini truck, Pickup; no truck", () {
+    expect(Seed.goodsVehicles.map((v) => v.kind), [
+      VehicleKind.goodsBike,
+      VehicleKind.scootyParcel,
+      VehicleKind.autoParcel,
+      VehicleKind.threeWheeler,
+      VehicleKind.miniTruck,
+      VehicleKind.pickup,
+    ]);
+    // The truck stays for Packers & Movers and goods to another town.
+    expect(Seed.vehicle(VehicleKind.truck).capacityKg, 4000);
+  });
 }

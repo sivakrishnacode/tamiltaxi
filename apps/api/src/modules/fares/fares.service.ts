@@ -10,7 +10,7 @@ import { MapsService } from '../maps/maps.service.js';
 import type { Settings } from '../settings/settings.defaults.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { FareQuote, GeoPoint, quoteFare, type RouteEstimate } from './fare-engine.js';
-import { FARE_RULES } from './fare-rules.js';
+import { FARE_RULES, inTownKinds } from './fare-rules.js';
 import {
   GOODS_TRUCKS,
   goodsOutstationTerms,
@@ -164,7 +164,7 @@ export class FaresService {
     const route = await this.maps.estimate({ from: params.pickup, to: params.drop, vehicleKind: FaresService.routeVehicle(wantGoods) });
     const here = await this.geo.locate(params.pickup);
     const s = await this.settings.all();
-    const kinds = (Object.keys(FARE_RULES) as VehicleKind[]).filter((k) => FARE_RULES[k].isGoods === wantGoods);
+    const kinds = inTownKinds(wantGoods);
     return Promise.all(
       kinds.map(async (vehicleKind) => {
         const rule = (await this.geo.fareRule(here.cityId, vehicleKind)) ?? undefined;

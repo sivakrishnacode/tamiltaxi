@@ -5,8 +5,9 @@ import '../ride_modes.dart';
 
 /// Every vehicle Tamil Taxi supports, in the order the apps list them. Ride tiers carry passengers ([cab] is "Mini",
 /// the hatchback; [autoPriority] is a booking tier served by auto drivers, never a driver's vehicle); goods vehicles
-/// carry parcels ([autoParcel], "Parcel on Auto", is a booking tier too: passenger autos that take parcels, and goods
-/// 3-wheelers). Ride tiers must stay before [goodsBike] ([isGoods]).
+/// carry parcels ([scootyParcel], "Parcel on Scooty", and [autoParcel], "Parcel on Auto", are booking tiers too:
+/// passenger scooters, and autos and goods 3-wheelers, that take parcels). Ride tiers must stay before [goodsBike]
+/// ([isGoods]).
 enum VehicleKind {
   bike,
   scooty,
@@ -16,6 +17,7 @@ enum VehicleKind {
   sedan,
   suv,
   goodsBike,
+  scootyParcel,
   autoParcel,
   threeWheeler,
   miniTruck,
@@ -26,17 +28,19 @@ enum VehicleKind {
   bool get isRide => !isGoods;
 
   /// Bikes and scooters: they also carry goods-bike parcels ("Parcels too") and may take two-wheeler routes.
-  bool get isTwoWheeler => this == bike || this == scooty || this == goodsBike;
+  bool get isTwoWheeler => this == bike || this == scooty || this == goodsBike || this == scootyParcel;
 
-  /// A vehicle a driver can register with (every kind except the Auto Priority and Parcel on Auto booking tiers).
-  bool get isDriverVehicle => this != autoPriority && this != autoParcel;
+  /// A vehicle a driver can register with (every kind except the Auto Priority, Parcel on Scooty and Parcel on Auto
+  /// booking tiers).
+  bool get isDriverVehicle => this != autoPriority && this != scootyParcel && this != autoParcel;
 
   /// The drivers' vehicles that can take a trip booked as this kind (same as the API's `driverKindsFor`): bikes and
-  /// scooters for a Bike ride or a goods-bike parcel, autos for Auto Priority, autos that take parcels and goods
-  /// 3-wheelers for Parcel on Auto, otherwise its own vehicle.
+  /// scooters for a Bike ride or a goods-bike parcel, scooters for Parcel on Scooty, autos for Auto Priority, autos
+  /// that take parcels and goods 3-wheelers for Parcel on Auto, otherwise its own vehicle.
   List<VehicleKind> get servedBy => switch (this) {
         bike => const [bike, scooty],
         goodsBike => const [goodsBike, bike, scooty],
+        scootyParcel => const [scooty],
         autoPriority => const [auto],
         autoParcel => const [auto, threeWheeler],
         _ => [this],

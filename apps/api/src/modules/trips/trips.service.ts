@@ -10,7 +10,7 @@ import { DriverLocationService } from '../drivers/driver-location.service.js';
 import { TripDriversService } from '../drivers/trip-drivers.service.js';
 import { MAX_RIDER_NOT_WOMAN } from '../drivers/women-drivers.js';
 import { type FareQuote, haversineMeters, waitingCharge, waitingTerms, withWaitingCharge } from '../fares/fare-engine.js';
-import { FARE_RULES } from '../fares/fare-rules.js';
+import { FARE_RULES, inTownKinds } from '../fares/fare-rules.js';
 import { isGoodsTruck } from '../fares/goods-modes.js';
 import { isCabTier, type ModeTerms, settleMode, withSettlement } from '../fares/ride-modes.js';
 import { DemandService } from '../geo/demand.service.js';
@@ -167,6 +167,8 @@ export class TripsService {
       if (dto.roundTrip) throw new BadRequestException('Goods to another town are one way');
     } else if (mode !== RideMode.LOCAL && !isCabTier(dto.vehicleKind)) {
       throw new BadRequestException('Rentals and outstation trips are for Mini, Sedan and SUV');
+    } else if (mode === RideMode.LOCAL && !inTownKinds(isGoods).includes(dto.vehicleKind)) {
+      throw new BadRequestException('Trucks go with Packers & Movers or to another town');
     }
     const now = new Date();
     const { scheduledAt, returnAt } = bookingTimes(dto, mode, now, { shifting: !!shifting });
@@ -451,10 +453,7 @@ export class TripsService {
     // Rentals and outstation trips are priced per tier up front: no "Book any".
     if (trip.rideMode !== RideMode.LOCAL) return [];
     const s = await this.settings.all();
-    const isGoods = FARE_RULES[trip.vehicleKind].isGoods;
-    const kinds = (Object.keys(FARE_RULES) as VehicleKind[]).filter(
-      (k) => FARE_RULES[k].isGoods === isGoods && k !== trip.vehicleKind && !trip.alsoKinds.includes(k),
-    );
+    const kinds = inTownKinds(FARE_RULES[trip.vehicleKind].isGoods).filter((k) => k !== trip.vehicleKind && !trip.alsoKinds.includes(k));
     const pickup = { lat: trip.pickupLat, lng: trip.pickupLng };
     const route = { distanceKm: trip.distanceKm, durationMin: trip.durationMin };
     const radiusKm = Math.max(s.searchRadiusKm, s.maxSearchRadiusKm);
@@ -502,7 +501,7 @@ export class TripsService {
     for (let attempt = 1; ; attempt++) {
       const trip = await this.searchingTrip(passengerId, tripId);
       if (trip.rideMode !== RideMode.LOCAL) throw new BadRequestException('Rentals and outstation trips keep the vehicle you booked');
-      if (FARE_RULES[vehicleKind].isGoods !== FARE_RULES[trip.vehicleKind].isGoods) {
+      if (!inTownKinds(FARE_RULES[trip.vehicleKind].isGoods).includes(vehicleKind)) {
         throw new BadRequestException("That vehicle can't take this trip");
       }
       if (vehicleKind === trip.vehicleKind || trip.alsoKinds.includes(vehicleKind)) {

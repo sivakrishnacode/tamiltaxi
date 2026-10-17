@@ -6,7 +6,7 @@ import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 extension VehicleKindUi on VehicleKind {
   /// Material Symbols Rounded icon used on chips, small tiles and as the fallback art.
   IconData get icon => switch (this) {
-        VehicleKind.bike || VehicleKind.scooty || VehicleKind.goodsBike => Symbols.two_wheeler_rounded,
+        VehicleKind.bike || VehicleKind.scooty || VehicleKind.goodsBike || VehicleKind.scootyParcel => Symbols.two_wheeler_rounded,
         VehicleKind.auto || VehicleKind.autoPriority || VehicleKind.autoParcel => Symbols.electric_rickshaw_rounded,
         VehicleKind.cab || VehicleKind.sedan => Symbols.local_taxi_rounded,
         VehicleKind.suv => Symbols.airport_shuttle_rounded,
@@ -19,7 +19,7 @@ extension VehicleKindUi on VehicleKind {
   /// "Bike", "Scooty", "Auto", "Auto Priority", "Mini", "Sedan", "SUV", "3-wheeler", "Mini truck", "Pickup", "Truck".
   String get label => switch (this) {
         VehicleKind.bike || VehicleKind.goodsBike => 'Bike',
-        VehicleKind.scooty => 'Scooty',
+        VehicleKind.scooty || VehicleKind.scootyParcel => 'Scooty',
         VehicleKind.auto || VehicleKind.autoParcel => 'Auto',
         VehicleKind.autoPriority => 'Auto Priority',
         VehicleKind.cab => 'Mini',
@@ -37,6 +37,7 @@ extension VehicleKindUi on VehicleKind {
         VehicleKind.bike => 'packages/tamiltaxi_ui/assets/vehicles/bike.webp',
         VehicleKind.goodsBike => 'packages/tamiltaxi_ui/assets/vehicles/goods_bike.webp',
         VehicleKind.scooty => 'packages/tamiltaxi_ui/assets/vehicles/scooty.webp',
+        VehicleKind.scootyParcel => 'packages/tamiltaxi_ui/assets/vehicles/goods_scooty.webp',
         VehicleKind.auto || VehicleKind.autoParcel => 'packages/tamiltaxi_ui/assets/vehicles/auto.webp',
         VehicleKind.autoPriority => 'packages/tamiltaxi_ui/assets/vehicles/auto_priority.webp',
         VehicleKind.cab => 'packages/tamiltaxi_ui/assets/vehicles/mini.webp',
@@ -62,7 +63,7 @@ extension VehicleKindUi on VehicleKind {
 
   /// Marker glyph class for the map.
   MapVehicleType get mapType => switch (this) {
-        VehicleKind.bike || VehicleKind.scooty || VehicleKind.goodsBike => MapVehicleType.bike,
+        VehicleKind.bike || VehicleKind.scooty || VehicleKind.goodsBike || VehicleKind.scootyParcel => MapVehicleType.bike,
         VehicleKind.auto || VehicleKind.autoPriority || VehicleKind.autoParcel || VehicleKind.threeWheeler => MapVehicleType.auto,
         VehicleKind.cab || VehicleKind.sedan || VehicleKind.suv => MapVehicleType.car,
         VehicleKind.miniTruck || VehicleKind.pickup || VehicleKind.truck => MapVehicleType.truck,

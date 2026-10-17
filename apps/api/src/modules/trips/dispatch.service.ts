@@ -7,7 +7,7 @@ import { Prisma, type Trip } from '../../generated/prisma/client.js';
 import { CancelCode, CancelledBy, RideMode, TripStatus, type VehicleKind, WomenDriverPref } from '../../generated/prisma/enums.js';
 import { DriverLocationService } from '../drivers/driver-location.service.js';
 import { fitsPrefs, readPrefs, serviceOn, shiftHelpersOf, takesShift } from '../drivers/booking-prefs.js';
-import { driverKindsFor, isPriority, tripVehicleFor } from '../drivers/vehicle-match.js';
+import { isPriority, servedAs } from '../drivers/vehicle-match.js';
 import { TripDriversService } from '../drivers/trip-drivers.service.js';
 import { applyWomenPref, womenAmong } from '../drivers/women-drivers.js';
 import { roadKm } from '../geo/eta-model.js';
@@ -506,13 +506,12 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
 
 /**
  * [trip] as matched with a driver of [driverKind]: an added vehicle ("Book any") takes its own quote from
- * `alsoFares` (a bike driver on a parcel takes it as a goods bike); a driver who can serve the booked vehicle (an
- * auto on Auto Priority, a scooter on a Bike ride) or an unknown one leaves the trip as it is.
+ * `alsoFares` (a bike driver on a parcel takes it as a goods bike, [servedAs]); a driver who can serve the booked
+ * vehicle (an auto on Auto Priority, a scooter on a Bike ride) or an unknown one leaves the trip as it is.
  */
 export function asVehicle(trip: Trip, driverKind: VehicleKind | undefined): Trip {
-  if (driverKind && driverKindsFor(trip.vehicleKind).includes(driverKind)) return trip;
-  const kind = driverKind && tripVehicleFor(driverKind, trip.kind);
-  if (!kind || kind === trip.vehicleKind || !trip.alsoKinds.includes(kind)) return trip;
+  const kind = driverKind && servedAs(driverKind, trip.vehicleKind, trip.alsoKinds);
+  if (!kind || kind === trip.vehicleKind) return trip;
   const quote = (trip.alsoFares as Record<string, { total: number }> | null)?.[kind];
   if (!quote) return trip;
   // The rider's extra ("+₹20") is on top of whichever vehicle takes it.

@@ -32,7 +32,7 @@ export class TripDriversService {
     const extra = others.flat();
     if (extra.length === 0) return own;
     // Parcels is a service a passenger vehicle switches on or off (Services): bikes and autos without it get no parcels.
-    const isParcel = params.kind === VehicleKind.GOODS_BIKE || params.kind === VehicleKind.AUTO_PARCEL;
+    const isParcel = params.kind === VehicleKind.GOODS_BIKE || params.kind === VehicleKind.SCOOTY_PARCEL || params.kind === VehicleKind.AUTO_PARCEL;
     const riders = extra.filter((d) => d.kind !== VehicleKind.THREE_WHEELER);
     const off = isParcel ? await noParcelsAmong(this.prisma, riders, new Date()) : new Set<string>();
     return [...own, ...extra.filter((d) => !off.has(d.driverId))].sort((a, b) => a.ring - b.ring || a.distanceKm - b.distanceKm);

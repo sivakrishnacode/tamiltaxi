@@ -222,4 +222,16 @@ void main() {
     expect(container.read(parcelFlowProvider).detailsSet, isTrue);
     expect(find.textContaining('Documents ·'), findsOneWidget);
   });
+
+  testWidgets('PP-06 in town, like Porter: Scooty listed, no Truck; a 5–20 kg parcel moves from Bike to Scooty', (tester) async {
+    final container = await pumpRoute(tester, Routes.parcelDrop);
+    await advance(tester, const Duration(milliseconds: 500));
+    await tapText(tester, 'Confirm drop');
+    await advance(tester, const Duration(milliseconds: 800));
+    expect(find.text('Scooty'), findsWidgets);
+    expect(find.text('Truck'), findsNothing);
+    final ctrl = container.read(parcelFlowProvider.notifier)..selectVehicle(VehicleKind.goodsBike);
+    ctrl.updateDetails(container.read(parcelFlowProvider).details.copyWith(weight: WeightBand.from5to20));
+    expect(container.read(parcelFlowProvider).vehicle, VehicleKind.scootyParcel);
+  });
 }

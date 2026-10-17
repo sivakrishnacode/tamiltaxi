@@ -34,7 +34,7 @@ pointing right, with a soft ground shadow. The same files as `packages/tamiltaxi
 |---|---|
 | `bike`, `scooty`, `auto`, `auto_priority`, `mini`, `sedan`, `suv` | The rider's ride tiers (`mini` is the app's "Mini", the cab) |
 | `*_pink` | Pink Taxi copies (women riders with women drivers): the coral accent turned pink |
-| `goods_bike`, `three_wheeler`, `mini_truck`, `pickup`, `truck` | Parcel and Packers & Movers vehicles |
+| `goods_bike`, `goods_scooty`, `three_wheeler`, `mini_truck`, `pickup`, `truck` | Parcel and Packers & Movers vehicles (`goods_scooty`: the scooty with the goods bike's box, made by `build.py`) |
 | `way_rental`, `way_outstation` | Home's Rental and Outstation tiles: a stopwatch / suitcase in front of a sedan |
 
 ## Pictures

@@ -166,6 +166,12 @@ ServiceCopy mainServiceCopy(VehicleKind kind) {
         title: 'Parcels',
         subtitle: 'Deliveries in town, up to ${formatCount(kg ?? 0)} kg. Small parcels booked on Auto too',
       ),
+    // No parcels in town for trucks (like Porter): their work is the two services below.
+    VehicleKind.truck => (
+        icon: Symbols.local_shipping_rounded,
+        title: 'Big loads',
+        subtitle: 'Packers & Movers and goods to another town. Parcels in town go by smaller vehicles',
+      ),
     _ when kind.isGoods => (icon: Symbols.package_2_rounded, title: 'Parcels', subtitle: 'Deliveries in town, up to ${formatCount(kg ?? 0)} kg'),
     _ => (icon: kind.icon, title: '${kind.label} rides', subtitle: 'Passengers, in town'),
   };
@@ -177,6 +183,11 @@ ServiceCopy serviceCopy(DriverService s, VehicleKind kind) => switch (s) {
           icon: Symbols.package_2_rounded,
           title: 'Parcels',
           subtitle: 'Parcels up to 100 kg inside your auto, between rides. Nothing on the roof',
+        ),
+      DriverService.parcels when kind == VehicleKind.scooty => (
+          icon: Symbols.package_2_rounded,
+          title: 'Parcels',
+          subtitle: 'Parcels up to 20 kg on your scooty, between rides',
         ),
       DriverService.parcels => (
           icon: Symbols.package_2_rounded,

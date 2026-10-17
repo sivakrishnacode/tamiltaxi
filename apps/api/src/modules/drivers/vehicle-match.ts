@@ -1,11 +1,13 @@
 import type { PrismaService } from '../../core/prisma/prisma.service.js';
-import { TripKind, VehicleKind } from '../../generated/prisma/enums.js';
+import { VehicleKind } from '../../generated/prisma/enums.js';
 import { readPrefs, serviceOn } from './booking-prefs.js';
 
 /**
  * Which drivers can take a trip booked as a vehicle kind.
  * - Parcel on bike (like Rapido's "Parcel on Scooty"): bike and scooter drivers also carry goods-bike parcels, unless
  *   they turned it off or paused it (Services, booking-prefs.ts). A goods-bike driver never gets passengers.
+ * - Parcel on Scooty (SCOOTY_PARCEL, up to 20 kg, like Porter's "Scooter"): scooter drivers with parcels on; bikes and
+ *   goods bikes don't take it (the load rides on the footboard).
  * - Parcel on Auto (AUTO_PARCEL, up to 100 kg inside the auto): auto drivers who switched parcels on (off by default:
  *   it's their passenger seat) and goods 3-wheelers.
  * - Scooters (SCOOTY) also take Bike rides (a two-wheeler either way, at the Bike fare); bikes don't take Scooty rides.
@@ -20,7 +22,7 @@ export const PARCEL_TWO_WHEELERS: readonly VehicleKind[] = [VehicleKind.BIKE, Ve
 export const PARCEL_RIDE_VEHICLES: readonly VehicleKind[] = [...PARCEL_TWO_WHEELERS, VehicleKind.AUTO];
 
 /** Booking tiers: served by other vehicles, never a driver's own. */
-const BOOKING_TIERS: readonly VehicleKind[] = [VehicleKind.AUTO_PRIORITY, VehicleKind.AUTO_PARCEL];
+const BOOKING_TIERS: readonly VehicleKind[] = [VehicleKind.AUTO_PRIORITY, VehicleKind.SCOOTY_PARCEL, VehicleKind.AUTO_PARCEL];
 
 /** Vehicle kinds a driver can register with (every kind except booking tiers). */
 export const DRIVER_VEHICLE_KINDS: readonly VehicleKind[] = Object.values(VehicleKind).filter((k) => !BOOKING_TIERS.includes(k));
@@ -30,6 +32,8 @@ export function driverKindsFor(kind: VehicleKind): VehicleKind[] {
   switch (kind) {
     case VehicleKind.GOODS_BIKE:
       return [VehicleKind.GOODS_BIKE, ...PARCEL_TWO_WHEELERS];
+    case VehicleKind.SCOOTY_PARCEL:
+      return [VehicleKind.SCOOTY_PARCEL, VehicleKind.SCOOTY];
     case VehicleKind.AUTO_PARCEL:
       return [VehicleKind.AUTO_PARCEL, VehicleKind.AUTO, VehicleKind.THREE_WHEELER];
     case VehicleKind.BIKE:
@@ -41,12 +45,15 @@ export function driverKindsFor(kind: VehicleKind): VehicleKind[] {
   }
 }
 
-/** The vehicle a [driverKind] driver takes a [tripKind] trip as: a bike or scooter on a parcel is a goods bike, an
- *  auto on a parcel is Parcel on Auto. */
-export function tripVehicleFor(driverKind: VehicleKind, tripKind: TripKind): VehicleKind {
-  if (tripKind !== TripKind.PARCEL) return driverKind;
-  if (PARCEL_TWO_WHEELERS.includes(driverKind)) return VehicleKind.GOODS_BIKE;
-  return driverKind === VehicleKind.AUTO ? VehicleKind.AUTO_PARCEL : driverKind;
+/**
+ * The vehicle a [driverKind] driver takes a trip booked as [booked] as, with the [also] vehicles the rider added ("Book
+ * any"): the booked one when they serve it, else their own vehicle, else the first added one they serve (a bike on a
+ * parcel is a goods bike; a scooter a goods bike or Parcel on Scooty; an auto Parcel on Auto).
+ */
+export function servedAs(driverKind: VehicleKind, booked: VehicleKind, also: readonly VehicleKind[]): VehicleKind {
+  if (driverKindsFor(booked).includes(driverKind)) return booked;
+  if (also.includes(driverKind)) return driverKind;
+  return also.find((k) => driverKindsFor(k).includes(driverKind)) ?? booked;
 }
 
 /** Trips offered first in a batch (Auto Priority). */

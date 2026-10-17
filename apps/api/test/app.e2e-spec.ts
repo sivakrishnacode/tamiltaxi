@@ -577,9 +577,14 @@ describe('Tamil Taxi API (e2e)', () => {
     const quotes = (await http.post('/v1/fares/quote').set(quoter).send({ pickup: PEELAMEDU, drop: BROOKEFIELDS, kind: 'PARCEL' }).expect(200)).body.quotes;
     const goodsBike = quotes.find((q: { vehicleKind: string }) => q.vehicleKind === 'GOODS_BIKE');
     expect(typeof goodsBike.pickupEtaMin).toBe('number');
+    // Like Porter: Parcel on Scooty is listed; the truck isn't (Packers & Movers and another town only).
+    const kinds = quotes.map((q: { vehicleKind: string }) => q.vehicleKind);
+    expect(kinds).toContain('SCOOTY_PARCEL');
+    expect(kinds).not.toContain('TRUCK');
 
     const pax = { Authorization: `Bearer ${await login()}` };
     const parcel = { kind: 'PARCEL', vehicleKind: 'GOODS_BIKE', pickup: PEELAMEDU, drop: BROOKEFIELDS };
+    await http.post('/v1/trips').set(pax).send({ ...parcel, vehicleKind: 'TRUCK' }).expect(400);
     const trip = (await http.post('/v1/trips').set(pax).send(parcel).expect(201)).body;
     const accepted = await acceptWhenOffered(trip.id, bike);
     expect(accepted.status).toBe(200);

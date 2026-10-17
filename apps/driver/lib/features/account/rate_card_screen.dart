@@ -34,7 +34,8 @@ List<_Tab> _tabsFor(VehicleKind k) => switch (k) {
       VehicleKind.scooty => [
           (label: 'Scooty', kind: _Kind.inTown, vehicle: k),
           (label: 'Bike', kind: _Kind.inTown, vehicle: VehicleKind.bike),
-          (label: 'Parcels', kind: _Kind.inTown, vehicle: VehicleKind.goodsBike),
+          (label: 'Parcels', kind: _Kind.inTown, vehicle: VehicleKind.scootyParcel),
+          (label: 'Bike parcels', kind: _Kind.inTown, vehicle: VehicleKind.goodsBike),
         ],
       VehicleKind.auto => [
           (label: 'Auto', kind: _Kind.inTown, vehicle: k),
@@ -51,8 +52,13 @@ List<_Tab> _tabsFor(VehicleKind k) => switch (k) {
           (label: 'Auto parcels', kind: _Kind.inTown, vehicle: VehicleKind.autoParcel),
           (label: 'Another town', kind: _Kind.goodsOutstation, vehicle: k),
         ],
-      VehicleKind.miniTruck || VehicleKind.pickup || VehicleKind.truck => [
+      VehicleKind.miniTruck || VehicleKind.pickup => [
           (label: 'Parcels', kind: _Kind.inTown, vehicle: k),
+          (label: 'Another town', kind: _Kind.goodsOutstation, vehicle: k),
+        ],
+      // No parcels in town: its in-town rates price Packers & Movers moves.
+      VehicleKind.truck => [
+          (label: 'In town', kind: _Kind.inTown, vehicle: k),
           (label: 'Another town', kind: _Kind.goodsOutstation, vehicle: k),
         ],
       _ => [(label: k.isGoods ? 'Parcels' : k.label, kind: _Kind.inTown, vehicle: k)],

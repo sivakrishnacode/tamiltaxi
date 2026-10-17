@@ -37,6 +37,8 @@ enum VehicleKind {
   SEDAN
   SUV
   GOODS_BIKE
+  /// Parcel on Scooty (booking tier, up to 20 kg): passenger scooters that take parcels.
+  SCOOTY_PARCEL
   /// Parcel on Auto (booking tier, up to 100 kg inside the auto): passenger autos that take parcels, and goods 3-wheelers.
   AUTO_PARCEL
   THREE_WHEELER

@@ -323,7 +323,7 @@ class ParcelFlowController extends Notifier<ParcelFlowState> {
     // If the chosen vehicle no longer fits the weight, pick the smallest one that does.
     final current = Seed.vehicle(state.vehicle);
     if (!state.fits(current)) {
-      final fit = Seed.goodsVehicles.firstWhere(state.fits, orElse: () => Seed.truck);
+      final fit = Seed.goodsVehicles.firstWhere(state.fits, orElse: () => Seed.pickupTruck);
       state = state.copyWith(vehicle: fit.kind);
     }
   }

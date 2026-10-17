@@ -10,6 +10,7 @@ export const VEHICLE_COLORS: Record<VehicleKind, string> = {
   SEDAN: "#334155",
   SUV: "#0F766E",
   GOODS_BIKE: "#16A34A",
+  SCOOTY_PARCEL: "#15803D",
   AUTO_PARCEL: "#B45309",
   THREE_WHEELER: "#0EA5E9",
   MINI_TRUCK: "#7C3AED",

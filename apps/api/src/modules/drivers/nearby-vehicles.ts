@@ -17,7 +17,8 @@ export interface NearbyVehicle {
   readonly heading: number | null;
 }
 
-/** Vehicles shown around a ride pickup (every vehicle a ride driver can have) and a parcel pickup. */
+/** Vehicles shown around a ride pickup (every vehicle a ride driver can have) and a parcel pickup (no truck: it isn't
+ *  booked in town, fare-rules.ts [inTownKinds]). */
 export const RIDE_MAP_KINDS: readonly VehicleKind[] = [
   VehicleKind.BIKE,
   VehicleKind.SCOOTY,
@@ -33,7 +34,6 @@ export const PARCEL_MAP_KINDS: readonly VehicleKind[] = [
   VehicleKind.THREE_WHEELER,
   VehicleKind.MINI_TRUCK,
   VehicleKind.PICKUP,
-  VehicleKind.TRUCK,
 ];
 
 export const NEARBY_RADIUS_KM = 3;

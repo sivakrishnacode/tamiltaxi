@@ -4,6 +4,8 @@
                                                       # (and the same into docs/design/assets/vehicles/)
     python3 scripts/vehicle_icons/build.py --preview  # also build/vehicle_icons/preview.png (light + dark rows)
 
+Parcel on Scooty uses `goods_scooty.webp`: the scooty with the goods bike's delivery box on its rear rack.
+
 Pink Taxi (rides for women riders with women drivers) uses `<kind>_pink.webp`: the same vehicles with the coral
 accent turned pink (only coral-orange hues move, so the yellow plates and white bodies stay).
 
@@ -103,6 +105,31 @@ def with_bolt(auto):
     return im
 
 
+def with_box(scooty, goods_bike):
+    """Parcel on Scooty: the scooty with the goods bike's delivery box on its rear rack. The bike's mirror, in front
+    of the box's right face, is painted over with that face's orange; the rack under the box is left behind."""
+    x0, y0, x1, y1 = 68, 32, 154, 97  # the box on the goods bike's canvas
+    box = goods_bike.crop((x0, y0, x1, y1))
+    px = box.load()
+
+    def orange(p):
+        return p[3] > 200 and p[0] > 180 and 50 < p[1] < 140 and p[2] < 90
+
+    for y in range(box.height):
+        face = None
+        for x in range(box.width):
+            if x0 + x < 132:
+                face = px[x, y] if orange(px[x, y]) else face
+            elif face and y0 + y > 56 and not orange(px[x, y]):
+                px[x, y] = face if x0 + x <= 152 else (0, 0, 0, 0)
+            if y0 + y >= 94 and not orange(px[x, y]):
+                px[x, y] = (0, 0, 0, 0)
+    box = box.resize((round(box.width * 0.72), round(box.height * 0.72)), Image.LANCZOS)
+    im = scooty.copy()
+    im.alpha_composite(box, (74, 53))
+    return im
+
+
 def pink(im):
     """The coral accent (hue up to ~34°, saturated) turned pink; everything else unchanged."""
     r, g, b, a = im.split()
@@ -136,6 +163,7 @@ def main():
         for name, v in zip(names, found):
             built[name] = place(v, *FIT[name])
     built['auto_priority'] = with_bolt(built['auto'])
+    built['goods_scooty'] = with_box(built['scooty'], built['goods_bike'])
     for name in PINK:
         built[f'{name}_pink'] = pink(built[name])
     for name, im in built.items():
