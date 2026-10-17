@@ -62,6 +62,10 @@ Examples: `feat(driver): show H3 demand hexes on home map`, `fix(api): await Pri
 - **This file:** update it when a working rule, a key command or the repo layout changes. Keep it short: details go in
   `using.tech.md`.
 - `README.md` is the user-facing intro. Update it for changes that affect setup or how to run things.
+- **[docs/play-store/versions.md](docs/play-store/versions.md)** tracks every app version sent to Google Play. An app
+  change (`apps/passenger`, `apps/driver`, or a package they use) goes under that app's "Next release" in the same
+  commit; a new upload raises `version:` in `pubspec.yaml` and gets its own row. App changes ship together in the next
+  release.
 - **[docs/tech-docs/system-design-notes.md](docs/tech-docs/system-design-notes.md)** holds system-design learnings
   (talks, posts, competitor apps, load tests, incidents) compared with our system, plus the optimization backlog
   (`SD-n` items with triggers). Each time we learn something about how the system should scale or behave, add a dated
@@ -265,3 +269,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 15 Oct 2026 | API modules: `automations` (reminder pushes and campaigns) |
 | 16 Oct 2026 | Repo map: `docs/play-store/` (Google Play submission answers and graphics) |
 | 16 Oct 2026 | Commands + key facts: Play bundles signed with the upload key; APKs stay debug-signed |
+| 17 Oct 2026 | Rule 1.2: track app versions and the next release in `docs/play-store/versions.md` |
