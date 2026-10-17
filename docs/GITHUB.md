@@ -137,7 +137,9 @@ it (Projects belong to the account, not the repo), so it fills itself through th
 3. Add the existing issues once: **+ Add item** › **Add item from repository** › `tamiltaxi` › select all › Add.
 4. Optional views: **+ New view** › Table, group by **Milestone** ("By milestone"); another filtered `label:launch`.
 
-**Use:** Todo → In progress (move the card when work starts) → Done (automatic when the issue closes).
+**Use:** Todo → In progress (move the card when work starts) → Done (automatic when the issue closes). Dragging a
+card to Done also closes its issue (the "Auto-close issue" workflow); mark the item `Status: done` in ROADMAP.md in
+the next commit so the file agrees.
 
 ## 10. Routine
 
