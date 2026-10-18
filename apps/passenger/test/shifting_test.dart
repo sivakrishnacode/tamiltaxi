@@ -49,46 +49,54 @@ void main() {
     });
   });
 
-  testWidgets('House shifting: places, floors and size; typed and pasted items; a day and extras; booked', (tester) async {
+  testWidgets('House shifting: places and floors; size, typed and pasted items; a day and extras; booked', (tester) async {
     final container = await pumpRoute(tester, Routes.shifting);
     await advance(tester, const Duration(milliseconds: 500));
     final flow = container.read(shiftingFlowProvider.notifier);
-    expect(find.text('Moving home?'), findsOneWidget);
-    // No price before the new home is chosen.
-    expect(find.text('Choose the new home to see the price'), findsOneWidget);
-    // …and no price placeholder, which looked like it was loading for ever.
-    expect(find.descendant(of: find.byType(ShiftingPriceBar), matching: find.byType(SkeletonBox)), findsNothing);
+    // Step 1 asks only where (like Porter): no price, and Next waits for the new home.
+    expect(find.text('Choose the new home'), findsOneWidget);
+    expect(find.byType(ShiftingPriceBar), findsNothing);
+    expect(tester.widget<TtButton>(find.widgetWithText(TtButton, 'Next')).onPressed, isNull);
     flow.setDrop(Seed.raceCourse);
     await advance(tester, const Duration(milliseconds: 300));
-    await tapText(tester, '2 BHK');
-    expect(container.read(shiftingFlowProvider).vehicleOrSuggested, VehicleKind.truck);
-    expect(find.textContaining('3 helpers to load and unload'), findsOneWidget);
-    // Second floor at the old home: one tap on its floor strip; stairs until Lift is chosen.
-    final second = find.bySemanticsLabel('2nd floor at the old home');
-    await tester.ensureVisible(second);
-    await tester.pump();
-    await tester.tap(second);
-    await advance(tester, const Duration(milliseconds: 300));
-    expect(container.read(shiftingFlowProvider).details.pickupFloor, 2);
+    // No lift at the old home: the floor comes from the sheet, and the stairs are charged.
+    await tester.tap(find.bySemanticsLabel('No lift at the old home'));
+    await advance(tester, const Duration(milliseconds: 500));
+    expect(find.text('Which floor is the old home on?'), findsOneWidget);
+    await tester.tap(find.descendant(of: find.byType(GridView), matching: find.bySemanticsLabel('2nd floor')));
+    await advance(tester, const Duration(milliseconds: 500));
+    expect((container.read(shiftingFlowProvider).details.pickupFloor, container.read(shiftingFlowProvider).details.pickupLift), (2, false));
     expect(container.read(shiftingFlowProvider).quote!.lines.stairs, 300);
-    expect(find.text('₹300 for 2 floors of stairs'), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel('Lift for furniture at the old home'));
-    await advance(tester, const Duration(milliseconds: 300));
+    expect(find.text('2nd floor · ₹300 for the stairs'), findsOneWidget);
+    // A lift: same floor, no stairs charge. Ground floor clears it.
+    await tester.tap(find.bySemanticsLabel('Lift at the old home'));
+    await advance(tester, const Duration(milliseconds: 500));
+    await tester.tap(find.descendant(of: find.byType(GridView), matching: find.bySemanticsLabel('2nd floor')));
+    await advance(tester, const Duration(milliseconds: 500));
     expect(container.read(shiftingFlowProvider).quote!.lines.stairs, 0);
-    expect(find.text('No stairs charge'), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel('Stairs only at the old home'));
-    await advance(tester, const Duration(milliseconds: 300));
+    expect(find.text('2nd floor'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('No lift at the old home'));
+    await advance(tester, const Duration(milliseconds: 500));
+    await tester.tap(find.descendant(of: find.byType(GridView), matching: find.bySemanticsLabel('2nd floor')));
+    await advance(tester, const Duration(milliseconds: 500));
     expect(container.read(shiftingFlowProvider).quote!.lines.stairs, 300);
 
-    await tapText(tester, 'Add items');
+    await tester.tap(find.widgetWithText(TtButton, 'Next'));
+    await advance(tester, const Duration(milliseconds: 700));
     expect(find.byType(PH02ItemsScreen), findsOneWidget);
+    // Step 2: how big the home is sets the vehicle and helpers; the price shows from here.
+    await tapText(tester, '2 BHK');
+    expect(container.read(shiftingFlowProvider).vehicleOrSuggested, VehicleKind.truck);
+    expect(find.text('Add at least one item'), findsOneWidget);
     expect(find.text('Nothing on the list yet'), findsOneWidget);
-    await tester.enterText(find.widgetWithText(TextField, 'Item, e.g. Double cot, fridge, sofa'), 'Double cot');
-    await tester.enterText(find.widgetWithText(TextField, 'Details (optional): size, material, fragile…'), 'Wooden, comes apart');
+    // One line: how many first, details after a dash.
+    await tester.enterText(find.widgetWithText(TextField, 'Add an item, e.g. 2 chairs'), 'Double cot - Wooden, comes apart');
     await tester.pump();
-    await tapText(tester, 'Add to list');
+    await tester.tap(find.byTooltip('Add to list'));
+    await advance(tester, const Duration(milliseconds: 300));
     expect(find.text('Double cot'), findsOneWidget);
     expect(find.text('Wooden, comes apart'), findsOneWidget);
+    expect(find.text('Truck · 3 helpers'), findsWidgets);
 
     await tapText(tester, 'Paste a list');
     await tester.enterText(find.byType(TextField).last, '2 chairs\nFridge - single door');

@@ -9,9 +9,10 @@ import '../../router/routes.dart';
 import '../../state/shifting_flow.dart';
 import 'widgets/shifting_widgets.dart';
 
-/// PH-02 House shifting · items: no catalogue to scroll through. The rider types each thing (with how many and a note
-/// the movers should know: size, material, whether it comes apart), or pastes a whole list at once. Tap an item to
-/// edit it. Next → PH-03 day and extras.
+/// PH-02 House shifting · what you're moving: how big the home is (it sets the vehicle and helpers, and the price shows
+/// from here), then the things on one line each, no catalogue to scroll through: "2 chairs", "Fridge - single door"
+/// (how many first, a note for the movers after a dash), or a whole list pasted at once. Tap an item to edit it.
+/// Next → PH-03 day and extras.
 class PH02ItemsScreen extends ConsumerStatefulWidget {
   const PH02ItemsScreen({super.key, this.showcase = false});
 
@@ -24,30 +25,22 @@ class PH02ItemsScreen extends ConsumerStatefulWidget {
 
 class _PH02ItemsScreenState extends ConsumerState<PH02ItemsScreen> {
   final _name = TextEditingController();
-  final _note = TextEditingController();
   final _nameFocus = FocusNode();
-  int _qty = 1;
 
   @override
   void dispose() {
     _name.dispose();
-    _note.dispose();
     _nameFocus.dispose();
     super.dispose();
   }
 
-  void _add() {
-    final name = _name.text.trim();
-    if (name.isEmpty) {
-      _nameFocus.requestFocus();
-      return;
+  /// The line as typed: "2 chairs" is two chairs, "Fridge - single door" a fridge with a note ([parseItemList]).
+  void _add([String? _]) {
+    final items = parseItemList(_name.text);
+    if (items.isNotEmpty) {
+      ref.read(shiftingFlowProvider.notifier).addItems(items);
+      setState(_name.clear);
     }
-    ref.read(shiftingFlowProvider.notifier).addItem(ShiftingItem(name: name, qty: _qty, note: _note.text));
-    setState(() {
-      _name.clear();
-      _note.clear();
-      _qty = 1;
-    });
     // Ready for the next one.
     _nameFocus.requestFocus();
   }
@@ -84,6 +77,8 @@ class _PH02ItemsScreenState extends ConsumerState<PH02ItemsScreen> {
     final items = s.details.items;
     final count = s.details.itemCount;
     final full = items.length >= GoodsModeRates.maxItems;
+    final helpers = s.quote?.lines.helperCount ?? s.pricing.shifting.size(s.details.homeSize).helpers;
+    final canAdd = !widget.showcase && !full && _name.text.trim().isNotEmpty;
 
     return ShiftingScaffold(
       error: s.quoteError,
@@ -93,9 +88,7 @@ class _PH02ItemsScreenState extends ConsumerState<PH02ItemsScreen> {
       bottom: ShiftingPriceBar(
         pricing: s.quoteError == null,
         total: s.quote?.lines.total,
-        caption: items.isEmpty
-            ? 'Add at least one item'
-            : '${items.length} item${items.length == 1 ? '' : 's'} · $count in all',
+        caption: items.isEmpty ? 'Add at least one item' : moverTeam(s.vehicleOrSuggested, helpers),
         label: 'Day & extras',
         onPressed: widget.showcase
             ? () {}
@@ -104,10 +97,20 @@ class _PH02ItemsScreenState extends ConsumerState<PH02ItemsScreen> {
                   : () => context.push(Routes.shiftingSchedule)),
       ),
       children: [
+        Text('How big is the home?', style: t.h2),
+        const SizedBox(height: 2),
+        Text('Sets the vehicle and the helpers. You can pick another vehicle on the next step.',
+            style: t.bodySmall.copyWith(color: TtColors.navy500)),
+        const SizedBox(height: TtSpacing.m),
+        HomeSizeList(
+          selected: s.details.homeSize,
+          rates: s.pricing.shifting,
+          onChanged: widget.showcase ? null : ref.read(shiftingFlowProvider.notifier).setHomeSize,
+        ),
+        const SizedBox(height: TtSpacing.xl),
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Text('What are you moving?', style: t.h1)),
+            Expanded(child: Text('What are you moving?', style: t.h2)),
             TextButton.icon(
               // Design gallery: looks ready, does nothing.
               onPressed: widget.showcase ? () {} : (full ? null : _paste),
@@ -117,58 +120,33 @@ class _PH02ItemsScreenState extends ConsumerState<PH02ItemsScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 2),
-        Text('Type each thing in your own words. A note helps the movers plan: size, material, or if it comes apart.',
-            style: t.bodySmall.copyWith(color: TtColors.navy500)),
-        const SizedBox(height: TtSpacing.l),
-        // The composer.
-        Container(
-          padding: const EdgeInsets.all(TtSpacing.m),
-          decoration: BoxDecoration(
-            color: TtColors.surface,
-            borderRadius: TtRadii.cardRadius,
-            border: Border.all(color: TtColors.coral100),
-            boxShadow: TtShadows.soft,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TtTextField(
-                hint: 'Item, e.g. Double cot, fridge, sofa',
-                controller: _name,
-                focusNode: _nameFocus,
-                enabled: !full,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.next,
-                prefixIcon: Symbols.chair_rounded,
-                inputFormatters: [LengthLimitingTextInputFormatter(60)],
-                onChanged: (_) => setState(() {}),
+        Text('Details after a dash: Fridge - single door', style: t.bodySmall.copyWith(color: TtColors.navy500)),
+        const SizedBox(height: TtSpacing.m),
+        TtTextField(
+          hint: full ? 'The list is full (${GoodsModeRates.maxItems})' : 'Add an item, e.g. 2 chairs',
+          controller: _name,
+          focusNode: _nameFocus,
+          enabled: !full,
+          textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.done,
+          prefixIcon: Symbols.chair_rounded,
+          inputFormatters: [LengthLimitingTextInputFormatter(120)],
+          onChanged: (_) => setState(() {}),
+          onSubmitted: _add,
+          suffix: Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: IconButton.filled(
+              tooltip: 'Add to list',
+              onPressed: canAdd ? _add : null,
+              style: IconButton.styleFrom(
+                backgroundColor: TtColors.coral600,
+                foregroundColor: TtColors.surface,
+                disabledBackgroundColor: TtColors.divider,
+                disabledForegroundColor: TtColors.navy300,
+                fixedSize: const Size.square(40),
               ),
-              const SizedBox(height: TtSpacing.s),
-              TtTextField(
-                hint: 'Details (optional): size, material, fragile…',
-                controller: _note,
-                enabled: !full,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.done,
-                inputFormatters: [LengthLimitingTextInputFormatter(120)],
-              ),
-              const SizedBox(height: TtSpacing.s),
-              Row(
-                children: [
-                  Text('How many', style: t.bodySmallMedium.copyWith(color: TtColors.navy700)),
-                  const Spacer(),
-                  CountStepper(value: _qty, min: 1, max: 50, label: '$_qty', semanticsLabel: 'How many', onChanged: (v) => setState(() => _qty = v)),
-                ],
-              ),
-              const SizedBox(height: TtSpacing.s),
-              TtButton.secondary(
-                label: full ? 'List is full (${GoodsModeRates.maxItems})' : 'Add to list',
-                icon: Symbols.add_rounded,
-                height: 48,
-                onPressed: widget.showcase || full || _name.text.trim().isEmpty ? null : _add,
-              ),
-            ],
+              icon: const Icon(Symbols.add_rounded),
+            ),
           ),
         ),
         const SizedBox(height: TtSpacing.l),

@@ -14,6 +14,7 @@ class TtTextField extends StatelessWidget {
     this.controller,
     this.initialValue,
     this.onChanged,
+    this.onSubmitted,
     this.errorText,
     this.keyboardType,
     this.textInputAction,
@@ -35,6 +36,9 @@ class TtTextField extends StatelessWidget {
   final TextEditingController? controller;
   final String? initialValue;
   final ValueChanged<String>? onChanged;
+
+  /// The keyboard's action key (Done, Next…) was pressed.
+  final ValueChanged<String>? onSubmitted;
   final String? errorText;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
@@ -66,6 +70,7 @@ class TtTextField extends StatelessWidget {
           controller: controller,
           initialValue: controller == null ? initialValue : null,
           onChanged: onChanged,
+          onFieldSubmitted: onSubmitted,
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           enabled: enabled,

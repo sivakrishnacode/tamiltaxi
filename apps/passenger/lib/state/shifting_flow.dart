@@ -179,26 +179,19 @@ class ShiftingFlowController extends Notifier<ShiftingFlowState> {
   }
   void setDrop(Place p) => _set(state.copyWith(drop: p));
 
-  void setFloor({required bool pickup, required int floor}) {
+  /// One end's floor and whether a lift takes the furniture (PH-01: Ground floor, Lift or No lift, then the floor).
+  void setLevel({required bool pickup, required int floor, required bool lift}) {
     final f = floor.clamp(0, GoodsModeRates.maxFloor);
     final d = state.details;
-    _set(state.copyWith(details: pickup ? d.copyWith(pickupFloor: f) : d.copyWith(dropFloor: f)));
-  }
-
-  void setLift({required bool pickup, required bool lift}) {
-    final d = state.details;
-    _set(state.copyWith(details: pickup ? d.copyWith(pickupLift: lift) : d.copyWith(dropLift: lift)));
+    _set(state.copyWith(
+      details: pickup ? d.copyWith(pickupFloor: f, pickupLift: lift) : d.copyWith(dropFloor: f, dropLift: lift),
+    ));
   }
 
   /// A new home size suggests its own vehicle again.
   void setHomeSize(HomeSize size) => _set(state.copyWith(details: state.details.copyWith(homeSize: size), vehicle: null));
 
-  void addItem(ShiftingItem item) {
-    if (item.name.trim().isEmpty || state.details.items.length >= GoodsModeRates.maxItems) return;
-    _set(state.copyWith(details: state.details.copyWith(items: [...state.details.items, _clean(item)])), requote: false);
-  }
-
-  /// Several at once ("Paste a list"); stops at [GoodsModeRates.maxItems].
+  /// Items as typed on PH-02 (one line, or "Paste a list"); stops at [GoodsModeRates.maxItems].
   void addItems(List<ShiftingItem> items) {
     final room = GoodsModeRates.maxItems - state.details.items.length;
     final add = [for (final i in items.where((i) => i.name.trim().isNotEmpty).take(room < 0 ? 0 : room)) _clean(i)];

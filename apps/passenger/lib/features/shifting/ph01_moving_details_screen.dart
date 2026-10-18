@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
 import '../../router/routes.dart';
@@ -9,8 +8,9 @@ import '../../state/shifting_flow.dart';
 import '../parcel/widgets/parcel_widgets.dart';
 import 'widgets/shifting_widgets.dart';
 
-/// PH-01 House shifting · moving details: in town or to another town, the old and new home (each with its floor and
-/// lift) and how big the home is (it suggests the vehicle and helpers). Next → PH-02 items.
+/// PH-01 House shifting · moving, like Porter's first step: in town or to another town, then the old and new home,
+/// each with Ground floor, Lift or No lift (the floor in a sheet). No price yet: how big the home is comes on PH-02,
+/// with the items. Next → PH-02.
 class PH01MovingDetailsScreen extends ConsumerWidget {
   const PH01MovingDetailsScreen({super.key, this.showcase = false});
 
@@ -19,14 +19,12 @@ class PH01MovingDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.type;
     final s = showcase ? ShiftingFlowState.sample() : ref.watch(shiftingFlowProvider);
     final flow = ref.read(shiftingFlowProvider.notifier);
     final d = s.details;
-    final rates = s.pricing.shifting;
-    final size = rates.size(d.homeSize);
+    final ready = s.placesReady && !s.pickup.isUnknownPickup;
 
-    Future<void> pick({required bool pickup}) async {
+    Future<void> pick(bool pickup) async {
       final p = await showParcelPlacePicker(
         context,
         title: pickup ? 'Moving from' : 'Moving to',
@@ -38,32 +36,13 @@ class PH01MovingDetailsScreen extends ConsumerWidget {
     }
 
     return ShiftingScaffold(
-      error: s.quoteError,
-      onRetry: () => ref.read(shiftingFlowProvider.notifier).refreshQuote(),
       title: 'Packers & Movers',
       step: 1,
-      onBack: () =>
-          context.canPop() ? context.pop() : context.go(Routes.parcel),
-      bottom: ShiftingPriceBar(
-        total: s.placesReady ? s.quote?.lines.total : null,
-        // No new home yet: nothing to price, so no placeholder that seems to load for ever.
-        pricing: s.placesReady && s.quoteError == null,
-        caption: s.placesReady
-            ? '${size.helpers} helpers · ${s.vehicleOrSuggested.label} suggested'
-            : 'Choose the new home to see the price',
-        label: 'Add items',
-        onPressed: showcase
-            ? () {}
-            : (s.placesReady ? () => context.push(Routes.shiftingItems) : null),
+      onBack: () => context.canPop() ? context.pop() : context.go(Routes.parcel),
+      bottom: _NextBar(
+        onPressed: showcase ? () {} : (ready ? () => context.push(Routes.shiftingItems) : null),
       ),
       children: [
-        Text('Moving home?', style: t.h1),
-        const SizedBox(height: 4),
-        Text(
-          'A truck, helpers and packing if you want it. You see the full price before you book.',
-          style: t.bodySmall.copyWith(color: TtColors.navy500),
-        ),
-        const SizedBox(height: TtSpacing.l),
         TtSegmented<bool>(
           options: const [false, true],
           labelOf: (between) => between ? 'To another town' : 'In town',
@@ -71,90 +50,41 @@ class PH01MovingDetailsScreen extends ConsumerWidget {
           onChanged: showcase ? (_) {} : flow.setBetween,
         ),
         const SizedBox(height: TtSpacing.l),
-        MoveEndCard(
-          isPickup: true,
-          place: s.pickup,
-          floor: d.pickupFloor,
-          lift: d.pickupLift,
-          onPlace: showcase ? null : () => pick(pickup: true),
-          onFloor: (f) => flow.setFloor(pickup: true, floor: f),
-          onLift: (v) => flow.setLift(pickup: true, lift: v),
-          stairsPerFloor: rates.stairsPerFloor,
+        MoveRouteCard(
+          pickup: s.pickup,
+          drop: s.drop,
+          details: d,
+          stairsPerFloor: s.pricing.shifting.stairsPerFloor,
+          onPlace: showcase ? null : pick,
+          onLevel: flow.setLevel,
         ),
-        MoveEndCard(
-          isPickup: false,
-          place: s.drop,
-          floor: d.dropFloor,
-          lift: d.dropLift,
-          onPlace: showcase ? null : () => pick(pickup: false),
-          onFloor: (f) => flow.setFloor(pickup: false, floor: f),
-          onLift: (v) => flow.setLift(pickup: false, lift: v),
-          stairsPerFloor: rates.stairsPerFloor,
-        ),
-        const SizedBox(height: TtSpacing.s),
-        Text('How big is the home?', style: t.bodySemibold),
-        const SizedBox(height: 2),
-        Text('Sets the vehicle and how many helpers come. You can change the vehicle later.',
-            style: t.bodySmall.copyWith(color: TtColors.navy500)),
         const SizedBox(height: TtSpacing.m),
-        LayoutBuilder(
-          builder: (context, c) {
-            final w = (c.maxWidth - TtSpacing.s) / 2;
-            return Wrap(
-              spacing: TtSpacing.s,
-              runSpacing: TtSpacing.s,
-              children: [
-                for (final hs in HomeSize.values)
-                  SizedBox(
-                    width: hs == HomeSize.threeBhk ? c.maxWidth : w,
-                    child: HomeSizeTile(
-                      size: hs,
-                      selected: hs == d.homeSize,
-                      onTap: showcase ? null : () => flow.setHomeSize(hs),
-                    ),
-                  ),
-              ],
-            );
-          },
+        Text(
+          "Next: what you're moving, then the price. You see the full price before you book.",
+          style: context.type.caption,
         ),
-        const SizedBox(height: TtSpacing.l),
-        _Included(size: d.homeSize, vehicle: s.vehicleOrSuggested, helpers: size.helpers),
       ],
     );
   }
 }
 
-/// "Included for a 1 BHK": the vehicle and helpers that come.
-class _Included extends StatelessWidget {
-  const _Included({required this.size, required this.vehicle, required this.helpers});
-  final HomeSize size;
-  final VehicleKind vehicle;
-  final int helpers;
+/// The pinned Next button (no price on this step).
+class _NextBar extends StatelessWidget {
+  const _NextBar({required this.onPressed});
+  final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.type;
-    return Container(
-      padding: const EdgeInsets.all(TtSpacing.m),
-      decoration: const BoxDecoration(color: TtColors.infoTint, borderRadius: TtRadii.cardRadius),
-      child: Row(
-        children: [
-          ParcelVehicleArt(kind: vehicle, width: 72, height: 48, tile: TtColors.surface),
-          const SizedBox(width: TtSpacing.m),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('For a ${size == HomeSize.fewItems ? 'few items' : size.label}', style: t.bodySemibold),
-                Text(
-                  '${vehicle.label} · ${Seed.vehicle(vehicle).capacityLabel} · $helpers helper${helpers == 1 ? '' : 's'} to load and unload',
-                  style: t.bodySmall.copyWith(color: TtColors.navy700),
-                ),
-              ],
-            ),
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          color: TtColors.surface,
+          border: Border(top: BorderSide(color: TtColors.divider)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(TtSpacing.l),
+            child: TtButton(label: 'Next', onPressed: onPressed),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
 }

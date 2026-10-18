@@ -109,10 +109,11 @@ Notes:
 | PP-09 | Parcel in transit | In the app | [parcel/PP-09.png](parcel/PP-09.png) |
 | PP-10 | Parcel delivered | In the app | [parcel/PP-10.png](parcel/PP-10.png) |
 | PH-01 | Packers & Movers · moving details | Added after the design | [parcel/PH-01.png](parcel/PH-01.png) |
-| PH-02 | Packers & Movers · items (typed) | Added after the design | [parcel/PH-02.png](parcel/PH-02.png) |
+| PH-02 | Packers & Movers · home size and items | Added after the design | [parcel/PH-02.png](parcel/PH-02.png) |
 | PH-03 | Packers & Movers · day and extras | Added after the design | [parcel/PH-03.png](parcel/PH-03.png) |
 | PH-04 | Packers & Movers · review | Added after the design | [parcel/PH-04.png](parcel/PH-04.png) |
 | PH-05 | Packers & Movers · booked | Added after the design | [parcel/PH-05.png](parcel/PH-05.png) |
+| PH-01b | Packers & Movers · which floor (sheet) | Added after the design | [parcel/PH-01b.png](parcel/PH-01b.png) |
 
 ## Passenger states
 

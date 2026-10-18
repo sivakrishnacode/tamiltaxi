@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
@@ -222,45 +220,288 @@ class CountStepper extends StatelessWidget {
   }
 }
 
-/// "Ground", "1st", "2nd" … (the floor stepper's value).
-String floorShort(int floor) {
-  if (floor <= 0) return 'Ground';
-  return floorLabel(floor, false).split(' ').first;
+/// A vehicle in the move's words: "Pickup truck" (a plain "Pickup" reads like the pickup place).
+String moverVehicle(VehicleKind kind) => kind == VehicleKind.pickup ? 'Pickup truck' : kind.label;
+
+/// "Pickup truck · 2 helpers".
+String moverTeam(VehicleKind kind, int helpers) => '${moverVehicle(kind)} · $helpers helper${helpers == 1 ? '' : 's'}';
+
+/// "5th" (the floor sheet, the floor line).
+String _ordinal(int floor) => floorLabel(floor, false).split(' ').first;
+
+/// PH-01's From → To card, like Porter's: each home (tap to change it) and how the furniture gets in and out: Ground
+/// floor, Lift or No lift. Lift and No lift ask the floor in a sheet. The new home's choice shows once it is chosen.
+class MoveRouteCard extends StatelessWidget {
+  const MoveRouteCard({
+    super.key,
+    required this.pickup,
+    required this.drop,
+    required this.details,
+    required this.onPlace,
+    required this.onLevel,
+    this.stairsPerFloor = GoodsModeRates.stairsPerFloor,
+  });
+
+  final Place pickup;
+  final Place? drop;
+  final ShiftingDetails details;
+
+  /// Change the old home (true) or the new one; null in the Design gallery.
+  final void Function(bool pickup)? onPlace;
+  final void Function({required bool pickup, required int floor, required bool lift}) onLevel;
+
+  /// The city's stairs charge per floor without a lift.
+  final int stairsPerFloor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(TtSpacing.m, TtSpacing.xs, TtSpacing.xs, TtSpacing.m),
+        decoration: BoxDecoration(
+          color: TtColors.surface,
+          borderRadius: TtRadii.cardRadius,
+          border: Border.all(color: TtColors.divider),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _MoveEnd(
+              isPickup: true,
+              place: pickup.isUnknownPickup ? null : pickup,
+              floor: details.pickupFloor,
+              lift: details.pickupLift,
+              stairsPerFloor: stairsPerFloor,
+              onPlace: onPlace == null ? null : () => onPlace!(true),
+              onLevel: (floor, lift) => onLevel(pickup: true, floor: floor, lift: lift),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(36, TtSpacing.m, TtSpacing.s, TtSpacing.xs),
+              child: Divider(height: 1),
+            ),
+            _MoveEnd(
+              isPickup: false,
+              place: drop,
+              floor: details.dropFloor,
+              lift: details.dropLift,
+              stairsPerFloor: stairsPerFloor,
+              onPlace: onPlace == null ? null : () => onPlace!(false),
+              onLevel: (floor, lift) => onLevel(pickup: false, floor: floor, lift: lift),
+            ),
+          ],
+        ),
+      );
 }
 
-/// One end of the move, compact: the place (tap to change; the green dot is the old home, the pin the new one), then
-/// its floor on a strip of lift-panel buttons (G, 1, 2 …). Above the ground floor: Lift or Stairs, with what the
-/// stairs cost.
-class MoveEndCard extends StatelessWidget {
-  const MoveEndCard({
-    super.key,
+/// One home on [MoveRouteCard]: the place row, then Ground floor · Lift · No lift and the floor chosen.
+class _MoveEnd extends StatelessWidget {
+  const _MoveEnd({
     required this.isPickup,
     required this.place,
     required this.floor,
     required this.lift,
+    required this.stairsPerFloor,
     required this.onPlace,
-    required this.onFloor,
-    required this.onLift,
-    this.stairsPerFloor = GoodsModeRates.stairsPerFloor,
+    required this.onLevel,
   });
 
-  /// The city's stairs charge per floor without a lift.
-  final int stairsPerFloor;
   final bool isPickup;
   final Place? place;
   final int floor;
   final bool lift;
+  final int stairsPerFloor;
   final VoidCallback? onPlace;
-  final ValueChanged<int> onFloor;
-  final ValueChanged<bool> onLift;
+  final void Function(int floor, bool lift) onLevel;
 
   @override
   Widget build(BuildContext context) {
     final t = context.type;
     final p = place;
     final where = isPickup ? 'old home' : 'new home';
+
+    Future<void> chooseFloor({required bool withLift}) async {
+      final f = await showFloorSheet(context, floor: floor, lift: withLift, where: where, stairsPerFloor: stairsPerFloor);
+      if (f != null) onLevel(f, withLift);
+    }
+
+    Widget chip(String label, bool on, VoidCallback onTap) => Semantics(
+          button: true,
+          selected: on,
+          inMutuallyExclusiveGroup: true,
+          label: '$label at the $where',
+          excludeSemantics: true,
+          child: TtChip(label: label, selected: on, onTap: onPlace == null ? null : onTap),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          button: true,
+          label: '${isPickup ? 'Moving from' : 'Moving to'} ${p?.name ?? 'not chosen yet'}',
+          excludeSemantics: true,
+          child: InkWell(
+            onTap: onPlace,
+            borderRadius: TtRadii.cardRadius,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: TtSpacing.s),
+              child: Row(
+                children: [
+                  SizedBox(width: 24, child: Center(child: isPickup ? const PickupDot(size: 10) : const DropPin(size: 22))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p?.name ?? (isPickup ? 'Choose the old home' : 'Choose the new home'),
+                          style: t.listTitle.copyWith(color: p == null ? TtColors.coral600 : TtColors.navy900),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (p != null && p.address.isNotEmpty)
+                          Text(p.address, style: t.listMeta, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  const Icon(Symbols.chevron_right_rounded, color: TtColors.navy500),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // How the furniture gets in and out, once the place is known.
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: p == null
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.only(left: 36, top: TtSpacing.xs, right: TtSpacing.s),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: TtSpacing.s,
+                        runSpacing: TtSpacing.s,
+                        children: [
+                          chip('Ground floor', floor == 0, () => onLevel(0, false)),
+                          chip('Lift', floor > 0 && lift, () => chooseFloor(withLift: true)),
+                          chip('No lift', floor > 0 && !lift, () => chooseFloor(withLift: false)),
+                        ],
+                      ),
+                      if (floor > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: TtSpacing.xs),
+                          child: Row(
+                            children: [
+                              Icon(lift ? Symbols.elevator_rounded : Symbols.stairs_2_rounded, size: 18, color: TtColors.navy500),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  lift
+                                      ? '${_ordinal(floor)} floor'
+                                      : '${_ordinal(floor)} floor · ${formatInr(stairsPerFloor * floor)} for the stairs',
+                                  style: TtTextStyles.tabular(t.listMeta.copyWith(color: TtColors.navy700)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              TextButton(
+                                // Design gallery (no onPlace): looks ready, does nothing.
+                                onPressed: () => onPlace == null ? null : chooseFloor(withLift: lift),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: TtColors.coral600,
+                                  textStyle: t.bodySmallMedium,
+                                  minimumSize: const Size(48, 40),
+                                  padding: const EdgeInsets.symmetric(horizontal: TtSpacing.s),
+                                ),
+                                child: Semantics(label: 'Change the floor at the $where', excludeSemantics: true, child: const Text('Change')),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Which floor a home is on, for Lift or No lift (PH-01): 1st to 20th, one tap picks it. Null when dismissed.
+Future<int?> showFloorSheet(
+  BuildContext context, {
+  required int floor,
+  required bool lift,
+  required String where,
+  int stairsPerFloor = GoodsModeRates.stairsPerFloor,
+}) =>
+    showTtSheet<int>(
+      context,
+      builder: (ctx) {
+        final t = ctx.type;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Which floor is the $where on?', style: t.h2),
+            const SizedBox(height: 4),
+            Text(
+              lift ? 'No stairs charge with a lift.' : 'Movers carry everything by the stairs: ${formatInr(stairsPerFloor)} a floor.',
+              style: t.bodySmall.copyWith(color: TtColors.navy500),
+            ),
+            const SizedBox(height: TtSpacing.l),
+            GridView.count(
+              crossAxisCount: 5,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: TtSpacing.s,
+              crossAxisSpacing: TtSpacing.s,
+              childAspectRatio: 1.3,
+              children: [
+                for (var f = 1; f <= 20; f++)
+                  Semantics(
+                    button: true,
+                    selected: f == floor,
+                    label: '${_ordinal(f)} floor',
+                    excludeSemantics: true,
+                    child: Material(
+                      color: f == floor ? TtColors.coral600 : TtColors.inputBg,
+                      borderRadius: TtRadii.cardRadius,
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => Navigator.of(ctx).pop(f),
+                        child: Center(
+                          child: Text(
+                            _ordinal(f),
+                            style: TtTextStyles.tabular(
+                              t.bodySmallMedium.copyWith(color: f == floor ? TtColors.surface : TtColors.navy900),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+
+/// PH-02 "How big is the home?": one row per size with the vehicle and helpers that come for it (the vehicle can still
+/// be changed on PH-03).
+class HomeSizeList extends StatelessWidget {
+  const HomeSizeList({super.key, required this.selected, required this.rates, required this.onChanged});
+  final HomeSize selected;
+  final ShiftingRates rates;
+  final ValueChanged<HomeSize>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
     return Container(
-      margin: const EdgeInsets.only(bottom: TtSpacing.s),
       decoration: BoxDecoration(
         color: TtColors.surface,
         borderRadius: TtRadii.cardRadius,
@@ -268,274 +509,70 @@ class MoveEndCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            button: true,
-            label: '${isPickup ? 'Moving from' : 'Moving to'} ${p?.name ?? 'not chosen yet'}',
-            excludeSemantics: true,
-            child: InkWell(
-              onTap: onPlace,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(TtSpacing.m, 10, TtSpacing.s, 6),
-                child: Row(
-                  children: [
-                    SizedBox(width: 24, child: Center(child: isPickup ? const PickupDot(size: 10) : const DropPin(size: 22))),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            p?.name ?? 'Choose the new home',
-                            style: t.bodySemibold.copyWith(color: p == null ? TtColors.coral600 : TtColors.navy900),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (p != null && p.address.isNotEmpty)
-                            Text(p.address, style: t.bodySmall.copyWith(color: TtColors.navy500), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ),
-                    const Icon(Symbols.chevron_right_rounded, color: TtColors.navy500),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(TtSpacing.m, 0, 0, TtSpacing.s),
-            child: Row(
-              children: [
-                SizedBox(width: 48, child: Text('Floor', style: t.bodySmallMedium.copyWith(color: TtColors.navy700))),
-                Expanded(child: _FloorStrip(floor: floor, where: where, onChanged: onFloor)),
-              ],
-            ),
-          ),
-          // Above the ground floor: how the furniture goes up or down.
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: floor == 0
-                ? const SizedBox(width: double.infinity)
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(TtSpacing.m, 0, TtSpacing.m, TtSpacing.m),
-                    child: Row(
-                      children: [
-                        _LiftToggle(lift: lift, where: where, onChanged: onLift),
-                        const SizedBox(width: TtSpacing.m),
-                        Expanded(
-                          child: Text(
-                            lift
-                                ? 'No stairs charge'
-                                : '${formatInr(stairsPerFloor * floor)} for ${floor == 1 ? '1 floor' : '$floor floors'} of stairs',
-                            textAlign: TextAlign.right,
-                            style: TtTextStyles.tabular(t.caption.copyWith(color: lift ? TtColors.successText : TtColors.navy700)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The floors as round lift-panel buttons, G to the top floor, scrolling sideways; the chosen one lit in coral.
-class _FloorStrip extends StatefulWidget {
-  const _FloorStrip({required this.floor, required this.where, required this.onChanged});
-  final int floor;
-  final String where;
-  final ValueChanged<int> onChanged;
-
-  @override
-  State<_FloorStrip> createState() => _FloorStripState();
-}
-
-class _FloorStripState extends State<_FloorStrip> {
-  static const double _size = 36;
-  static const double _gap = 6;
-
-  /// Opens with the chosen floor in view (a 5th floor home doesn't start scrolled to G).
-  late final _scroll = ScrollController(initialScrollOffset: math.max(0, (widget.floor - 2) * (_size + _gap)).toDouble());
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.type;
-    // A soft fade at the right edge says there are more floors.
-    return ShaderMask(
-      shaderCallback: (r) => const LinearGradient(
-        colors: [Colors.white, Colors.white, Colors.transparent],
-        stops: [0, 0.88, 1],
-      ).createShader(r),
-      blendMode: BlendMode.dstIn,
-      child: SizedBox(
-        height: 48,
-        child: ListView.separated(
-          controller: _scroll,
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.only(right: TtSpacing.l),
-          itemCount: GoodsModeRates.maxFloor + 1,
-          separatorBuilder: (_, _) => const SizedBox(width: _gap),
-          itemBuilder: (context, f) {
-            final on = f == widget.floor;
-            return Center(
-              child: Semantics(
+          for (final hs in HomeSize.values) ...[
+            if (hs != HomeSize.values.first) const Divider(height: 1, indent: 52),
+            Builder(builder: (context) {
+              final size = rates.size(hs);
+              final on = hs == selected;
+              return Semantics(
                 button: true,
                 selected: on,
                 inMutuallyExclusiveGroup: true,
-                label: '${floorShort(f)} floor at the ${widget.where}',
+                label: '${hs.label}. ${moverTeam(size.vehicle, size.helpers)}',
                 excludeSemantics: true,
-                child: Material(
-                  color: on ? TtColors.coral600 : TtColors.surface,
-                  shape: CircleBorder(side: BorderSide(color: on ? TtColors.coral600 : TtColors.divider)),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => widget.onChanged(f),
-                    child: SizedBox.square(
-                      dimension: _size,
-                      child: Center(
-                        child: Text(
-                          f == 0 ? 'G' : '$f',
-                          style: TtTextStyles.tabular(
-                            t.bodySmallMedium.copyWith(color: on ? TtColors.surface : TtColors.navy700, fontWeight: FontWeight.w600),
+                child: InkWell(
+                  onTap: onChanged == null ? null : () => onChanged!(hs),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(TtSpacing.m, 10, TtSpacing.m, 10),
+                    child: Row(
+                      children: [
+                        _RadioDot(on: on),
+                        const SizedBox(width: TtSpacing.m),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(hs.label, style: t.listTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text(moverTeam(size.vehicle, size.helpers), style: t.listMeta, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ],
                           ),
                         ),
-                      ),
+                        const SizedBox(width: TtSpacing.s),
+                        VehicleArt(size.vehicle, width: 56, height: 40),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-/// Lift | Stairs, a small two-way switch with icons.
-class _LiftToggle extends StatelessWidget {
-  const _LiftToggle({required this.lift, required this.where, required this.onChanged});
-  final bool lift;
-  final String where;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.type;
-    Widget side(bool value, IconData icon, String label) {
-      final on = lift == value;
-      return Semantics(
-        button: true,
-        selected: on,
-        inMutuallyExclusiveGroup: true,
-        label: value ? 'Lift for furniture at the $where' : 'Stairs only at the $where',
-        excludeSemantics: true,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onChanged(value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-            decoration: BoxDecoration(
-              color: on ? TtColors.surface : TtColors.inputBg,
-              borderRadius: TtRadii.pillRadius,
-              boxShadow: on ? TtShadows.soft : const [],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 18, color: on ? TtColors.coral600 : TtColors.navy500),
-                const SizedBox(width: 4),
-                Text(label, style: t.bodySmallMedium.copyWith(color: on ? TtColors.navy900 : TtColors.navy500)),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: const BoxDecoration(color: TtColors.inputBg, borderRadius: TtRadii.pillRadius),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          side(true, Symbols.elevator_rounded, 'Lift'),
-          side(false, Symbols.stairs_2_rounded, 'Stairs'),
+              );
+            }),
+          ],
         ],
       ),
     );
   }
 }
 
-/// One home size to choose (PH-01).
-class HomeSizeTile extends StatelessWidget {
-  const HomeSizeTile({super.key, required this.size, required this.selected, required this.onTap});
-  final HomeSize size;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  static IconData iconOf(HomeSize s) => switch (s) {
-        HomeSize.fewItems => Symbols.package_2_rounded,
-        HomeSize.oneRk => Symbols.bed_rounded,
-        HomeSize.oneBhk => Symbols.cottage_rounded,
-        HomeSize.twoBhk => Symbols.home_rounded,
-        HomeSize.threeBhk => Symbols.villa_rounded,
-      };
+/// A radio button's look: a ring, filled coral with a white centre when chosen.
+class _RadioDot extends StatelessWidget {
+  const _RadioDot({required this.on});
+  final bool on;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.type;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '${size.label}. ${size.hint}',
-      excludeSemantics: true,
-      child: Material(
-        color: selected ? TtColors.coral50 : TtColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: TtRadii.cardRadius,
-          side: BorderSide(color: selected ? TtColors.coral600 : TtColors.divider, width: selected ? 1.5 : 1),
+  Widget build(BuildContext context) => AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: on ? TtColors.coral600 : TtColors.surface,
+          border: Border.all(color: on ? TtColors.coral600 : TtColors.navy300, width: 2),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(TtSpacing.m),
-            child: Row(
-              children: [
-                Icon(iconOf(size), color: selected ? TtColors.coral600 : TtColors.navy700, fill: selected ? 1 : 0),
-                const SizedBox(width: TtSpacing.s),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(size.label,
-                          style: t.bodySemibold.copyWith(color: selected ? TtColors.coral700 : TtColors.navy900),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      Text(size.hint, style: t.caption.copyWith(color: TtColors.navy500), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+        alignment: Alignment.center,
+        child: on
+            ? Container(width: 8, height: 8, decoration: const BoxDecoration(color: TtColors.surface, shape: BoxShape.circle))
+            : null,
+      );
 }
 
 /// The pinned bottom: the total so far (or what is missing) and the next step's button.

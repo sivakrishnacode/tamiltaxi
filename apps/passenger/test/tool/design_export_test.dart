@@ -28,6 +28,7 @@ const extraShots = <({String id, String name, String route, String? tap})>[
   (id: 'P-31', name: 'About', route: Routes.about, tap: null),
   (id: 'P-32', name: 'Terms', route: '/legal/terms', tap: null),
   (id: 'P-33', name: 'Privacy', route: '/legal/privacy', tap: null),
+  (id: 'PH-01b', name: 'Packers & Movers · which floor (sheet)', route: Routes.shifting, tap: 'No lift'),
 ];
 
 void main() {

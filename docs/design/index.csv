@@ -68,7 +68,7 @@ PP-08,Driver assigned · picking up,passenger,parcel/PP-08.png,In the app
 PP-09,Parcel in transit,passenger,parcel/PP-09.png,In the app
 PP-10,Parcel delivered,passenger,parcel/PP-10.png,In the app
 PH-01,Packers & Movers · moving details,passenger,parcel/PH-01.png,Added after the design
-PH-02,Packers & Movers · items (typed),passenger,parcel/PH-02.png,Added after the design
+PH-02,Packers & Movers · home size and items,passenger,parcel/PH-02.png,Added after the design
 PH-03,Packers & Movers · day and extras,passenger,parcel/PH-03.png,Added after the design
 PH-04,Packers & Movers · review,passenger,parcel/PH-04.png,Added after the design
 PH-05,Packers & Movers · booked,passenger,parcel/PH-05.png,Added after the design
@@ -89,6 +89,7 @@ P-29,Verify identity,passenger,passenger/P-29.png,Added after the design
 P-31,About,passenger,passenger/P-31.png,Added after the design
 P-32,Terms,passenger,passenger/P-32.png,Added after the design
 P-33,Privacy,passenger,passenger/P-33.png,Added after the design
+PH-01b,Packers & Movers · which floor (sheet),passenger,parcel/PH-01b.png,Added after the design
 D-01,Splash,driver,driver/D-01.png,In the app
 D-02,Welcome,driver,driver/D-02.png,In the app
 D-03a,Phone number,driver,driver/D-03a.png,In the app
