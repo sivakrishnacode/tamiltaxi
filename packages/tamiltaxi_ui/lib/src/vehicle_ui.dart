@@ -31,6 +31,9 @@ extension VehicleKindUi on VehicleKind {
         VehicleKind.truck => 'Truck',
       };
 
+  /// The name inside a sentence or a price line, where a plain "Pickup" reads like the pickup place: "Pickup truck".
+  String get textLabel => this == VehicleKind.pickup ? 'Pickup truck' : label;
+
   /// The 3/4 render in `assets/vehicles/` (built by scripts/vehicle_icons/build.py); every vehicle has one. Nullable so
   /// a vehicle added later can show [icon] until its render arrives.
   String? get artAsset => switch (this) {

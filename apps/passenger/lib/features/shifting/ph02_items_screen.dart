@@ -97,31 +97,27 @@ class _PH02ItemsScreenState extends ConsumerState<PH02ItemsScreen> {
                   : () => context.push(Routes.shiftingSchedule)),
       ),
       children: [
-        Text('How big is the home?', style: t.h2),
-        const SizedBox(height: 2),
-        Text('Sets the vehicle and the helpers. You can pick another vehicle on the next step.',
-            style: t.bodySmall.copyWith(color: TtColors.navy500)),
-        const SizedBox(height: TtSpacing.m),
+        const ShiftingHeading(
+          title: 'How big is the home?',
+          subtitle: 'Sets the vehicle and the helpers. You can pick another vehicle on the next step.',
+        ),
         HomeSizeList(
           selected: s.details.homeSize,
           rates: s.pricing.shifting,
           onChanged: widget.showcase ? null : ref.read(shiftingFlowProvider.notifier).setHomeSize,
         ),
         const SizedBox(height: TtSpacing.xl),
-        Row(
-          children: [
-            Expanded(child: Text('What are you moving?', style: t.h2)),
-            TextButton.icon(
-              // Design gallery: looks ready, does nothing.
-              onPressed: widget.showcase ? () {} : (full ? null : _paste),
-              icon: const Icon(Symbols.content_paste_rounded, size: 18),
-              label: const Text('Paste a list'),
-              style: TextButton.styleFrom(foregroundColor: TtColors.coral600, minimumSize: const Size(48, 40)),
-            ),
-          ],
+        ShiftingHeading(
+          title: 'What are you moving?',
+          subtitle: 'Details after a dash: Fridge - single door',
+          trailing: TextButton.icon(
+            // Design gallery: looks ready, does nothing.
+            onPressed: widget.showcase ? () {} : (full ? null : _paste),
+            icon: const Icon(Symbols.content_paste_rounded, size: 18),
+            label: const Text('Paste a list'),
+            style: TextButton.styleFrom(foregroundColor: TtColors.coral600, minimumSize: const Size(48, 40)),
+          ),
         ),
-        Text('Details after a dash: Fridge - single door', style: t.bodySmall.copyWith(color: TtColors.navy500)),
-        const SizedBox(height: TtSpacing.m),
         TtTextField(
           hint: full ? 'The list is full (${GoodsModeRates.maxItems})' : 'Add an item, e.g. 2 chairs',
           controller: _name,

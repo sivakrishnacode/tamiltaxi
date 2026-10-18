@@ -100,7 +100,7 @@ class _PH04ReviewScreenState extends ConsumerState<PH04ReviewScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_dayLabel(s.day), style: t.h2.copyWith(color: Colors.white)),
+                    Text(moveDayLabel(s.day), style: t.h2.copyWith(color: Colors.white)),
                     Text('Movers reach between ${slotLabel(s.slotHour)}', style: t.bodySmall.copyWith(color: Colors.white70)),
                   ],
                 ),
@@ -131,7 +131,7 @@ class _PH04ReviewScreenState extends ConsumerState<PH04ReviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${(q?.vehicle ?? s.vehicleOrSuggested).label} · ${Seed.vehicle(q?.vehicle ?? s.vehicleOrSuggested).capacityLabel}',
+                      '${(q?.vehicle ?? s.vehicleOrSuggested).textLabel} · ${Seed.vehicle(q?.vehicle ?? s.vehicleOrSuggested).capacityLabel}',
                       style: t.bodySemibold,
                     ),
                     Text(
@@ -210,14 +210,5 @@ class _PH04ReviewScreenState extends ConsumerState<PH04ReviewScreen> {
           ),
       ],
     );
-  }
-
-  /// "Tomorrow, Fri 2 Oct" / "Sat 3 Oct".
-  static String _dayLabel(DateTime day) {
-    final when = formatWhen(DateTime(day.year, day.month, day.day, 9)).split(', ').first;
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final date = '${days[day.weekday - 1]} ${day.day} ${months[day.month - 1]}';
-    return when == 'Today' || when == 'Tomorrow' ? '$when, $date' : date;
   }
 }

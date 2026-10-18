@@ -220,11 +220,17 @@ class CountStepper extends StatelessWidget {
   }
 }
 
-/// A vehicle in the move's words: "Pickup truck" (a plain "Pickup" reads like the pickup place).
-String moverVehicle(VehicleKind kind) => kind == VehicleKind.pickup ? 'Pickup truck' : kind.label;
+/// "Tomorrow, Fri 2 Oct" / "Sat 3 Oct" (PH-03, PH-04).
+String moveDayLabel(DateTime day) {
+  final when = formatWhen(DateTime(day.year, day.month, day.day, 9)).split(', ').first;
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  final date = '${days[day.weekday - 1]} ${day.day} ${months[day.month - 1]}';
+  return when == 'Today' || when == 'Tomorrow' ? '$when, $date' : date;
+}
 
 /// "Pickup truck · 2 helpers".
-String moverTeam(VehicleKind kind, int helpers) => '${moverVehicle(kind)} · $helpers helper${helpers == 1 ? '' : 's'}';
+String moverTeam(VehicleKind kind, int helpers) => '${kind.textLabel} · $helpers helper${helpers == 1 ? '' : 's'}';
 
 /// "5th" (the floor sheet, the floor line).
 String _ordinal(int floor) => floorLabel(floor, false).split(' ').first;
@@ -490,6 +496,137 @@ Future<int?> showFloorSheet(
       },
     );
 
+/// A section title on the plain background, with an optional line under it and a [trailing] action (PH-02, PH-03).
+class ShiftingHeading extends StatelessWidget {
+  const ShiftingHeading({super.key, required this.title, this.subtitle, this.trailing});
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: TtSpacing.m),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(title, style: t.h2)),
+              ?trailing,
+            ],
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(subtitle!, style: t.bodySmall.copyWith(color: TtColors.navy500)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// White rows in one card with a line between them (the choice lists, PH-03's extras).
+class ShiftingCard extends StatelessWidget {
+  const ShiftingCard({super.key, required this.children, this.indent = 52});
+  final List<Widget> children;
+
+  /// Where the line between rows starts (past a choice's radio).
+  final double indent;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: TtColors.surface,
+          borderRadius: TtRadii.cardRadius,
+          border: Border.all(color: TtColors.divider),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) Divider(height: 1, indent: indent),
+              children[i],
+            ],
+          ],
+        ),
+      );
+}
+
+/// One choice in a [ShiftingCard]: a radio, the name and a line under it ([note] under that in green: "Suggested"),
+/// then the vehicle's picture and a price when given. A null [price] with [pricePending] is still loading.
+class ShiftingChoiceRow extends StatelessWidget {
+  const ShiftingChoiceRow({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+    this.note,
+    this.vehicle,
+    this.price,
+    this.pricePending = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final String? note;
+  final bool selected;
+  final VoidCallback? onTap;
+  final VehicleKind? vehicle;
+  final String? price;
+  final bool pricePending;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      label: [title, subtitle, ?note, ?price].join('. '),
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(TtSpacing.m, 10, TtSpacing.m, 10),
+          child: Row(
+            children: [
+              _RadioDot(on: selected),
+              const SizedBox(width: TtSpacing.m),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: t.listTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(subtitle, style: t.listMeta, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    if (note != null)
+                      Text(note!, style: t.listMeta.copyWith(color: TtColors.successText, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              if (vehicle case final v?) ...[
+                const SizedBox(width: TtSpacing.s),
+                VehicleArt(v, width: 56, height: 40),
+              ],
+              if (price != null || pricePending) ...[
+                const SizedBox(width: TtSpacing.s),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 56),
+                  child: price == null
+                      ? const Align(alignment: Alignment.centerRight, child: SkeletonBox(width: 48, height: 16))
+                      : Text(price!, textAlign: TextAlign.right, style: TtTextStyles.tabular(t.price)),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// PH-02 "How big is the home?": one row per size with the vehicle and helpers that come for it (the vehicle can still
 /// be changed on PH-03).
 class HomeSizeList extends StatelessWidget {
@@ -499,58 +636,18 @@ class HomeSizeList extends StatelessWidget {
   final ValueChanged<HomeSize>? onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.type;
-    return Container(
-      decoration: BoxDecoration(
-        color: TtColors.surface,
-        borderRadius: TtRadii.cardRadius,
-        border: Border.all(color: TtColors.divider),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
+  Widget build(BuildContext context) => ShiftingCard(
         children: [
-          for (final hs in HomeSize.values) ...[
-            if (hs != HomeSize.values.first) const Divider(height: 1, indent: 52),
-            Builder(builder: (context) {
-              final size = rates.size(hs);
-              final on = hs == selected;
-              return Semantics(
-                button: true,
-                selected: on,
-                inMutuallyExclusiveGroup: true,
-                label: '${hs.label}. ${moverTeam(size.vehicle, size.helpers)}',
-                excludeSemantics: true,
-                child: InkWell(
-                  onTap: onChanged == null ? null : () => onChanged!(hs),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(TtSpacing.m, 10, TtSpacing.m, 10),
-                    child: Row(
-                      children: [
-                        _RadioDot(on: on),
-                        const SizedBox(width: TtSpacing.m),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(hs.label, style: t.listTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              Text(moverTeam(size.vehicle, size.helpers), style: t.listMeta, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: TtSpacing.s),
-                        VehicleArt(size.vehicle, width: 56, height: 40),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ],
+          for (final hs in HomeSize.values)
+            ShiftingChoiceRow(
+              title: hs.label,
+              subtitle: moverTeam(rates.size(hs).vehicle, rates.size(hs).helpers),
+              vehicle: rates.size(hs).vehicle,
+              selected: hs == selected,
+              onTap: onChanged == null ? null : () => onChanged!(hs),
+            ),
         ],
-      ),
-    );
-  }
+      );
 }
 
 /// A radio button's look: a ring, filled coral with a white centre when chosen.

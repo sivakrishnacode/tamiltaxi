@@ -85,7 +85,7 @@ class FareBreakdown extends StatelessWidget {
       footer: footer,
       total: l.total,
       lines: [
-        FareLine(vehicle.label, l.transport, note: between ? 'one way, by the km' : 'on the route'),
+        FareLine(vehicle.textLabel, l.transport, note: between ? 'one way, by the km' : 'on the route'),
         FareLine('Helpers', l.helpers, note: l.helperCount > 0 ? '${l.helperCount} × ${formatInr(l.helpers ~/ l.helperCount)}' : null),
         if (l.stairs > 0) FareLine('Stairs', l.stairs, note: floors == null || floors == 0 ? 'no lift' : '$floors floors without a lift'),
         if (l.packing > 0) FareLine('Packing', l.packing),

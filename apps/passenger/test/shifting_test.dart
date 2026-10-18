@@ -110,6 +110,16 @@ void main() {
     await tester.tap(find.widgetWithText(TtButton, 'Day & extras'));
     await advance(tester, const Duration(milliseconds: 700));
     expect(find.byType(PH03ScheduleScreen), findsOneWidget);
+    // Nothing scrolls sideways (the days and the vehicles used to run off the screen): 7 days in one row.
+    expect(
+      find.descendant(
+        of: find.byType(PH03ScheduleScreen),
+        matching: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.right),
+      ),
+      findsNothing,
+    );
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Suggested'), findsOneWidget);
     await tapText(tester, '11 AM–1 PM');
     expect(container.read(shiftingFlowProvider).slotHour, 11);
     await tapText(tester, 'Full');
