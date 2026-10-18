@@ -178,7 +178,7 @@ or tell truck drivers at sign-up (D-04 / D-05) what they will get.
 
 ### Packers & Movers step 3 and review in the new style
 
-Labels: plan, rider
+Labels: plan, rider · Status: done
 
 PH-01 and PH-02 were redesigned on 18 Oct 2026. PH-03 (Day & extras) still has rows that run off the screen edge
 (the day cards and the vehicle cards scroll sideways, so "Wed 21" and "Pickup" are cut), and PH-04 says "Pickup"

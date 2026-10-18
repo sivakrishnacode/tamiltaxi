@@ -37,6 +37,8 @@ pre-releases on GitHub.
 - `336f5bd` Packers & Movers redesigned like Porter (riders found step 1 hard to use): step 1 asks only where, with
   Ground floor · Lift · No lift and a floor sheet; how big the home is moves to step 2 with the items, each size
   showing the vehicle and helpers; items go in one line ("2 chairs", "Fridge - single door").
+- `33d87de` Packers & Movers step 3 cleaned up: the 7 days in one row (weekends +10%), vehicle and packing as simple
+  lists, no rows running off the screen; "Pickup truck" instead of "Pickup" in the move's text and price lines.
 
 ### 0.1.0 (code 1) · 16 Oct 2026
 
