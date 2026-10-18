@@ -176,6 +176,14 @@ town. Packers & Movers is off by default for every goods vehicle (movers need he
 gets goods to another town until they switch it on in Services. Decide: Packers & Movers on by default for trucks,
 or tell truck drivers at sign-up (D-04 / D-05) what they will get.
 
+### Packers & Movers step 3 and review in the new style
+
+Labels: plan, rider
+
+PH-01 and PH-02 were redesigned on 18 Oct 2026. PH-03 (Day & extras) still has rows that run off the screen edge
+(the day cards and the vehicle cards scroll sideways, so "Wed 21" and "Pickup" are cut), and PH-04 says "Pickup"
+where the new steps say "Pickup truck". Bring both in line with PH-01 / PH-02.
+
 ### Remove old Rido resources
 
 Issue: #13 · Labels: plan, infra

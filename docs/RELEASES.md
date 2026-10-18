@@ -34,6 +34,9 @@ pre-releases on GitHub.
 - `824a1c1` Sign-in screens ask for the WhatsApp number.
 - `7a6adce` Parcels in town like Porter: **Scooty** added (up to 20 kg; a 5–20 kg parcel picks it), **Truck** removed
   from the in-town list (still in Packers & Movers and To another town).
+- `336f5bd` Packers & Movers redesigned like Porter (riders found step 1 hard to use): step 1 asks only where, with
+  Ground floor · Lift · No lift and a floor sheet; how big the home is moves to step 2 with the items, each size
+  showing the vehicle and helpers; items go in one line ("2 chairs", "Fridge - single door").
 
 ### 0.1.0 (code 1) · 16 Oct 2026
 
