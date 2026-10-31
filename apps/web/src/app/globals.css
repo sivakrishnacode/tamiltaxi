@@ -4,31 +4,63 @@
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-tamil: var(--font-anek-tamil), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme {
   --color-coral-50: #fff1ec;
   --color-coral-100: #ffdccf;
+  --color-coral-300: #ff9e7d;
   --color-coral-500: #f4511e;
   --color-coral-600: #d84315;
   --color-coral-700: #a8330e;
+  --color-navy-100: #f1f5f9;
   --color-navy-300: #cbd5e1;
   --color-navy-500: #64748b;
   --color-navy-700: #334155;
   --color-navy-900: #1e293b;
+  /* The dark bands (header, hero, footer): a deeper navy, as Uber uses black. */
+  --color-navy-950: #0f172a;
   --color-page: #f8fafc;
   --color-divider: #e2e8f0;
+  --color-sun-50: #fff6e5;
   --color-butterfly-50: #fdf0f6;
   --color-butterfly-600: #c2185b;
+
+  --animate-rise: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
 }
 
 html {
   scroll-padding-top: 5rem;
 }
 
+/* Text size buttons in the top bar (TextSize): the whole page scales with the root size. */
+html[data-text-size="large"] {
+  font-size: 112.5%;
+}
+html[data-text-size="larger"] {
+  font-size: 125%;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -38,6 +70,11 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-coral-600);
+  outline: 2px solid var(--color-coral-500);
   outline-offset: 2px;
+}
+
+/* FAQ: hide the default disclosure triangle (we draw a plus that turns into a cross). */
+summary::-webkit-details-marker {
+  display: none;
 }

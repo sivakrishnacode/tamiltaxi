@@ -28,7 +28,8 @@ The launcher icons on the phone are built from the same logos, in each app's `an
 ## Vehicles
 
 [vehicles/](vehicles/): the vehicle miniatures, 336 × 240 transparent WebP, soft 3D, white with one coral accent,
-pointing right, with a soft ground shadow. The same files as `packages/tamiltaxi_ui/assets/vehicles/`.
+pointing right, with a soft ground shadow. The same files as `packages/tamiltaxi_ui/assets/vehicles/`; the website
+uses copies of some of them in `apps/web/public/vehicles/`.
 
 | Files | What they are |
 |---|---|
@@ -41,8 +42,8 @@ pointing right, with a soft ground shadow. The same files as `packages/tamiltaxi
 
 | File | What it is | Used on |
 |---|---|---|
-| [pictures/welcome-rider.webp](pictures/welcome-rider.webp) | A rider choosing between a bike, an auto and a cab | P-02 welcome |
-| [pictures/welcome-driver.webp](pictures/welcome-driver.webp) | A smiling auto driver showing a payment received | D-02 welcome |
+| [pictures/welcome-rider.webp](pictures/welcome-rider.webp) | A rider choosing between a bike, an auto and a cab | P-02 welcome, website hero |
+| [pictures/welcome-driver.webp](pictures/welcome-driver.webp) | A smiling auto driver showing a payment received | D-02 welcome, website hero and Drive |
 | [pictures/home-footer.png](pictures/home-footer.png) | Line art at the end of the rider's Home sheet | P-07 Home |
 
 The ChatGPT prompts for the welcome pictures are in [../onboarding/prompts.md](../onboarding/prompts.md).
@@ -74,4 +75,5 @@ The app's full palette is in `packages/tamiltaxi_ui/lib/src/theme/tt_colors.dart
 - **Rebuild from the masters here:** `python3 scripts/brand_icons.py passenger` and `python3 scripts/brand_icons.py driver`.
 - **Vehicles:** `python3 scripts/vehicle_icons/build.py` writes the app files and the copies here. It needs the
   ChatGPT sprite sheets in `docs/design/vechile/`, which are kept local (git-ignored).
-- **Pictures:** replace the file in the app and copy it here under the name above.
+- **Pictures:** replace the file in the app and copy it here under the name above (and to `apps/web/public/pictures/`
+  if the website shows it).

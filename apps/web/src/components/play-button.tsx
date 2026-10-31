@@ -11,6 +11,9 @@ function PlayIcon() {
 const styles = {
   primary: "bg-coral-600 text-white hover:bg-coral-700",
   secondary: "border border-navy-300 bg-white text-navy-900 hover:border-navy-500",
+  /** On the dark bands (hero, footer). */
+  light: "bg-white text-navy-950 hover:bg-navy-100",
+  outline: "border border-white/30 text-white hover:border-white/60",
 };
 
 /** "Get it on Google Play" once the apps are published ([site.onPlayStore]); "Coming soon" until then. */

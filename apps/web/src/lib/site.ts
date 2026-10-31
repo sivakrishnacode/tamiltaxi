@@ -11,6 +11,9 @@ export const site = {
   email: "support@tamiltaxi.co.in",
   github: "https://github.com/sivakrishnacode/tamiltaxi",
   city: "Coimbatore",
+  /** Shown in the footer, the vision band and the FAQ: the site must never read as the Government's own service. */
+  independence:
+    "Tamil Taxi is an independent, open-source project. It is not run by or endorsed by the Government of Tamil Nadu.",
   /** Set to true once both apps are live on Google Play; until then the buttons say "Coming soon". */
   onPlayStore: false,
   apps: {
