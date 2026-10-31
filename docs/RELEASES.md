@@ -87,6 +87,8 @@ so it has no versions: changes wait here until the next push.
   app" promise, photo slot empty until the owner supplies an official photo), Drive, FAQ, Get the app, a full footer,
   text size A / A+ / A++, a phone menu, and Organization / FAQPage structured data. Every page says Tamil Taxi is
   independent of the Government of Tamil Nadu.
+- `fc65e04` The Clean White logo, as in the apps: in a white header and on a white tile in the footer; new app icons,
+  favicon and social preview image (the old "TamilTaxi" wordmark and kolam icons are gone).
 
 ---
 

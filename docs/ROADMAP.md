@@ -117,7 +117,7 @@ Keep the upload keystore and its password in two safe places off the build lapto
 
 > Planned, no date yet
 
-### Website: Tamil version, the vision photo and download QR codes
+### Website: Tamil version, the vision photo, download QR codes, admin logo
 
 Labels: web, plan
 
@@ -128,6 +128,7 @@ Follow-ups to the 31 Oct 2026 home page redesign.
   right to use (no State emblem, no AI likeness, no one else's watermark), then set `vision.photo` in
   `apps/web/src/lib/vision.ts`
 - [ ] QR codes to the Play listings in "It's easier in the apps" once `site.onPlayStore` is true
+- [ ] Admin panel on the Clean White logo too: it still has the one-line wordmark and the kolam favicon
 
 ### System-design backlog (SD-n)
 
