@@ -117,6 +117,18 @@ Keep the upload keystore and its password in two safe places off the build lapto
 
 > Planned, no date yet
 
+### Website: Tamil version, the vision photo and download QR codes
+
+Labels: web, plan
+
+Follow-ups to the 31 Oct 2026 home page redesign.
+
+- [ ] Full Tamil version with an EN / தமிழ் switch; the Tamil copy checked by a native speaker before it ships
+- [ ] Official photo of the Chief Minister in the Government's vision band: the owner supplies a photo we have the
+  right to use (no State emblem, no AI likeness, no one else's watermark), then set `vision.photo` in
+  `apps/web/src/lib/vision.ts`
+- [ ] QR codes to the Play listings in "It's easier in the apps" once `site.onPlayStore` is true
+
 ### System-design backlog (SD-n)
 
 Issue: #9 · Labels: plan, api

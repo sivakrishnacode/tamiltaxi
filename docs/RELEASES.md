@@ -75,6 +75,21 @@ Release: `driver-v0.1.0+1` at `824a1c1`
 
 ---
 
+## Website · `apps/web`
+
+The owner's host publishes the website on every push to `main` (see [using.tech.md](tech-docs/using.tech.md) §6e),
+so it has no versions: changes wait here until the next push.
+
+### Next push
+
+- `338de20` Home page redesigned after uber.com/in and cumta.tn.gov.in: dark header and hero, service cards with the
+  vehicle art, How to ride, Deliver, Safety and Pink Taxi, the Government's vision (the 2026 manifesto's "Tamil Taxi
+  app" promise, photo slot empty until the owner supplies an official photo), Drive, FAQ, Get the app, a full footer,
+  text size A / A+ / A++, a phone menu, and Organization / FAQPage structured data. Every page says Tamil Taxi is
+  independent of the Government of Tamil Nadu.
+
+---
+
 ## Staging · API and admin on the staging server
 
 Each deploy's backups, checks and rollback images are in [using.tech.md](tech-docs/using.tech.md) §9b. The first
