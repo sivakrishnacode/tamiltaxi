@@ -7,7 +7,7 @@ too: don't add anything private (owner-only files go in the git-ignored `docs/pr
 
 | File | What it is | Size | Used for |
 |---|---|---|---|
-| [logo/tamil-taxi.png](logo/tamil-taxi.png) | Rider logo, "Clean White": navy car and தமிழ், coral pin and "— TAXI —", transparent background | 1024 × 984 | The rider app: splash (P-01), welcome (P-02), About, launcher icon, Android splash screens |
+| [logo/tamil-taxi.png](logo/tamil-taxi.png) | Rider logo, "Clean White": navy car and தமிழ், coral pin and "— TAXI —", transparent background | 1024 × 984 | The rider app: splash (P-01), welcome (P-02), About, launcher icon, Android splash screens; the website (`apps/web/public/brand/logo.png`) |
 | [logo/tamil-taxi-driver.png](logo/tamil-taxi-driver.png) | Driver logo: the same with "DRIVER" under TAXI | 954 × 1024 | The driver app: splash (D-01), welcome (D-02), launcher icon, Android splash screens, the floating bubble |
 
 These two files are the masters: the apps get their copies from them (see [Updating](#updating)).

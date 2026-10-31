@@ -19,7 +19,7 @@
   --color-navy-500: #64748b;
   --color-navy-700: #334155;
   --color-navy-900: #1e293b;
-  /* The dark bands (header, hero, footer): a deeper navy, as Uber uses black. */
+  /* The dark bands (top bar, hero, footer): a deeper navy, as Uber uses black. */
   --color-navy-950: #0f172a;
   --color-page: #f8fafc;
   --color-divider: #e2e8f0;

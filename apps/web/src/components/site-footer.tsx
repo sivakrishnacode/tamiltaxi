@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { site } from "@/lib/site";
 
-import { Wordmark } from "./logo";
+import { Logo } from "./logo";
 import { PlayButton } from "./play-button";
 
 /** Footer columns. Home page anchors are checked by a test, like the header's. */
@@ -53,8 +53,10 @@ export function SiteFooter() {
     <footer className="bg-navy-950 text-white">
       <div className="mx-auto max-w-6xl px-4 pt-16 pb-10 sm:px-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-sm space-y-3">
-            <Wordmark className="text-[28px]" light />
+          <div className="max-w-sm space-y-4">
+            <span className="inline-block rounded-2xl bg-white p-3">
+              <Logo className="h-16" />
+            </span>
             <p className="text-sm text-white/60">Rides and parcels for {site.city}. 0% commission, no subscription.</p>
           </div>
           <a

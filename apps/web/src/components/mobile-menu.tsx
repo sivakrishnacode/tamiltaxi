@@ -29,7 +29,7 @@ export function MobileMenu({ items }: { items: readonly { href: string; label: s
         aria-expanded={open}
         aria-controls="mobile-menu"
         aria-label={open ? "Close menu" : "Open menu"}
-        className="flex size-10 items-center justify-center rounded-full text-white hover:bg-white/10"
+        className="flex size-10 items-center justify-center rounded-full text-navy-900 hover:bg-navy-100"
       >
         {open ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
       </button>
@@ -37,7 +37,7 @@ export function MobileMenu({ items }: { items: readonly { href: string; label: s
         id="mobile-menu"
         aria-label="Main"
         hidden={!open}
-        className="absolute inset-x-0 top-full border-t border-white/10 bg-navy-950 px-4 pt-2 pb-6 shadow-2xl"
+        className="absolute inset-x-0 top-full border-y border-divider bg-white px-4 pt-2 pb-6 shadow-2xl shadow-navy-900/10"
       >
         <ul>
           {items.map((item) => (
@@ -45,7 +45,7 @@ export function MobileMenu({ items }: { items: readonly { href: string; label: s
               <Link
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="block border-b border-white/10 py-4 text-lg font-medium text-white"
+                className="block border-b border-divider py-4 text-lg font-medium text-navy-900"
               >
                 {item.label}
               </Link>

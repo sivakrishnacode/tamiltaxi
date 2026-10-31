@@ -49,7 +49,7 @@ const jsonLd = {
       "@id": `${site.url}/#organization`,
       name: site.name,
       url: site.url,
-      logo: `${site.url}/brand/rider-app.png`,
+      logo: `${site.url}/brand/logo.png`,
       email: site.email,
       sameAs: [site.github],
       areaServed: { "@type": "City", name: site.city },

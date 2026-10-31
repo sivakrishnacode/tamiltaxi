@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { site } from "@/lib/site";
 
-import { Wordmark } from "./logo";
+import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { TextSize } from "./text-size";
 
@@ -30,17 +30,18 @@ export function SiteHeader() {
           <TextSize />
         </div>
       </div>
-      <header className="sticky top-0 z-40 border-y border-white/10 bg-navy-950/95 backdrop-blur">
-        <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-4 sm:px-6">
-          <Link href="/" aria-label="Tamil Taxi home">
-            <Wordmark className="text-[26px]" light />
+      {/* White, because the logo is made for white backgrounds (docs/design/assets/README.md). */}
+      <header className="sticky top-0 z-40 border-b border-divider bg-white/95 backdrop-blur">
+        <div className="relative mx-auto flex h-[4.5rem] max-w-6xl items-center justify-between gap-6 px-4 sm:px-6">
+          <Link href="/" aria-label="Tamil Taxi home" className="shrink-0">
+            <Logo alt="" className="h-14" preload />
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
             {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-full px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white"
+                className="rounded-full px-4 py-2 text-sm font-medium text-navy-700 hover:bg-navy-100 hover:text-navy-900"
               >
                 {item.label}
               </Link>
@@ -49,7 +50,7 @@ export function SiteHeader() {
           <div className="flex items-center gap-2">
             <Link
               href="/#download"
-              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-navy-950 hover:bg-navy-100"
+              className="rounded-full bg-coral-600 px-4 py-2 text-sm font-semibold text-white hover:bg-coral-700"
             >
               Get the app
             </Link>

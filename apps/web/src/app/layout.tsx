@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
 };
 
-// The header and hero are dark navy: match the browser bar to them.
+// The top bar and hero are dark navy: match the browser bar to them.
 export const viewport: Viewport = { themeColor: "#0f172a" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
