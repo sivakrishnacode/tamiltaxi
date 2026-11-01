@@ -109,12 +109,18 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Staging runs `6e7fdc4` (API and admin). Waiting to go out:
+Nothing yet: staging runs `56f879c` (API and admin).
 
-- Zones tab: the map and the zone list share one height (the list scrolls beside the map instead of stretching the
+### 1 Nov 2026 (third) · API and admin at `56f879c`
+
+Release: `staging-2026-11-01.3` at `56f879c`
+
+Migration `staff_roles` applied on start; the one support admin (Arun Kumar) got the Support role.
+
+- `9ca420b` Zones tab: the map and the zone list share one height (the list scrolls beside the map instead of stretching the
   map's card with an empty band), a wider list on large screens, and a surge's vehicles in short ("All except Auto,
   Auto Priority, Parcel on Auto").
-- **Team** (Setup › Team, migration `staff_roles`): staff added by phone (no sign-in needed first) and **custom
+- `56f879c` **Team** (Setup › Team, migration `staff_roles`): staff added by phone (no sign-in needed first) and **custom
   roles** that say what each kind of staff may view or change per area (trips, drivers and documents, riders, support
   and SOS, cities and zones, engage, plans and payments, settings, system), plus CSV exports, deleting accounts and
   "only their own cities". The API checks every admin request; sidebar and pages follow at once. Current support and
