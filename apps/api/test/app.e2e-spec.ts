@@ -1325,7 +1325,11 @@ describe('Tamil Taxi API (e2e)', () => {
     // Owners never change their own access; an ADMIN_PHONES number signs in as an owner again.
     await http.patch(`/v1/admin/users/${ownerId}`).set(owner).send({ role: 'PASSENGER' }).expect(400);
     await prisma.user.update({ where: { id: ownerId }, data: { adminLevel: 'SUPPORT' } });
+    // This sign-in is one more code for the admin phone (5 per 15 min): don't let it starve the tests after this one.
+    const redis = app.get(RedisService);
+    await redis.del(`otp:sends:+91${ADMIN_PHONE}`);
     await http.post('/v1/auth/otp').send({ phone: ADMIN_PHONE }).expect(200);
+    await redis.del(`otp:sends:+91${ADMIN_PHONE}`);
     const again = (await http.post('/v1/auth/verify').send({ phone: ADMIN_PHONE, code: '123456', app: 'admin' }).expect(200)).body;
     expect(again.user.adminLevel).toBe('OWNER');
   });
