@@ -220,6 +220,14 @@ export interface ZoneInput {
   readonly surgeMultiplier?: number;
   readonly color?: string;
   readonly isActive?: boolean;
+  readonly days?: number[];
+  readonly startMinute?: number | null;
+  readonly endMinute?: number | null;
+  readonly startsAt?: string | null;
+  readonly endsAt?: string | null;
+  readonly vehicleKinds?: VehicleKind[];
+  readonly blockPickups?: boolean;
+  readonly blockDrops?: boolean;
 }
 
 export interface FareInput {
@@ -307,6 +315,8 @@ export const adminApi = {
   setServiceCells: (id: string, cells: string[]) =>
     apiFetch<{ count: number; rejected: string[] }>(`/admin/cities/${enc(id)}/service-cells`, { method: "PUT", body: { cells } }),
   createZone: (cityId: string, data: ZoneInput) => apiFetch<Zone>(`/admin/cities/${enc(cityId)}/zones`, { method: "POST", body: data }),
+  surgeNow: (cityId: string, data: { name?: string; multiplier: number; hours: number; zoneId?: string; vehicleKinds?: VehicleKind[]; notifyDrivers?: boolean }) =>
+    apiFetch<{ zone: Zone; notified: number }>(`/admin/cities/${enc(cityId)}/surge-now`, { method: "POST", body: data }),
   updateZone: (id: string, data: Partial<ZoneInput>) => apiFetch<Zone>(`/admin/zones/${enc(id)}`, { method: "PATCH", body: data }),
   deleteZone: (id: string) => apiFetch<null>(`/admin/zones/${enc(id)}`, { method: "DELETE" }),
   fares: (cityId: string) => apiFetch<CityFare[]>(`/admin/cities/${enc(cityId)}/fares`),

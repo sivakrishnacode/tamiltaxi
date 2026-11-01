@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto';
 
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { cellToLatLng } from 'h3-js';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module.js';
@@ -12,6 +13,7 @@ import { JobsService } from '../src/core/jobs/jobs.service.js';
 import { RedisService } from '../src/core/redis/redis.service.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
 import { UsageService } from '../src/core/usage/usage.service.js';
+import { NotifierService } from '../src/modules/notifications/notifier.service.js';
 import { SettingsService } from '../src/modules/settings/settings.service.js';
 import { DriverBlocksService } from '../src/modules/trips/driver-blocks.service.js';
 import { TripsService } from '../src/modules/trips/trips.service.js';
@@ -1975,6 +1977,73 @@ describe('Tamil Taxi API (e2e)', () => {
     // Every admin change is audited.
     const audit = await http.get('/v1/admin/audit?pageSize=5').set(admin).expect(200);
     expect(audit.body.items.length).toBeGreaterThan(0);
+  });
+
+  it('zone rules: hours and dates, vehicle-only surge, no-pickup zones and Surge now', async () => {
+    const admin = await adminAuth();
+    const rider = { Authorization: `Bearer ${await login()}` };
+    const id = `rules-${Date.now()}`;
+    const city = (await http.post('/v1/admin/cities').set(admin).send({ id, name: 'Rules town', state: 'Tamil Nadu', centerLat: 11.1085, centerLng: 77.3411, radiusKm: 2 }).expect(201)).body as {
+      serviceCells: string[];
+    };
+    const [cellA, cellB] = city.serviceCells;
+    const at = (cell: string) => {
+      const [lat, lng] = cellToLatLng(cell);
+      return { lat, lng, name: cell.slice(-4) };
+    };
+    const check = async (cell: string) => (await http.get(`/v1/geo/check?lat=${at(cell).lat}&lng=${at(cell).lng}`).expect(200)).body;
+    const zone = (body: Record<string, unknown>) => http.post(`/v1/admin/cities/${id}/zones`).set(admin).send({ kind: 'SURGE', cells: [cellA], ...body });
+    try {
+      expect(await check(cellA)).toMatchObject({ cityId: id, multiplier: 1, vehicleMultipliers: {} });
+      // A bike-only surge.
+      await zone({ name: 'Bikes only', surgeMultiplier: 1.4, vehicleKinds: ['BIKE'] }).expect(201);
+      expect(await check(cellA)).toMatchObject({ multiplier: 1, vehicleMultipliers: { BIKE: 1.4 } });
+      // A surge for everyone outside its hours, then all day.
+      const ist = new Date(Date.now() + 330 * 60_000);
+      const minute = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+      const later = (minute + 120) % 1440;
+      const evening = (await zone({ name: 'Later', surgeMultiplier: 1.2, startMinute: later, endMinute: (later + 60) % 1440 }).expect(201)).body as { id: string };
+      expect((await check(cellA)).multiplier).toBe(1);
+      await http.patch(`/v1/admin/zones/${evening.id}`).set(admin).send({ startMinute: null, endMinute: null }).expect(200);
+      expect(await check(cellA)).toMatchObject({ multiplier: 1.2, vehicleMultipliers: { BIKE: 1.4 } });
+      // An ended one counts nowhere, not even in the apps' service area.
+      await zone({ name: 'Ended', surgeMultiplier: 1.5, startsAt: new Date(Date.now() - 7_200_000).toISOString(), endsAt: new Date(Date.now() - 3_600_000).toISOString() }).expect(201);
+      expect((await check(cellA)).multiplier).toBe(1.2);
+      const area = (await http.get(`/v1/cities/${id}/service-area`).expect(200)).body as { zones: { name: string }[] };
+      expect(area.zones.map((z) => z.name).sort()).toEqual(['Bikes only', 'Later']);
+      // Rules that don't add up.
+      await zone({ name: 'Half hours', startMinute: 600 }).expect(400);
+      await zone({ name: 'Backwards', startsAt: new Date(Date.now() + 3_600_000).toISOString(), endsAt: new Date().toISOString() }).expect(400);
+      await zone({ name: 'Stops nothing', kind: 'NO_SERVICE', cells: [cellB], blockPickups: false, blockDrops: false }).expect(400);
+
+      // No pickups next to the stand, drops allowed.
+      await zone({ name: 'Taxi stand', kind: 'NO_SERVICE', cells: [cellB], blockPickups: true, blockDrops: false }).expect(201);
+      expect(await check(cellB)).toMatchObject({ isServiceable: false, canDrop: true });
+      await http.post('/v1/trips').set(rider).send({ kind: 'RIDE', vehicleKind: 'CAB', pickup: at(cellB), drop: at(cellA) }).expect(400);
+      const trip = (await http.post('/v1/trips').set(rider).send({ kind: 'RIDE', vehicleKind: 'CAB', pickup: at(cellA), drop: at(cellB) }).expect(201)).body as { id: string };
+      await http.post(`/v1/trips/${trip.id}/cancel`).set(rider).send({ code: 'CHANGED_MIND' }).expect(200);
+
+      // Surge now: cabs, 2 hours, and the city's cab drivers hear about it.
+      const token = await onlineDriver('CAB', { lat: 11.3, lng: 77.5 });
+      const driverId = (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${token}`).expect(200)).body.id as string;
+      await prisma.driver.update({ where: { id: driverId }, data: { cityId: id } });
+      const pushes = vi.spyOn(app.get(NotifierService), 'driverAccount');
+      try {
+        const now = (
+          await http.post(`/v1/admin/cities/${id}/surge-now`).set(admin).send({ name: 'Rain', multiplier: 1.3, hours: 2, vehicleKinds: ['CAB'], notifyDrivers: true }).expect(201)
+        ).body as { zone: { endsAt: string; cells: string[] }; notified: number };
+        expect(now.notified).toBe(1);
+        expect(now.zone.cells).toHaveLength(city.serviceCells.length);
+        expect(new Date(now.zone.endsAt).getTime() - Date.now()).toBeGreaterThan(119 * 60_000);
+        expect(pushes.mock.calls.find(([p]) => p.driverId === driverId)?.[0]).toMatchObject({ kind: 'surge_now', title: expect.stringMatching(/^Fares ×1\.3 in Rules town until /) });
+        expect((await check(cellB)).vehicleMultipliers).toEqual({ CAB: 1.3 });
+      } finally {
+        pushes.mockRestore();
+        await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${token}`).expect(200);
+      }
+    } finally {
+      await http.delete(`/v1/admin/cities/${id}`).set(admin).expect(204);
+    }
   });
 
   it('surges from live H3 demand and learns hex-to-hex speeds', async () => {

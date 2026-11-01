@@ -7,6 +7,7 @@ import { DEFAULT_PRICING, effectivePricing, type ModePricing } from '../fares/pr
 import { SettingsService } from '../settings/settings.service.js';
 import { DemandService } from './demand.service.js';
 import { cellAt, cellsBounds, type LatLngBounds } from './h3.util.js';
+import { isZoneLive } from './zone-schedule.js';
 
 interface CityIndex {
   readonly city: City & { zones: Zone[]; fareRules: CityFareRule[]; modePricing: CityModePricing | null };
@@ -15,14 +16,25 @@ interface CityIndex {
   readonly pricing: ModePricing;
 }
 
-/** Where a point is: its city, H3 cell, zones and whether Tamil Taxi serves it. */
+/** Where a point is: its city, H3 cell, the zones live there now and whether Tamil Taxi picks up and drops there. */
 export interface PointInfo {
   readonly cityId: string | null;
   readonly cell: string | null;
+  /** Pickups allowed: inside an active city's service area and no live no-service zone stopping pickups. */
   readonly isServiceable: boolean;
+  /** Drops allowed (the same for drops; a no-service zone may stop only pickups, e.g. next to a taxi stand). */
+  readonly canDrop: boolean;
+  /** The zones covering the point that are live now (zone-schedule.ts). */
   readonly zones: readonly Zone[];
-  /** Fare multiplier: max of SURGE zones (else the platform default) and live H3 demand surge, capped. */
+  /** Fare multiplier for every vehicle: max of SURGE zones (else the platform default) and live H3 demand surge, capped. */
   readonly multiplier: number;
+  /** Vehicles that a vehicle-only SURGE zone covers here, with their own multiplier. */
+  readonly vehicleMultipliers: Partial<Record<VehicleKind, number>>;
+}
+
+/** The fare multiplier for [vehicleKind] at a located point. */
+export function multiplierFor(info: Pick<PointInfo, 'multiplier' | 'vehicleMultipliers'>, vehicleKind: VehicleKind): number {
+  return info.vehicleMultipliers[vehicleKind] ?? info.multiplier;
 }
 
 const CACHE_MS = 30_000;
@@ -72,19 +84,34 @@ export class GeoService {
   async locate(point: { lat: number; lng: number }): Promise<PointInfo> {
     const s = await this.settings.all();
     const { cities, hasAnyCity } = await this.index();
-    if (!hasAnyCity) return { cityId: null, cell: null, isServiceable: true, zones: [], multiplier: s.currentMultiplier };
+    if (!hasAnyCity) return { cityId: null, cell: null, isServiceable: true, canDrop: true, zones: [], multiplier: s.currentMultiplier, vehicleMultipliers: {} };
+    const now = new Date();
     for (const { city, service } of cities) {
       const cell = cellAt(point.lat, point.lng, city.h3Resolution);
       if (!service.has(cell)) continue;
-      const zones = city.zones.filter((z) => z.cells.includes(cell));
-      const isBlocked = zones.some((z) => z.kind === ZoneKind.NO_SERVICE);
-      const surge = zones.filter((z) => z.kind === ZoneKind.SURGE).map((z) => z.surgeMultiplier);
+      const zones = city.zones.filter((z) => z.cells.includes(cell) && isZoneLive(z, now));
+      const blocks = zones.filter((z) => z.kind === ZoneKind.NO_SERVICE);
+      const surges = zones.filter((z) => z.kind === ZoneKind.SURGE);
       // Highest of: admin surge zones (or the platform default) and live demand-vs-supply surge.
       const live = await this.demand.surgeAt(point);
-      const multiplier = Math.min(s.maxMultiplier, Math.max(1, live, surge.length ? Math.max(...surge) : s.currentMultiplier));
-      return { cityId: city.id, cell, isServiceable: !isBlocked, zones, multiplier };
+      const combine = (zoneMultipliers: number[]) =>
+        Math.min(s.maxMultiplier, Math.max(1, live, zoneMultipliers.length ? Math.max(...zoneMultipliers) : s.currentMultiplier));
+      const forAll = surges.filter((z) => z.vehicleKinds.length === 0).map((z) => z.surgeMultiplier);
+      const vehicleMultipliers: Partial<Record<VehicleKind, number>> = {};
+      for (const kind of new Set(surges.flatMap((z) => z.vehicleKinds))) {
+        vehicleMultipliers[kind] = combine([...forAll, ...surges.filter((z) => z.vehicleKinds.includes(kind)).map((z) => z.surgeMultiplier)]);
+      }
+      return {
+        cityId: city.id,
+        cell,
+        isServiceable: !blocks.some((z) => z.blockPickups),
+        canDrop: !blocks.some((z) => z.blockDrops),
+        zones,
+        multiplier: combine(forAll),
+        vehicleMultipliers,
+      };
     }
-    return { cityId: null, cell: null, isServiceable: false, zones: [], multiplier: 1 };
+    return { cityId: null, cell: null, isServiceable: false, canDrop: false, zones: [], multiplier: 1, vehicleMultipliers: {} };
   }
 
   /**
@@ -119,8 +146,14 @@ export class GeoService {
     return this.pricing((await this.locate(point)).cityId);
   }
 
-  /** Public service-area payload for the apps (cells + zones). */
-  async serviceArea(cityId: string): Promise<{ id: string; name: string; resolution: number; cells: string[]; zones: Pick<Zone, 'id' | 'name' | 'kind' | 'cells' | 'surgeMultiplier' | 'color'>[] } | null> {
+  /** Public service-area payload for the apps (cells + the zones live now). */
+  async serviceArea(cityId: string): Promise<{
+    id: string;
+    name: string;
+    resolution: number;
+    cells: string[];
+    zones: Pick<Zone, 'id' | 'name' | 'kind' | 'cells' | 'surgeMultiplier' | 'color' | 'vehicleKinds' | 'blockPickups' | 'blockDrops' | 'endsAt'>[];
+  } | null> {
     const found = (await this.cities()).find((c) => c.city.id === cityId);
     if (!found) return null;
     const { city } = found;
@@ -129,7 +162,20 @@ export class GeoService {
       name: city.name,
       resolution: city.h3Resolution,
       cells: city.serviceCells,
-      zones: city.zones.map(({ id, name, kind, cells, surgeMultiplier, color }) => ({ id, name, kind, cells, surgeMultiplier, color })),
+      zones: city.zones
+        .filter((z) => isZoneLive(z))
+        .map(({ id, name, kind, cells, surgeMultiplier, color, vehicleKinds, blockPickups, blockDrops, endsAt }) => ({
+          id,
+          name,
+          kind,
+          cells,
+          surgeMultiplier,
+          color,
+          vehicleKinds,
+          blockPickups,
+          blockDrops,
+          endsAt,
+        })),
     };
   }
 

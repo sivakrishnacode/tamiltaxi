@@ -130,6 +130,9 @@ Staging runs `96499af` (API and admin). Waiting to go out:
 - Drivers get a **home city** (migration `driver_city`: filled from each driver's latest trip; new ones get it when
   they first go online in a city; admins change it in the driver's profile). The city page has a **Drivers** tab;
   All drivers has a City column and filter.
+- **Zone rules** (migration `zone_rules`): zones on set days and hours or between two dates, surge for chosen
+  vehicles only, no-service zones that stop only pickups or only drops, and **Surge now** (rain or a rush: a surge for
+  a few hours that ends by itself and can tell the city's drivers). The apps get only the zones live now.
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

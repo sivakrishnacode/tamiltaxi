@@ -722,6 +722,17 @@ export interface Zone {
   readonly surgeMultiplier: number;
   readonly color: string;
   readonly isActive: boolean;
+  /** When it counts (IST): days (0 = Sunday; [] = every day), minutes [start, end) (null = all day), date range. */
+  readonly days: readonly number[];
+  readonly startMinute: number | null;
+  readonly endMinute: number | null;
+  readonly startsAt: string | null;
+  readonly endsAt: string | null;
+  /** SURGE: only these vehicles ([] = all). */
+  readonly vehicleKinds: readonly VehicleKind[];
+  /** NO_SERVICE: stops pickups / drops. */
+  readonly blockPickups: boolean;
+  readonly blockDrops: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

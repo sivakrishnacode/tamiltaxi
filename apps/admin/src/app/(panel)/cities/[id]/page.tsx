@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { isOwner } from "@/lib/access";
+import { canManageCity, isOwner } from "@/lib/access";
 import { adminApi } from "@/lib/api";
 import { formatCount, humanize, vehicleLabel } from "@/lib/format";
 import { pageSizeParam, param, parsePage, parsePageSize, withQuery } from "@/lib/paging";
@@ -24,6 +24,7 @@ import { CitySettings } from "./city-settings";
 import { FaresEditor } from "./fares-editor";
 import { PricingEditor } from "./pricing-editor";
 import { ServiceAreaEditor } from "./service-area-editor";
+import { SurgeNowButton } from "./surge-now";
 import { ZonesEditor } from "./zones-editor";
 
 const TABS = [
@@ -272,6 +273,9 @@ export default async function CityPage({ params, searchParams }: PageProps<"/cit
             {city.zones.length === 1 ? "" : "s"}
           </p>
         </div>
+        {canManageCity(me, city.id) && city.serviceCells.length > 0 && (
+          <SurgeNowButton cityId={city.id} cityName={city.name} zones={city.zones.filter((z) => z.kind !== "NO_SERVICE").map((z) => ({ id: z.id, name: z.name }))} />
+        )}
       </div>
       <LinkTabs
         active={tab}

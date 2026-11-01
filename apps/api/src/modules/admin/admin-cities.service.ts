@@ -2,15 +2,16 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { type City, type CityFareRule, Prisma, type Zone } from '../../generated/prisma/client.js';
-import { VehicleKind } from '../../generated/prisma/enums.js';
+import { DriverStatus, VehicleKind, ZoneKind } from '../../generated/prisma/enums.js';
 import { FARE_RULES } from '../fares/fare-rules.js';
 import { effectivePricing, isPricingSection, type ModePricing, parsePricingSection, type PricingSection } from '../fares/pricing.js';
 import { type RentalPackage, RENTAL_PACKAGES } from '../fares/ride-modes.js';
 import { GeoService } from '../geo/geo.service.js';
+import { NotifierService } from '../notifications/notifier.service.js';
 import { cellsForCircle, DEFAULT_H3_RESOLUTION, validateCells } from '../geo/h3.util.js';
 import type { CreateCityDto, UpdateCityDto } from './dto/city.dto.js';
 import type { FareRuleDto } from './dto/fare-rule.dto.js';
-import type { CreateZoneDto, UpdateZoneDto } from './dto/zone.dto.js';
+import type { CreateZoneDto, SurgeNowDto, UpdateZoneDto } from './dto/zone.dto.js';
 
 /** A city's up-front prices for the admin editor: each section as it applies, and whether it is the built-in one. */
 export interface CityPricing {
@@ -19,11 +20,29 @@ export interface CityPricing {
 }
 
 /** Cities (H3 service areas), their zones and per-city fares. Every change refreshes the geo cache. */
+/** A zone's rules make sense together: hours as a pair, the end after the start, a no-service zone stopping something. */
+export function checkZoneRules(z: {
+  kind?: string;
+  startMinute?: number | null;
+  endMinute?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  blockPickups?: boolean;
+  blockDrops?: boolean;
+}): void {
+  if ((z.startMinute == null) !== (z.endMinute == null)) throw new BadRequestException('Give both the start and the end time, or neither');
+  if (z.startsAt && z.endsAt && new Date(z.endsAt) <= new Date(z.startsAt)) throw new BadRequestException('The end must be after the start');
+  if (z.kind === ZoneKind.NO_SERVICE && z.blockPickups === false && z.blockDrops === false) {
+    throw new BadRequestException('A no-service zone must stop pickups, drops or both');
+  }
+}
+
 @Injectable()
 export class AdminCitiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly geo: GeoService,
+    private readonly notifier: NotifierService,
   ) {}
 
   cities(): Promise<(City & { _count: { zones: number } })[]> {
@@ -66,6 +85,7 @@ export class AdminCitiesService {
 
   async createZone(cityId: string, dto: CreateZoneDto): Promise<Zone> {
     const city = await this.prisma.city.findUniqueOrThrow({ where: { id: cityId } });
+    checkZoneRules(dto);
     const cells = this.checkedCells(dto.cells, city.h3Resolution);
     const zone = await this.prisma.zone.create({ data: { ...dto, cells, cityId } });
     this.geo.invalidate();
@@ -74,10 +94,48 @@ export class AdminCitiesService {
 
   async updateZone(id: string, dto: UpdateZoneDto): Promise<Zone> {
     const zone = await this.prisma.zone.findUniqueOrThrow({ where: { id }, include: { city: true } });
+    checkZoneRules({ ...zone, startsAt: zone.startsAt?.toISOString() ?? null, endsAt: zone.endsAt?.toISOString() ?? null, ...dto });
     const cells = dto.cells ? this.checkedCells(dto.cells, zone.city.h3Resolution) : undefined;
     const updated = await this.prisma.zone.update({ where: { id }, data: { ...dto, cells } });
     this.geo.invalidate();
     return updated;
+  }
+
+  /**
+   * "Surge now" (rain, a festival rush): a SURGE zone from now for [hours] over the whole service area or one zone's
+   * cells, for some vehicles or all; it ends by itself. With [notifyDrivers], the city's approved drivers for those
+   * vehicles get a push. Returns the zone and how many drivers were told.
+   */
+  async surgeNow(cityId: string, dto: SurgeNowDto, now = new Date()): Promise<{ zone: Zone; notified: number }> {
+    const city = await this.prisma.city.findUniqueOrThrow({ where: { id: cityId }, select: { name: true, serviceCells: true } });
+    const source = dto.zoneId ? await this.prisma.zone.findFirst({ where: { id: dto.zoneId, cityId }, select: { cells: true } }) : null;
+    if (dto.zoneId && !source) throw new BadRequestException('That zone is not in this city');
+    const cells = source?.cells ?? city.serviceCells;
+    if (cells.length === 0) throw new BadRequestException('The city has no service area yet');
+    const endsAt = new Date(now.getTime() + dto.hours * 3_600_000);
+    const vehicleKinds = [...new Set(dto.vehicleKinds ?? [])];
+    const zone = await this.prisma.zone.create({
+      data: { cityId, name: dto.name?.trim() || 'Surge now', kind: ZoneKind.SURGE, cells, surgeMultiplier: dto.multiplier, color: '#D84315', startsAt: now, endsAt, vehicleKinds },
+    });
+    this.geo.invalidate();
+    let notified = 0;
+    if (dto.notifyDrivers) {
+      const drivers = await this.prisma.driver.findMany({
+        where: { cityId, status: DriverStatus.APPROVED, user: { isBlocked: false, deletedAt: null }, ...(vehicleKinds.length ? { vehicleKind: { in: vehicleKinds } } : {}) },
+        select: { id: true },
+      });
+      const until = endsAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+      for (const d of drivers) {
+        void this.notifier.driverAccount({
+          driverId: d.id,
+          kind: 'surge_now',
+          title: `Fares ×${dto.multiplier.toFixed(2).replace(/0$/, '')} in ${city.name} until ${until}`,
+          body: "It's busy and riders are waiting. 0% commission: the whole fare is yours. Go online.",
+        });
+      }
+      notified = drivers.length;
+    }
+    return { zone, notified };
   }
 
   /** The city a zone belongs to (404 for an unknown zone). */

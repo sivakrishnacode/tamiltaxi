@@ -12,7 +12,7 @@ import { AuditInterceptor } from './audit.interceptor.js';
 import { CellsDto } from './dto/cells.dto.js';
 import { CreateCityDto, UpdateCityDto } from './dto/city.dto.js';
 import { FareRuleDto } from './dto/fare-rule.dto.js';
-import { CreateZoneDto, UpdateZoneDto } from './dto/zone.dto.js';
+import { CreateZoneDto, SurgeNowDto, UpdateZoneDto } from './dto/zone.dto.js';
 
 /**
  * Cities, H3 service areas, zones and per-city fares. Reads are open to every admin; owners change any city, a city
@@ -70,6 +70,13 @@ export class AdminCitiesController {
   setCells(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: CellsDto): Promise<{ count: number; rejected: string[] }> {
     assertCityAccess(user, id);
     return this.cities.setServiceCells(id, body.cells);
+  }
+
+  /** A temporary surge (rain, a rush) over the city or one zone, ending by itself; optionally pushes the city's drivers. */
+  @Post('cities/:id/surge-now')
+  surgeNow(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: SurgeNowDto): Promise<{ zone: Zone; notified: number }> {
+    assertCityAccess(user, id);
+    return this.cities.surgeNow(id, body);
   }
 
   @Post('cities/:id/zones')

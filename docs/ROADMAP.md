@@ -181,6 +181,10 @@ Issue: #12 · Labels: plan, api, admin
 - [ ] CI: APK build artifacts
 - [ ] Document expiry: let a driver upload the renewed RC or insurance before the old one expires (the app offers
   Re-upload only once it is rejected); read the licence expiry from Didit
+- [ ] Zone rules in the apps: show a no-pickup-only zone as such (the Play builds treat every no-service zone as
+  stopping both), a vehicle-only surge on the driver map, and a Surge now banner with its end time
+- [ ] Decide whether zone surge may apply to autos at all (they charge the government fare; Surge now leaves them out
+  by default, a surge zone with no vehicles picked still covers them)
 
 ### Cab and 3-wheeler fares next to the government auto fare
 

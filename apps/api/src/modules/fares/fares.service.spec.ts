@@ -13,7 +13,7 @@ function service(): { fares: FaresService; estimate: ReturnType<typeof vi.fn> } 
   const estimate = vi.fn(async (p: { vehicleKind?: VehicleKind }) =>
     p.vehicleKind === VehicleKind.BIKE ? { distanceKm: 16.5, durationMin: 55 } : { distanceKm: 11.4, durationMin: 38 },
   );
-  const geo = { locate: vi.fn(async () => ({ cityId: null, multiplier: 1 })), fareRule: vi.fn(async () => null) } as unknown as GeoService;
+  const geo = { locate: vi.fn(async () => ({ cityId: null, multiplier: 1, vehicleMultipliers: {} })), fareRule: vi.fn(async () => null) } as unknown as GeoService;
   const settings = { all: vi.fn(async () => SETTING_DEFAULTS) } as unknown as SettingsService;
   const fares = new FaresService({ estimate } as unknown as MapsService, geo, {} as never, {} as never, settings, {} as never);
   return { fares, estimate };

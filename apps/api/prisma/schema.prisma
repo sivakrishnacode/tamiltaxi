@@ -771,6 +771,19 @@ model Zone {
   surgeMultiplier Float    @default(1)
   color           String   @default("#F4511E")
   isActive        Boolean  @default(true)
+  /// When it counts (IST, geo/zone-schedule.ts): days of the week (0 = Sunday; empty = every day), minutes of the day
+  /// [startMinute, endMinute) (both null = all day; start after end runs past midnight), between startsAt and endsAt
+  /// (null = open-ended; a "Surge now" zone has both).
+  days            Int[]    @default([])
+  startMinute     Int?
+  endMinute       Int?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  /// SURGE: only these vehicles (empty = all).
+  vehicleKinds    VehicleKind[] @default([])
+  /// NO_SERVICE: whether it stops pickups, drops or both (e.g. no pickups next to a taxi stand).
+  blockPickups    Boolean  @default(true)
+  blockDrops      Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   city            City     @relation(fields: [cityId], references: [id], onDelete: Cascade)

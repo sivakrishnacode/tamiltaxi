@@ -208,6 +208,26 @@ export async function updateZone(cityId: string, zoneId: string, input: Partial<
   return plain(res);
 }
 
+/** A temporary surge over the city or one zone (rain, a rush), ending by itself; may push the city's drivers. */
+export async function surgeNow(
+  cityId: string,
+  input: { name: string; multiplier: number; hours: number; zoneId?: string; vehicleKinds: VehicleKind[]; notifyDrivers: boolean },
+): Promise<ActionResult> {
+  if (!(input.multiplier >= 1.05 && input.multiplier <= 1.5)) return { ok: false, error: "Pick 1.05× to 1.5×" };
+  if (!Number.isInteger(input.hours) || input.hours < 1 || input.hours > 12) return { ok: false, error: "Pick 1 to 12 hours" };
+  const name = input.name.trim() || "Surge now";
+  if (name.length < 2 || name.length > 60) return { ok: false, error: "Name must be 2–60 characters" };
+  const res = await run(
+    () => adminApi.surgeNow(cityId, { ...input, name }),
+    (r) => {
+      const until = new Date(r.zone.endsAt!).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true });
+      return `Surge on until ${until}${input.notifyDrivers ? ` · ${r.notified} ${r.notified === 1 ? "driver" : "drivers"} told` : ""}`;
+    },
+    [`/cities/${cityId}`],
+  );
+  return plain(res);
+}
+
 export async function deleteZone(cityId: string, zoneId: string): Promise<ActionResult> {
   const res = await run(() => adminApi.deleteZone(zoneId), "Zone deleted", [`/cities/${cityId}`, "/cities"]);
   return plain(res);

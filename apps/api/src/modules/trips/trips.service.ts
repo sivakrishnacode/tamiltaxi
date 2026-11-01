@@ -181,7 +181,7 @@ export class TripsService {
     if (!drop) throw new BadRequestException('Choose where you are going');
     const [from, to] = await Promise.all([this.geo.locate(dto.pickup), this.geo.locate(drop)]);
     // Outstation goes to other towns: only the pickup has to be in the service area.
-    if (!from.isServiceable || (mode === RideMode.LOCAL && !to.isServiceable)) throw new BadRequestException("Tamil Taxi isn't in this area yet");
+    if (!from.isServiceable || (mode === RideMode.LOCAL && !to.canDrop)) throw new BadRequestException("Tamil Taxi isn't in this area yet");
     if (dto.rider && isGoods) throw new BadRequestException('Parcels are booked with sender and receiver details');
     const riderIsWoman = dto.rider
       ? dto.rider.isWoman

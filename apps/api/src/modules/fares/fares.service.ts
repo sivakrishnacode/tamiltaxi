@@ -4,7 +4,7 @@ import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RideMode, TripKind, VehicleKind } from '../../generated/prisma/enums.js';
 import { TripDriversService } from '../drivers/trip-drivers.service.js';
 import { womenAmong } from '../drivers/women-drivers.js';
-import { GeoService } from '../geo/geo.service.js';
+import { GeoService, multiplierFor } from '../geo/geo.service.js';
 import { EtaService, etasByMode } from '../maps/eta.service.js';
 import { MapsService } from '../maps/maps.service.js';
 import { isNightIst } from '../safety/night-window.js';
@@ -182,7 +182,7 @@ export class FaresService {
     return Promise.all(
       kinds.map(async (vehicleKind) => {
         const rule = (await this.geo.fareRule(here.cityId, vehicleKind)) ?? undefined;
-        return quoteFare({ vehicleKind, route, multiplier: here.multiplier, maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s), night: nightMultiplier(vehicleKind, s) });
+        return quoteFare({ vehicleKind, route, multiplier: multiplierFor(here, vehicleKind), maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s), night: nightMultiplier(vehicleKind, s) });
       }),
     );
   }
@@ -195,7 +195,7 @@ export class FaresService {
     return quoteFare({
       vehicleKind: params.vehicleKind,
       route: params.route,
-      multiplier: here.multiplier,
+      multiplier: multiplierFor(here, params.vehicleKind),
       maxMultiplier: s.maxMultiplier,
       rule,
       waiting: waitingSettings(s),
@@ -212,7 +212,7 @@ export class FaresService {
     const here = await this.geo.locate(params.pickup);
     const rule = (await this.geo.fareRule(here.cityId, params.vehicleKind)) ?? undefined;
     const s = await this.settings.all();
-    return quoteFare({ vehicleKind: params.vehicleKind, route, multiplier: here.multiplier, maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s), night: nightMultiplier(params.vehicleKind, s) });
+    return quoteFare({ vehicleKind: params.vehicleKind, route, multiplier: multiplierFor(here, params.vehicleKind), maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s), night: nightMultiplier(params.vehicleKind, s) });
   }
 
   /**

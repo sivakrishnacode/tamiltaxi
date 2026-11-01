@@ -24,12 +24,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { formatCount, humanize } from "@/lib/format";
+import { formatCount, humanize, vehicleLabel } from "@/lib/format";
 import { ZONE_KINDS, type AreaStats, type CityDetail, type Zone, type ZoneKind } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { cellsToKm2 } from "@/lib/validation";
 import { zoneLabel } from "@/lib/zone-label";
+import { scheduleLabel, zoneState } from "@/lib/zone-rules";
 
 import { createZone, deleteZone, updateZone } from "../../actions";
+import { rulesDraftOf, rulesError, rulesPayload, ZoneRulesFields, type RulesDraft } from "./zone-rules-fields";
 
 const KIND_HINT: Record<ZoneKind, string> = {
   SURGE: "Higher demand: shown to drivers and can raise fares (1.0–1.5×)",
@@ -63,7 +66,16 @@ interface Draft {
   kind: ZoneKind;
   surgeMultiplier: string;
   color: string;
+  rules: RulesDraft;
 }
+
+const STATE_BADGE: Record<ReturnType<typeof zoneState>, { label: string; className: string } | null> = {
+  live: { label: "Live now", className: "bg-success-tint text-success-text" },
+  off: { label: "Off now", className: "bg-muted text-muted-foreground" },
+  upcoming: { label: "Starts later", className: "bg-info-tint text-navy-700" },
+  ended: { label: "Ended", className: "bg-muted text-muted-foreground" },
+  paused: null,
+};
 
 function ZoneActiveSwitch({ cityId, zone }: { cityId: string; zone: Zone }) {
   const [checked, setChecked] = useState(zone.isActive);
@@ -89,6 +101,40 @@ function ZoneActiveSwitch({ cityId, zone }: { cityId: string; zone: Zone }) {
 }
 
 /** Tab b) zones: list, create/edit by painting cells, delete. */
+/** The zone's schedule, vehicles and what it stops, with "End now" while a dated zone runs. */
+function ZoneRulesLine({ cityId, zone }: { cityId: string; zone: Zone }) {
+  const [isPending, startTransition] = useTransition();
+  const extras = [
+    zone.kind === "SURGE" && zone.vehicleKinds.length ? zone.vehicleKinds.map(vehicleLabel).join(", ") : null,
+    zone.kind === "NO_SERVICE" && !(zone.blockPickups && zone.blockDrops) ? (zone.blockPickups ? "No pickups" : "No drops") : null,
+  ].filter(Boolean);
+  const canEnd = !!zone.endsAt && zoneState(zone) === "live";
+  return (
+    <p className="mt-1 flex items-center gap-2 pl-5 text-[11px] text-muted-foreground">
+      <span className="min-w-0 flex-1">
+        {scheduleLabel(zone)}
+        {extras.length > 0 && ` · ${extras.join(" · ")}`}
+      </span>
+      {canEnd && (
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={isPending}
+          onClick={() =>
+            startTransition(async () => {
+              const res = await updateZone(cityId, zone.id, { endsAt: new Date().toISOString() });
+              if (res.ok) toast.success(`${zone.name} ended`);
+              else toast.error(res.error);
+            })
+          }
+        >
+          End now
+        </Button>
+      )}
+    </p>
+  );
+}
+
 /** "7 days: 12 booked · 2 missed · 2.1 min wait · 3 online now" under a zone. */
 function ZoneStatsLine({ stats }: { stats: AreaStats }) {
   const missedShare = stats.booked7d ? Math.round((stats.missed7d / stats.booked7d) * 100) : 0;
@@ -113,13 +159,14 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   const outside = draft ? ed.cells.filter((c) => !service.has(c)) : [];
   const multiplier = Number(draft?.surgeMultiplier ?? 1);
   const isMultiplierValid = multiplier >= 1 && multiplier <= 1.5;
-  const canSave = !!draft && draft.name.trim().length >= 2 && ed.cells.length > 0 && (draft.kind !== "SURGE" || isMultiplierValid);
+  const rulesProblem = draft ? rulesError(draft.rules, draft.kind) : null;
+  const canSave = !!draft && draft.name.trim().length >= 2 && ed.cells.length > 0 && (draft.kind !== "SURGE" || isMultiplierValid) && !rulesProblem;
 
   function startEdit(z?: Zone) {
     setDraft(
       z
-        ? { id: z.id, name: z.name, kind: z.kind, surgeMultiplier: String(z.surgeMultiplier), color: z.color }
-        : { name: "", kind: "SURGE", surgeMultiplier: "1.2", color: DEFAULT_COLOR.SURGE },
+        ? { id: z.id, name: z.name, kind: z.kind, surgeMultiplier: String(z.surgeMultiplier), color: z.color, rules: rulesDraftOf(z) }
+        : { name: "", kind: "SURGE", surgeMultiplier: "1.2", color: DEFAULT_COLOR.SURGE, rules: rulesDraftOf() },
     );
     ed.reset(z?.cells ?? []);
     ed.setTool("add");
@@ -149,6 +196,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
       cells: [...ed.cells],
       color: draft.color,
       surgeMultiplier: draft.kind === "SURGE" ? multiplier : 1,
+      ...rulesPayload(draft.rules, draft.kind),
     };
     startTransition(async () => {
       const res = draft.id ? await updateZone(city.id, draft.id, payload) : await createZone(city.id, payload);
@@ -257,6 +305,8 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                 </div>
               </div>
               {draft.kind === "SURGE" && !isMultiplierValid && <p className="text-xs text-error">Multiplier must be 1.0–1.5</p>}
+              <ZoneRulesFields kind={draft.kind} value={draft.rules} onChange={(rules) => setDraft({ ...draft, rules })} />
+              {rulesProblem && <p className="text-xs text-error">{rulesProblem}</p>}
               {outside.length > 0 && (
                 <div className="rounded-md bg-warning-tint px-2.5 py-2 text-xs text-warning-text">
                   <p className="flex items-center gap-1 font-medium">
@@ -317,6 +367,9 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                     <Badge variant="outline">{humanize(z.kind)}</Badge>
                     {z.kind === "SURGE" && <span>{z.surgeMultiplier.toFixed(2)}×</span>}
                     <span>{formatCount(z.cells.length)} cells</span>
+                    {STATE_BADGE[zoneState(z)] && (
+                      <span className={cn("rounded-full px-1.5 py-px text-[10px] font-medium", STATE_BADGE[zoneState(z)]!.className)}>{STATE_BADGE[zoneState(z)]!.label}</span>
+                    )}
                     <span className="ml-auto flex">
                       <Button variant="ghost" size="icon-xs" aria-label={`Edit ${z.name}`} onClick={() => startEdit(z)}>
                         <PencilIcon />
@@ -326,6 +379,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                       </Button>
                     </span>
                   </div>
+                  <ZoneRulesLine cityId={city.id} zone={z} />
                   {stats?.[z.id] && <ZoneStatsLine stats={stats[z.id]} />}
                 </li>
               ))}
