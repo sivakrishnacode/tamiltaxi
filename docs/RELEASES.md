@@ -125,17 +125,17 @@ Staging runs `96499af` (API and admin). Waiting to go out:
 - `6b1b04f` **Admin levels** (migration `admin_levels`): owners, support admins and city admins (support with assigned cities,
   who set up only those cities). Every current admin stays an owner; people made admin in the panel start as support.
   Owners set it on the person's page under **Access**.
-- City page: the whole window wide, tabs as links, a new **Overview** (bookings, missed share, wait for a driver and
+- `1e07eee` City page: the whole window wide, tabs as links, a new **Overview** (bookings, missed share, wait for a driver and
   drivers online, for the city and each zone; `GET /admin/cities/:id/stats`); each zone shows its 7-day numbers.
-- Drivers get a **home city** (migration `driver_city`: filled from each driver's latest trip; new ones get it when
+- `1836ff4` Drivers get a **home city** (migration `driver_city`: filled from each driver's latest trip; new ones get it when
   they first go online in a city; admins change it in the driver's profile). The city page has a **Drivers** tab;
   All drivers has a City column and filter.
-- **Zone rules** (migration `zone_rules`): zones on set days and hours or between two dates, surge for chosen
+- `8161ba9` **Zone rules** (migration `zone_rules`): zones on set days and hours or between two dates, surge for chosen
   vehicles only, no-service zones that stop only pickups or only drops, and **Surge now** (rain or a rush: a surge for
   a few hours that ends by itself and can tell the city's drivers). The apps get only the zones live now.
-- **Busy-zone nudges** (migration `zone_nudges`): a demand or surge zone can push the city's offline drivers when its
+- `64ee3fa` **Busy-zone nudges** (migration `zone_nudges`): a demand or surge zone can push the city's offline drivers when its
   riders go unserved (2 in 15 minutes, hardly any driver free; daytime, a driver at most once an hour).
-- Pickup points get a **meeting spot** (migration `zone_meeting_point`): bookings picked up inside show the driver
+- `06a5bbb` Pickup points get a **meeting spot** (migration `zone_meeting_point`): bookings picked up inside show the driver
   "Meet at Gate 2, P1 parking".
 
 ### 1 Nov 2026 · API and admin at `96499af`
