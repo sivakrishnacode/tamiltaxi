@@ -111,18 +111,18 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 Staging runs `96499af` (API and admin). Waiting to go out:
 
-- Admin **Missed rides** (Trips › Missed rides): riders who got no driver (none found, or they gave up while
+- `384065a` Admin **Missed rides** (Trips › Missed rides): riders who got no driver (none found, or they gave up while
   searching), by hour, vehicle and area, with the riders to call back; a **Missed today** tile on the Dashboard;
   `GET /admin/missed`. The heatmap's unmet layer now counts the same trips (it used to count every cancellation).
-- Driver documents get a **valid-until date** when an admin verifies them (migration `document_expiry`): the driver
+- `f533ae5` Driver documents get a **valid-until date** when an admin verifies them (migration `document_expiry`): the driver
   is reminded 30 and 7 days before; the day after, the document is rejected and the driver goes offline until the
   renewed one is verified. Admin: Documents › Expiring soon, "Change date", a dashboard count. Existing documents
   have no date until an admin adds one.
-- Admin **Server health** (System › Server health): CPU, memory, disk, database and Redis, Google Maps calls per
+- `ff6a30c` Admin **Server health** (System › Server health): CPU, memory, disk, database and Redis, Google Maps calls per
   SKU against the free monthly calls, push sent and failed, the last backup. **On deploy:** add
   `/opt/tamiltaxi/backups:/backups:ro` to the `api` volumes in `docker-compose.prod.yml` and `BACKUP_DIR=/backups` to
   `.env`. Counting starts with this deploy.
-- **Admin levels** (migration `admin_levels`): owners, support admins and city admins (support with assigned cities,
+- `6b1b04f` **Admin levels** (migration `admin_levels`): owners, support admins and city admins (support with assigned cities,
   who set up only those cities). Every current admin stays an owner; people made admin in the panel start as support.
   Owners set it on the person's page under **Access**.
 
