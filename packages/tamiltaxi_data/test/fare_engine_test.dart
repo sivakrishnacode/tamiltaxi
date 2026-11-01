@@ -19,14 +19,14 @@ void main() {
 
     test('no peak markup by default', () {
       final quotes = FareEngine.quoteAll([Seed.bike, Seed.auto, Seed.cab], ride);
-      expect([for (final q in quotes) q.total], [35, 66, 132]);
+      expect([for (final q in quotes) q.total], [35, 110, 132]);
       expect(quotes.every((q) => q.multiplier == 1.0 && q.peakCharge == 0 && !q.hasPeak), isTrue);
     });
 
     test('ride fares match the designs (peak 1.1x)', () {
       int total(VehicleType v) => FareEngine.quote(v, ride, multiplier: 1.1).total;
       expect(total(Seed.bike), 38);
-      expect(total(Seed.auto), 72);
+      expect(total(Seed.auto), 121);
       expect(total(Seed.cab), 145);
     });
 

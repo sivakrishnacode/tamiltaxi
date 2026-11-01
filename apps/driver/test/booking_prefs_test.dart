@@ -226,7 +226,7 @@ void main() {
     expect(find.text('₹30'), findsOneWidget);
     await tester.tap(find.text('Parcels'));
     await tester.pump();
-    expect(find.text('₹40'), findsOneWidget, reason: 'Parcel on Auto minimum fare');
+    expect(find.text('₹55'), findsOneWidget, reason: 'Parcel on Auto minimum fare');
   });
 
   testWidgets('add an area, turn Go To on, then Stay In there within 8 km (Go To goes off)', (tester) async {

@@ -89,7 +89,8 @@ class _Details extends StatelessWidget {
     if (trip.driver != null)
       'Driver: ${trip.driver!.name} · ${trip.driver!.plate}',
     '${q.distanceKm.toStringAsFixed(1)} km · ${q.durationMin} min',
-    'Base ${formatInr(q.base)} · Distance ${formatInr(q.distanceCharge)} · Time ${formatInr(q.timeCharge)}'
+    'Base ${formatInr(q.base)} · Distance ${formatInr(q.distanceCharge)}'
+        '${q.timeCharge > 0 ? ' · Time ${formatInr(q.timeCharge)}' : ''}'
         '${q.minFareTopUp > 0 ? ' · Minimum fare ${formatInr(q.minFareTopUp)}' : ''}'
         '${q.hasPeak ? ' · Peak ${formatInr(q.peakCharge)}' : ''}'
         '${q.hasWaiting ? ' · Waiting ${formatInr(q.waitingCharge)}' : ''}'
@@ -353,7 +354,7 @@ class _FareTable extends StatelessWidget {
       children: [
         row('Base fare', formatInr(quote.base)),
         row('Distance · ${formatKm(quote.distanceKm)} × ₹$perKmText', formatInr(quote.distanceCharge)),
-        row('Time charge · ${quote.durationMin} min', formatInr(quote.timeCharge)),
+        if (quote.timeCharge > 0) row('Time charge · ${quote.durationMin} min', formatInr(quote.timeCharge)),
         if (quote.minFareTopUp > 0) row('Minimum fare top-up', formatInr(quote.minFareTopUp)),
         const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: CustomPaint(painter: _DashPainter(), size: Size(double.infinity, 1))),
         row('Subtotal', formatInr(quote.subtotal), bold: true),

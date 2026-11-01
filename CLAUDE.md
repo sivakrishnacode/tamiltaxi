@@ -241,8 +241,9 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
   admins change it when overheard. Parcels and rides for someone else get a one-time code.
 - **Fare engine** (same in the apps and the API): `max(minFare, (base + perKm·km + perMin·min) × multiplier)`,
   multiplier ≤ `maxMultiplier` (1.5) and never applied to the minimum-fare top-up,
-  each line rounded down. No peak by default (`currentMultiplier` 1.0): demo quotes Bike ₹35, Scooty ₹39, Auto ₹66,
-  Auto Priority ₹80, Mini ₹132, Sedan ₹158, SUV ₹210 (tiers: `using.tech.md` 6f; `CAB` is "Mini").
+  each line rounded down. No peak by default (`currentMultiplier` 1.0): demo quotes Bike ₹35, Scooty ₹39, Auto ₹110,
+  Auto Priority ₹132, Mini ₹132, Sedan ₹158, SUV ₹210 (tiers: `using.tech.md` 6f; `CAB` is "Mini"). Autos charge
+  the Tamil Nadu government fare (G.O. Ms. No. 366, 27 Oct 2026: ₹50 for 1.8 km, then ₹25 a km).
 - **H3:** res 8 for service areas, zones, the driver index and heatmaps; res 7 for demand and surge; res 9/8/7 for
   learned ETA.
 - **Android:** Impeller is forced to OpenGL ES (Vulkan lagged on MediaTek/Mali). Release APKs use the debug keys; Play bundles use the upload key in `android/key.properties` (git-ignored).
@@ -278,3 +279,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 17 Oct 2026 | Rule 1.2: app versions, staging deploys and the next release in `docs/RELEASES.md`, mirrored to GitHub releases and milestones |
 | 17 Oct 2026 | Rule 1.2: GitHub SOP `docs/GITHUB.md`; planned work in `docs/ROADMAP.md` (synced to milestones and issues) |
 | 18 Oct 2026 | Rule 1.2: API / admin changes under Staging › Next deploy; found problems become ROADMAP items; owner names release dates |
+| 1 Nov 2026 | Key facts: autos at the Tamil Nadu government fare; demo quotes updated |

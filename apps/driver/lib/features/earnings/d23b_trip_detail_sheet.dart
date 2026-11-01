@@ -94,7 +94,7 @@ class D23bTripDetailSheet extends ConsumerWidget {
             _line(context, 'Base fare', formatInr(quote.base)),
             _line(context, 'Distance · ${formatKm(trip.distanceKm)} × ₹${quote.vehicle.fareRule.perKm.toStringAsFixed(0)}',
                 formatInr(quote.distanceCharge)),
-            _line(context, 'Time charge · ${trip.durationMin} min', formatInr(quote.timeCharge)),
+            if (quote.timeCharge > 0) _line(context, 'Time charge · ${trip.durationMin} min', formatInr(quote.timeCharge)),
             const Divider(height: TtSpacing.l),
             _line(context, 'Subtotal', formatInr(quote.subtotal), bold: true),
             if (quote.hasPeak)

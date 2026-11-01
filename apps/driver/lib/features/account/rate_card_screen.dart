@@ -120,7 +120,8 @@ class _RateCardScreenState extends ConsumerState<RateCardScreen> {
       _Section(title: 'Trip fare', lines: [
         _Line('Base fare', 'To start the trip', formatInr(r.base)),
         _Line('Distance', 'Per km', _rs(r.perKm)),
-        _Line('Time', 'Per minute on the trip', _rs(r.perMin)),
+        // Autos have none (the government fare is by the km only).
+        if (r.perMin > 0) _Line('Time', 'Per minute on the trip', _rs(r.perMin)),
         _Line('Minimum fare', 'A short trip pays at least this', formatInr(r.minFare)),
       ]),
       const SizedBox(height: TtSpacing.m),

@@ -196,21 +196,23 @@ abstract final class Seed {
     seats: 1,
     subscriptionPrice: 2000,
   );
+  /// The Tamil Nadu government auto fare (G.O. Ms. No. 366, 27 Oct 2026): ₹50 for the first 1.8 km, then ₹25 a km,
+  /// no time charge. base 5 + 25 × km is exactly ₹50 at 1.8 km (same as the API's `fare-rules.ts`).
   static const auto = VehicleType(
     kind: VehicleKind.auto,
     name: 'Auto',
-    fareRule: FareRule(base: 25, perKm: 9, perMin: 0.3, minFare: 35, waitPerMin: 1),
+    fareRule: FareRule(base: 5, perKm: 25, perMin: 0, minFare: 50, waitPerMin: 1),
     etaMin: 4,
     seats: 3,
     subscriptionPrice: 2000,
   );
 
   /// Auto drivers serve it at the higher fare and it is offered first (API `vehicle-match.ts`, `batch-assign.ts`). No
-  /// badge: the long name needs the room, and its picture carries the bolt.
+  /// badge: the long name needs the room, and its picture carries the bolt. 1.2 × the government fare.
   static const autoPriority = VehicleType(
     kind: VehicleKind.autoPriority,
     name: 'Auto Priority',
-    fareRule: FareRule(base: 30, perKm: 11, perMin: 0.35, minFare: 45, waitPerMin: 1),
+    fareRule: FareRule(base: 6, perKm: 30, perMin: 0, minFare: 60, waitPerMin: 1),
     etaMin: 3,
     seats: 3,
     subscriptionPrice: 2000,
@@ -258,11 +260,12 @@ abstract final class Seed {
     etaMin: 3,
     capacityKg: 20,
   );
-  /// Parcel on Auto: a passenger auto (or a goods 3-wheeler) takes it at auto rates, inside the auto, up to 100 kg.
+  /// Parcel on Auto: a passenger auto (or a goods 3-wheeler) takes it at the government auto rate with a ₹55
+  /// minimum, inside the auto, up to 100 kg.
   static const autoParcel = VehicleType(
     kind: VehicleKind.autoParcel,
     name: 'Auto',
-    fareRule: FareRule(base: 25, perKm: 9, perMin: 0.3, minFare: 40, waitPerMin: 1),
+    fareRule: FareRule(base: 5, perKm: 25, perMin: 0, minFare: 55, waitPerMin: 1),
     etaMin: 4,
     capacityKg: 100,
   );

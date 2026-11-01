@@ -180,6 +180,16 @@ Issue: #12 · Labels: plan, api, admin
 - [ ] Landmarks: a phone check of P-09 / D-16 with real landmarks
 - [ ] CI: APK build artifacts
 
+### Cab and 3-wheeler fares next to the government auto fare
+
+Labels: plan, api
+
+Since 1 Nov 2026 autos charge the Tamil Nadu government fare (₹50 for 1.8 km, then ₹25 a km). Two tiers now look
+odd beside it: beyond about 9 km an Auto costs more than a Mini (₹15 a km plus time), and beyond about 5.5 km a
+Parcel on Auto (100 kg) costs more than the goods 3-wheeler (500 kg, ₹15 a km). Decide whether to raise Mini, Sedan,
+SUV and the 3-wheeler, or leave them cheaper on long trips. Rates: `fare-rules.ts` and `seed.dart` (per city in
+City › Fares).
+
 ### Truck drivers' work now that trucks carry no parcels in town
 
 Labels: plan, driver, api

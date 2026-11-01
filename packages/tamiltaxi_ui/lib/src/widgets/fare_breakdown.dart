@@ -46,12 +46,14 @@ class FareBreakdown extends StatelessWidget {
       lines: [
         FareLine('Base fare', q.base),
         FareLine('Distance', q.distanceCharge, note: '${q.distanceKm.toStringAsFixed(1)} km × ₹$perKmText'),
-        // Billed on the fixed 18 km/h minutes, not the traffic time on the route chip: say so when they differ.
-        FareLine(
-          'Time charge',
-          q.timeCharge,
-          note: q.travelMin != null && q.travelMin != q.durationMin ? '${q.durationMin} min at 18 km/h' : '${q.durationMin} min',
-        ),
+        // Billed on the fixed 18 km/h minutes, not the traffic time on the route chip: say so when they differ. None for
+        // autos (the government fare has no time charge), so no ₹0 line.
+        if (q.timeCharge > 0)
+          FareLine(
+            'Time charge',
+            q.timeCharge,
+            note: q.travelMin != null && q.travelMin != q.durationMin ? '${q.durationMin} min at 18 km/h' : '${q.durationMin} min',
+          ),
         if (q.minFareTopUp > 0) FareLine('Minimum fare top-up', q.minFareTopUp),
         FareLine('Subtotal', q.subtotal, emphasis: true),
         if (q.hasPeak) FareLine('Peak time', q.peakCharge, tag: '${q.multiplier.toStringAsFixed(1)}x', signed: true),

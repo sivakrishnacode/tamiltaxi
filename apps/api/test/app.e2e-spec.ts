@@ -142,7 +142,7 @@ describe('Tamil Taxi API (e2e)', () => {
     const res = await http.post('/v1/fares/quote').set(quoter).send({ pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(200);
     // Bike, Scooty, Auto, Auto Priority, Mini, Sedan, SUV.
     expect(res.body.quotes.map((q: { vehicleKind: string }) => q.vehicleKind)).toEqual(['BIKE', 'SCOOTY', 'AUTO', 'AUTO_PRIORITY', 'CAB', 'SEDAN', 'SUV']);
-    expect(res.body.quotes.map((q: { total: number }) => q.total)).toEqual([35, 39, 66, 80, 132, 158, 210]);
+    expect(res.body.quotes.map((q: { total: number }) => q.total)).toEqual([35, 39, 110, 132, 132, 158, 210]);
   });
 
   it('runs a bike ride end to end', async () => {
@@ -746,13 +746,13 @@ describe('Tamil Taxi API (e2e)', () => {
 
     // Assert
     const autoAlt = alts.find((a: { vehicleKind: string }) => a.vehicleKind === 'AUTO');
-    expect(autoAlt.quote.total).toBe(66);
+    expect(autoAlt.quote.total).toBe(110);
     expect(autoAlt.driversNearby).toBeGreaterThan(0);
     expect(alts.map((a: { vehicleKind: string }) => a.vehicleKind)).not.toContain('CAB');
     expect(added.alsoKinds).toEqual(['AUTO']);
     expect(accepted.status).toBe(200);
     expect(accepted.body.vehicleKind).toBe('AUTO');
-    expect(accepted.body.fareTotal).toBe(66);
+    expect(accepted.body.fareTotal).toBe(110);
     // A passenger cancel with a code and a note; a driver-only code from a passenger becomes OTHER.
     const cancelled = (await http.post(`/v1/trips/${trip.id}/cancel`).set(pax).send({ code: 'WAIT_TOO_LONG', note: 'Too slow' }).expect(200)).body;
     expect(cancelled).toMatchObject({ cancelledBy: 'PASSENGER', cancelCode: 'WAIT_TOO_LONG', cancelReason: 'Too slow' });

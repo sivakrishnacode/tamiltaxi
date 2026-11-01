@@ -22,7 +22,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await _openSheet(tester);
 
-    const tiers = {'Bike': 35, 'Scooty': 39, 'Auto': 66, 'Auto Priority': 80, 'Mini': 132, 'Sedan': 158, 'SUV': 210};
+    const tiers = {'Bike': 35, 'Scooty': 39, 'Auto': 110, 'Auto Priority': 132, 'Mini': 132, 'Sedan': 158, 'SUV': 210};
     for (final MapEntry(key: name, value: fare) in tiers.entries) {
       expect(find.text(name, skipOffstage: false), findsWidgets, reason: name);
       expect(find.text(formatInr(fare), skipOffstage: false), findsWidgets, reason: '$name $fare');
@@ -69,13 +69,13 @@ void main() {
   testWidgets('Book Any: one row for Auto, Mini, Sedan or SUV; booking adds the others to the search', (tester) async {
     final container = await pumpRoute(tester, Routes.chooseVehicle);
     await tester.pump(const Duration(seconds: 1));
-    // Demo fares: Auto ₹66 … SUV ₹210.
+    // Demo fares: Auto ₹110 … SUV ₹210.
     expect(find.text('Book Any'), findsOneWidget);
     expect(find.text('Auto, Mini, Sedan or SUV'), findsOneWidget);
-    expect(find.text('₹66–₹210'), findsOneWidget);
+    expect(find.text('₹110–₹210'), findsOneWidget);
     await tester.tap(find.text('Book Any'));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Book Any · ₹66–₹210'), findsOneWidget);
+    expect(find.text('Book Any · ₹110–₹210'), findsOneWidget);
     final flow = container.read(rideFlowProvider);
     expect(flow.bookAny, isTrue);
     expect(flow.vehicle, VehicleKind.auto);
