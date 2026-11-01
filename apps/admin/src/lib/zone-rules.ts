@@ -1,6 +1,7 @@
 // Zone rules in the admin (unit-tested): the same "live now" rule as the API (geo/zone-schedule.ts) and the words for
 // a zone's schedule.
-import type { VehicleKind, Zone } from "./types";
+import { vehicleLabel } from "./format";
+import { VEHICLE_KINDS, type VehicleKind, type Zone } from "./types";
 
 export type ZoneRules = Pick<Zone, "days" | "startMinute" | "endMinute" | "startsAt" | "endsAt">;
 
@@ -87,4 +88,11 @@ export function zoneState(z: ZoneRules & { isActive: boolean }, now: Date = new 
   if (z.endsAt && now >= new Date(z.endsAt)) return "ended";
   if (z.startsAt && now < new Date(z.startsAt)) return "upcoming";
   return isLiveNow(z, now) ? "live" : "off";
+}
+
+/** A surge's vehicles in a few words: "Bike, Auto", or "All except Auto, Auto Priority" when most are in. */
+export function vehiclesLabel(kinds: readonly VehicleKind[]): string {
+  if (kinds.length === 0 || kinds.length >= VEHICLE_KINDS.length) return "All vehicles";
+  if (kinds.length <= VEHICLE_KINDS.length / 2) return kinds.map(vehicleLabel).join(", ");
+  return `All except ${VEHICLE_KINDS.filter((k) => !kinds.includes(k)).map(vehicleLabel).join(", ")}`;
 }

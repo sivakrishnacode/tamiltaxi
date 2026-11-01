@@ -109,7 +109,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `6e7fdc4` (API and admin).
+Staging runs `6e7fdc4` (API and admin). Waiting to go out:
+
+- Zones tab: the map and the zone list share one height (the list scrolls beside the map instead of stretching the
+  map's card with an empty band), a wider list on large screens, and a surge's vehicles in short ("All except Auto,
+  Auto Priority, Parcel on Auto").
 
 ### 1 Nov 2026 (second) · API and admin at `6e7fdc4`
 

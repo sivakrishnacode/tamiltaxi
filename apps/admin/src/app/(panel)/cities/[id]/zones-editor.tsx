@@ -24,12 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { formatCount, humanize, vehicleLabel } from "@/lib/format";
+import { formatCount, humanize } from "@/lib/format";
 import { ZONE_KINDS, type AreaStats, type CityDetail, type Zone, type ZoneKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { cellsToKm2 } from "@/lib/validation";
 import { zoneLabel } from "@/lib/zone-label";
-import { scheduleLabel, zoneState } from "@/lib/zone-rules";
+import { scheduleLabel, vehiclesLabel, zoneState } from "@/lib/zone-rules";
 
 import { createZone, deleteZone, updateZone } from "../../actions";
 import { rulesDraftOf, rulesError, rulesPayload, ZoneRulesFields, type RulesDraft } from "./zone-rules-fields";
@@ -105,7 +105,7 @@ function ZoneActiveSwitch({ cityId, zone }: { cityId: string; zone: Zone }) {
 function ZoneRulesLine({ cityId, zone }: { cityId: string; zone: Zone }) {
   const [isPending, startTransition] = useTransition();
   const extras = [
-    zone.kind === "SURGE" && zone.vehicleKinds.length ? zone.vehicleKinds.map(vehicleLabel).join(", ") : null,
+    zone.kind === "SURGE" && zone.vehicleKinds.length ? vehiclesLabel(zone.vehicleKinds) : null,
     zone.kind === "NO_SERVICE" && !(zone.blockPickups && zone.blockDrops) ? (zone.blockPickups ? "No pickups" : "No drops") : null,
     zone.nudgeDrivers ? "Nudges drivers" : null,
     zone.kind === "PICKUP_POINT" && zone.meetingPoint ? `Meet at ${zone.meetingPoint}` : null,
@@ -210,7 +210,8 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
+    // The map keeps its own height; the zone list beside it scrolls within the same height instead of stretching it.
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start 2xl:grid-cols-[minmax(0,1fr)_400px]">
       <HexWorkbench
         center={{ lat: city.centerLat, lng: city.centerLng }}
         resolution={city.h3Resolution}
@@ -234,7 +235,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
         }
       />
 
-      <div className="grid content-start gap-4">
+      <div className="grid content-start gap-4 lg:h-[calc(100vh-22rem)] lg:min-h-[600px] lg:overflow-y-auto lg:pr-1">
         {draft ? (
           <Card>
             <CardHeader>

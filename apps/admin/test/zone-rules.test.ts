@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { daysLabel, isLiveNow, scheduleLabel, toMinute, toTime, zoneState } from "@/lib/zone-rules";
+import { GOVERNMENT_FARE_KINDS, daysLabel, isLiveNow, scheduleLabel, toMinute, toTime, vehiclesLabel, zoneState } from "@/lib/zone-rules";
+import { VEHICLE_KINDS } from "@/lib/types";
 
 /** [hh:mm] IST on a day of November 2026 (1 Nov 2026 is a Sunday). */
 const ist = (date: number, hh: number, mm = 0) => new Date(Date.UTC(2026, 10, date, hh, mm) - 330 * 60_000);
@@ -39,5 +40,11 @@ describe("zone rules", () => {
     expect(zoneState({ ...always, isActive: true, startsAt: ist(3, 19).toISOString() }, now)).toBe("upcoming");
     expect(zoneState({ ...always, isActive: true, startMinute: 420, endMinute: 600 }, now)).toBe("off");
     expect(zoneState({ ...always, isActive: true }, now)).toBe("live");
+  });
+
+  it("words a surge's vehicles briefly", () => {
+    expect(vehiclesLabel([])).toBe("All vehicles");
+    expect(vehiclesLabel(["BIKE", "CAB"])).toBe("Bike, Mini");
+    expect(vehiclesLabel(VEHICLE_KINDS.filter((k) => !GOVERNMENT_FARE_KINDS.includes(k)))).toBe("All except Auto, Auto Priority, Parcel on Auto");
   });
 });
