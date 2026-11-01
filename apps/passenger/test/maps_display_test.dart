@@ -2,6 +2,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
+import 'package:tamiltaxi_passenger/features/ride/p10_choose_vehicle_screen.dart';
 import 'package:tamiltaxi_passenger/features/ride/p11_fare_details_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tamiltaxi_passenger/app.dart';
@@ -53,12 +54,12 @@ class _DistancePlaces extends MockPlacesRepository {
   }
 }
 
-Future<void> _openP10(WidgetTester tester, {int? travelMin}) async {
+Future<ProviderContainer> _openP10(WidgetTester tester, {int? travelMin}) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await tester.runAsync(SharedPreferences.getInstance);
   // No server: calls to it fail at once; the fares come from the fake repository.
   final api = ApiClient(baseUrl: 'http://localhost:0/v1', session: ApiSession(prefs!));
-  await pumpRoute(tester, Routes.chooseVehicle, overrides: [
+  final container = await pumpRoute(tester, Routes.chooseVehicle, overrides: [
     isLiveApiProvider.overrideWithValue(true),
     apiClientProvider.overrideWithValue(api),
     rideRepositoryProvider.overrideWith(
@@ -66,6 +67,7 @@ Future<void> _openP10(WidgetTester tester, {int? travelMin}) async {
     ),
   ]);
   await tester.pump(const Duration(milliseconds: 300));
+  return container;
 }
 
 void main() {
@@ -84,6 +86,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(P11FareDetailsSheet), findsOneWidget);
     expect(find.textContaining('38 min at 18 km/h'), findsOneWidget);
+    expect(find.textContaining('Its time charge uses a fixed 18 km/h'), findsOneWidget);
+  });
+
+  testWidgets('P-11 for an auto (government fare, no time charge) says nothing about a time charge', (tester) async {
+    final container = await _openP10(tester, travelMin: 24);
+    container.read(rideFlowProvider.notifier).selectVehicle(VehicleKind.auto);
+    await tester.pump();
+    // The Auto row sits below the half-open sheet: open its fare details as its ⓘ does.
+    P11FareDetailsSheet.show(tester.element(find.byType(P10ChooseVehicleScreen))).ignore();
+    await tester.pumpAndSettle();
+    expect(find.text('Auto fare'), findsOneWidget);
+    expect(find.text("Your fare is locked when you book, so slow traffic won't change it."), findsOneWidget);
+    expect(find.textContaining('18 km/h'), findsNothing);
+    expect(find.text('Time charge'), findsNothing);
   });
 
   testWidgets('without travel minutes (older server, no Google key) P-10 shows the fare minutes', (tester) async {

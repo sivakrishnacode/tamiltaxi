@@ -43,6 +43,7 @@ pre-releases on GitHub.
   Parcel on Auto ₹55 minimum): the in-app rates, so P-11 shows "× ₹25"; no "Time charge ₹0" line on P-11 / P-22.
 - `1840740` Autos' night fare (10 pm–5 am, 1.5×) is labelled "Night fare" on P-11, P-22 and the receipt (0.1.0 shows
   it as "Peak time 1.5x").
+- P-11 "Things to know" mentions the 18 km/h time charge only for fares that have one (not autos).
 
 ### 0.1.0 (code 1) · 16 Oct 2026
 

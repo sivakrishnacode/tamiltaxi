@@ -75,6 +75,15 @@ class P11FareDetailsSheet extends ConsumerWidget {
               'Waiting is free for ${q.freeWaitMin} minutes at pickup, then ${formatInr(q.waitPerMin)} per minute (up to ${formatInr(q.waitMaxCharge)}).',
         ),
         const SizedBox(height: TtSpacing.m),
+        _Note(
+          icon: Symbols.lock_rounded,
+          color: TtColors.success,
+          // Autos (government fare) have no time charge.
+          text: q.timeCharge > 0
+              ? 'Your fare is locked when you book. Its time charge uses a fixed 18 km/h, not the traffic time on the map, so slow traffic won\'t change it.'
+              : 'Your fare is locked when you book, so slow traffic won\'t change it.',
+        ),
+        const SizedBox(height: TtSpacing.m),
         for (final (icon, color, text) in _thingsToKnow) ...[
           _Note(icon: icon, color: color, text: text),
           const SizedBox(height: TtSpacing.m),
@@ -91,11 +100,6 @@ class P11FareDetailsSheet extends ConsumerWidget {
 
 /// P-11 "Things to know": only rules Tamil Taxi really applies (waiting terms come from the quote).
 const _thingsToKnow = <(IconData, Color, String)>[
-  (
-    Symbols.lock_rounded,
-    TtColors.success,
-    'Your fare is locked when you book. Its time charge uses a fixed 18 km/h, not the traffic time on the map, so slow traffic won\'t change it.',
-  ),
   (
     Symbols.trending_up_rounded,
     TtColors.coral500,
