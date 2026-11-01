@@ -41,7 +41,7 @@ export const METRIC_LABEL: Record<HeatmapMetric, string> = {
 export const METRIC_HINT: Record<HeatmapMetric, string> = {
   pickups: "Where trips start",
   drops: "Where finished trips end",
-  unmet: "No drivers found or cancelled: where more drivers are needed",
+  unmet: "No driver found, or the rider gave up while searching: where more drivers are needed",
   fares: "₹ earned by drivers on finished trips (by pickup)",
 };
 

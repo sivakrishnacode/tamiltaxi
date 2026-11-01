@@ -580,6 +580,8 @@ export interface AdminStats {
     readonly active: number;
     readonly completedToday: number;
     readonly cancelledToday: number;
+    /** Booked today and got no driver (older APIs: absent). */
+    readonly missedToday?: number;
     readonly faresToday: number;
   };
   readonly revenue: {
@@ -589,6 +591,45 @@ export interface AdminStats {
   };
   readonly openTickets: number;
   readonly tripsLast7Days: { readonly date: string; readonly count: number }[];
+}
+
+/** One trip in GET /admin/missed: a rider who got no driver, to call back. */
+export interface MissedTrip {
+  readonly id: string;
+  readonly kind: TripKind;
+  readonly vehicleKind: VehicleKind;
+  readonly status: TripStatus;
+  readonly cancelCode: string | null;
+  readonly pickupName: string;
+  readonly dropName: string;
+  readonly fareTotal: number;
+  readonly createdAt: string;
+  /** Minutes from the start of the search to the timeout or cancel. */
+  readonly waitedMin: number | null;
+  /** NO_DRIVER: the search ran out. GAVE_UP: cancelled while still searching. */
+  readonly reason: "NO_DRIVER" | "GAVE_UP";
+  /** The rider booked again within 3 hours and got a driver. */
+  readonly gotRideLater: boolean;
+  /** Booked for someone else: who rides. */
+  readonly riderName: string | null;
+  readonly riderPhone: string | null;
+  readonly passenger: { readonly id: string; readonly name: string | null; readonly phone: string };
+}
+
+/** GET /admin/missed: trips that got no driver, by hour (IST), vehicle and pickup hexagon. */
+export interface MissedSummary {
+  readonly from: string;
+  readonly to: string;
+  readonly booked: number;
+  readonly missed: number;
+  readonly noDriver: number;
+  readonly gaveUp: number;
+  /** Median minutes riders waited before giving up. */
+  readonly gaveUpAfterMin: number | null;
+  readonly byHour: { readonly hour: number; readonly booked: number; readonly missed: number }[];
+  readonly byVehicle: { readonly vehicleKind: VehicleKind; readonly booked: number; readonly missed: number }[];
+  readonly areas: { readonly cell: string; readonly booked: number; readonly missed: number }[];
+  readonly items: Paged<MissedTrip>;
 }
 
 /** POST /auth/verify. */

@@ -63,6 +63,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: RouteIcon,
         pages: [
           { href: "/trips", label: "All trips", searchHint: "Search trips by id, pickup or drop" },
+          { href: "/trips/missed", label: "Missed rides" },
           { href: "/cancellation-fees", label: "Cancellation fees" },
         ],
       },

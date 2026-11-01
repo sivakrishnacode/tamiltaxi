@@ -42,6 +42,7 @@ import type {
   HeatmapQuery,
   KycQueueItem,
   LiveData,
+  MissedSummary,
   PaymentRow,
   Role,
   ServiceArea,
@@ -365,6 +366,7 @@ export const adminApi = {
   demand: (refresh = false) => apiFetch<DemandSnapshot>("/admin/demand", { query: { refresh: refresh ? "true" : undefined } }),
   hexStats: (q: { res: HexStatRes; hour?: number; sort?: HexStatsSort; used?: boolean; limit?: number }) => apiFetch<HexStats>("/admin/hex-stats", { query: q }),
   rebuildHexStats: () => apiFetch<{ pairs: number; trips: number }>("/admin/hex-stats/rebuild", { method: "POST" }),
+  missed: (q: { from?: string; to?: string; page?: number; pageSize?: number } = {}) => apiFetch<MissedSummary>("/admin/missed", { query: q }),
   heatmap: (q: HeatmapQuery = {}) => apiFetch<Heatmap>("/admin/heatmap", { query: { ...q } }),
 };
 

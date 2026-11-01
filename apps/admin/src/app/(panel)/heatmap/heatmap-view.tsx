@@ -114,10 +114,19 @@ function useHourBuckets(base: HeatmapQuery) {
   return buckets;
 }
 
-export function HeatmapView({ initial, cities }: { initial: Heatmap; cities: HeatCity[] }) {
+export function HeatmapView({
+  initial,
+  initialPreset = "30d",
+  cities,
+}: {
+  /** The first layer: its metric and range open selected. */
+  initial: Heatmap;
+  initialPreset?: Exclude<Preset, "custom">;
+  cities: HeatCity[];
+}) {
   const router = useRouter();
-  const [metric, setMetric] = useState<HeatmapMetric>("pickups");
-  const [preset, setPreset] = useState<Preset>("30d");
+  const [metric, setMetric] = useState<HeatmapMetric>(initial.metric);
+  const [preset, setPreset] = useState<Preset>(initialPreset);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [hours, setHours] = useState<[number, number]>([0, 23]);
@@ -132,7 +141,7 @@ export function HeatmapView({ initial, cities }: { initial: Heatmap; cities: Hea
   const [dialog, setDialog] = useState<"zone" | "service" | null>(null);
 
   // Date range is computed when the filter changes (not on every render) so the query key stays stable.
-  const [range, setRange] = useState(() => presetRange("30d"));
+  const [range, setRange] = useState(() => ({ from: initial.from, to: initial.to }));
   function choosePreset(p: Preset) {
     setPreset(p);
     if (p !== "custom") setRange(presetRange(p));

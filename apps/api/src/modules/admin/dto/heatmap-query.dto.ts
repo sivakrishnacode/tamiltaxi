@@ -6,7 +6,7 @@ export type HeatmapMetric = (typeof HEATMAP_METRICS)[number];
 
 /** GET /admin/heatmap query. */
 export class HeatmapQueryDto {
-  /** pickups (booked), drops, unmet (no drivers / cancelled), fares (₹ from finished trips). */
+  /** pickups (booked), drops, unmet (missed: no driver found, or cancelled while searching), fares (₹ from finished trips). */
   @IsOptional()
   @IsIn(HEATMAP_METRICS)
   metric?: HeatmapMetric;

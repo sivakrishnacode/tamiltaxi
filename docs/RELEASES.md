@@ -109,7 +109,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `96499af` (API and admin).
+Staging runs `96499af` (API and admin). Waiting to go out:
+
+- Admin **Missed rides** (Trips › Missed rides): riders who got no driver (none found, or they gave up while
+  searching), by hour, vehicle and area, with the riders to call back; a **Missed today** tile on the Dashboard;
+  `GET /admin/missed`. The heatmap's unmet layer now counts the same trips (it used to count every cancellation).
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

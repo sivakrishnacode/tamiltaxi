@@ -17,6 +17,7 @@ import {
   TrendingUpIcon,
   TriangleAlertIcon,
   UserCheckIcon,
+  UserXIcon,
   UsersIcon,
   WalletCardsIcon,
   type LucideIcon,
@@ -173,13 +174,21 @@ export default async function DashboardPage() {
       )}
 
       <SectionTitle>Today</SectionTitle>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
         <Kpi
           label="Trips today"
           value={formatCount(trips.today)}
           hint={`${formatCount(trips.completedToday)} completed · ${formatCount(trips.cancelledToday)} cancelled`}
           icon={RouteIcon}
           href="/trips?when=today"
+        />
+        <Kpi
+          label="Missed today"
+          value={trips.missedToday == null ? "–" : formatCount(trips.missedToday)}
+          hint={trips.missedToday ? "Riders who got no driver" : "Every rider got a driver"}
+          icon={UserXIcon}
+          href="/trips/missed?when=today"
+          isHighlighted={!!trips.missedToday}
         />
         <Kpi label="Active trips" value={formatCount(trips.active)} hint="Searching or on the road" icon={CarIcon} href="/live" />
         <Kpi label="Fares today" value={formatInr(trips.faresToday)} hint="Completed trips · 100% to drivers" icon={ReceiptIndianRupeeIcon} />

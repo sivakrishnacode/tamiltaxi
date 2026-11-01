@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { DriverStatus, Role, SubscriptionStatus, TicketStatus, TripStatus } from '../../generated/prisma/enums.js';
+import { AdminMissedService } from './admin-missed.service.js';
 import type { AdminStats } from './admin.types.js';
 
 const ACTIVE_TRIP: TripStatus[] = [
@@ -19,14 +20,17 @@ function startOfDay(d: Date): Date {
 /** Dashboard KPIs for the admin panel. */
 @Injectable()
 export class AdminStatsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly missed: AdminMissedService,
+  ) {}
 
   async stats(): Promise<AdminStats> {
     const today = startOfDay(new Date());
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const byStatus = await this.prisma.driver.groupBy({ by: ['status'], _count: true });
     const count = (s: DriverStatus): number => byStatus.find((b) => b.status === s)?._count ?? 0;
-    const [online, passengers, tripsToday, activeTrips, completedToday, cancelledToday, fares, paid, activeSubs, trialSubs, openTickets] =
+    const [online, passengers, tripsToday, activeTrips, completedToday, cancelledToday, missedToday, fares, paid, activeSubs, trialSubs, openTickets] =
       await Promise.all([
         this.prisma.driver.count({ where: { isOnline: true } }),
         this.prisma.user.count({ where: { role: Role.PASSENGER } }),
@@ -34,6 +38,7 @@ export class AdminStatsService {
         this.prisma.trip.count({ where: { status: { in: ACTIVE_TRIP } } }),
         this.prisma.trip.count({ where: { createdAt: { gte: today }, status: { in: [TripStatus.COMPLETED, TripStatus.DELIVERED] } } }),
         this.prisma.trip.count({ where: { createdAt: { gte: today }, status: TripStatus.CANCELLED } }),
+        this.missed.countSince(today),
         this.prisma.trip.aggregate({ _sum: { fareTotal: true }, where: { createdAt: { gte: today }, status: { in: [TripStatus.COMPLETED, TripStatus.DELIVERED] } } }),
         this.prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'PAID', createdAt: { gte: monthStart } } }),
         this.prisma.subscription.count({ where: { status: SubscriptionStatus.ACTIVE, endsAt: { gte: new Date() } } }),
@@ -50,7 +55,7 @@ export class AdminStatsService {
         online,
       },
       passengers,
-      trips: { today: tripsToday, active: activeTrips, completedToday, cancelledToday, faresToday: fares._sum.fareTotal ?? 0 },
+      trips: { today: tripsToday, active: activeTrips, completedToday, cancelledToday, missedToday, faresToday: fares._sum.fareTotal ?? 0 },
       revenue: { paidThisMonth: paid._sum.amount ?? 0, activeSubscriptions: activeSubs, trialSubscriptions: trialSubs },
       openTickets,
       tripsLast7Days: await this.last7Days(today),

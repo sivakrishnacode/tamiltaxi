@@ -1204,6 +1204,78 @@ describe('Tamil Taxi API (e2e)', () => {
     }
   }, 60_000);
 
+  it('counts missed trips: no driver found or given up while searching, by hour, vehicle and area', async () => {
+    const auth = await adminAuth();
+    const [rider, other] = await Promise.all(
+      [await login(), await login()].map(async (t) => (await http.get('/v1/me').set('Authorization', `Bearer ${t}`).expect(200)).body.id as string),
+    );
+    // A day of its own in the past, so other tests' trips never land in the window.
+    const ist = (h: number, m: number, s = 0) => new Date(Date.UTC(2001, 1, 3, h, m, s) - 330 * 60_000);
+    const cell = cellAt(11.0183, 76.9725, 8);
+    const base = {
+      kind: 'RIDE' as const,
+      fare: {},
+      fareTotal: 40,
+      otp: '1234',
+      pickupName: 'A',
+      pickupAddr: '',
+      pickupLat: 11.0183,
+      pickupLng: 76.9725,
+      pickupCell: cell,
+      dropName: 'B',
+      dropAddr: '',
+      dropLat: 11.009,
+      dropLng: 76.96,
+      distanceKm: 4,
+      durationMin: 12,
+    };
+    const trip = (at: Date, data: Record<string, unknown>) => ({ ...base, passengerId: rider, createdAt: at, searchFrom: at, ...data });
+    const rows = [
+      // Missed: the search timed out; the rider gave up after 3 min; the system gave up after drivers dropped it.
+      trip(ist(8, 10), { vehicleKind: 'BIKE', status: 'NO_DRIVERS', cancelledBy: 'SYSTEM', cancelCode: 'NO_DRIVERS', cancelledAt: ist(8, 13) }),
+      trip(ist(8, 40), { vehicleKind: 'BIKE', status: 'CANCELLED', cancelledBy: 'PASSENGER', cancelCode: 'WAIT_TOO_LONG', cancelledAt: ist(8, 43) }),
+      trip(ist(9, 20), { vehicleKind: 'AUTO', status: 'CANCELLED', cancelledBy: 'SYSTEM', cancelCode: 'NO_DRIVERS', assignedAt: ist(9, 21), cancelledAt: ist(9, 30), passengerId: other }),
+      // Not missed: booked by mistake, cancelled after a driver accepted, completed, and one still scheduled.
+      trip(ist(9, 0), { vehicleKind: 'BIKE', status: 'CANCELLED', cancelledBy: 'PASSENGER', cancelCode: 'BOOKED_BY_MISTAKE', cancelledAt: ist(9, 0, 20) }),
+      trip(ist(9, 10), { vehicleKind: 'AUTO', status: 'CANCELLED', cancelledBy: 'PASSENGER', cancelCode: 'DRIVER_TOO_FAR', assignedAt: ist(9, 11), cancelledAt: ist(9, 15) }),
+      trip(ist(10, 0), { vehicleKind: 'AUTO', status: 'COMPLETED', assignedAt: ist(10, 1) }),
+      trip(ist(10, 30), { vehicleKind: 'AUTO', status: 'SCHEDULED', scheduledAt: ist(18, 0), searchFrom: ist(17, 45) }),
+    ];
+    const ids: string[] = [];
+    for (const data of rows) ids.push((await prisma.trip.create({ data: data as never })).id);
+    try {
+      const window = `from=${ist(0, 0).toISOString()}&to=${ist(23, 59).toISOString()}`;
+      const m = (await http.get(`/v1/admin/missed?${window}`).set(auth).expect(200)).body;
+      expect(m).toMatchObject({ booked: 6, missed: 3, noDriver: 2, gaveUp: 1, gaveUpAfterMin: 3 });
+      expect(m.byHour).toHaveLength(24);
+      expect(m.byHour.slice(8, 11)).toEqual([
+        { hour: 8, booked: 2, missed: 2 },
+        { hour: 9, booked: 3, missed: 1 },
+        { hour: 10, booked: 1, missed: 0 },
+      ]);
+      expect(m.byVehicle).toEqual([
+        { vehicleKind: 'BIKE', booked: 3, missed: 2 },
+        { vehicleKind: 'AUTO', booked: 3, missed: 1 },
+      ]);
+      expect(m.areas).toEqual([{ cell, booked: 6, missed: 3 }]);
+      // Newest first; the rider's completed 10:00 ride means they got one later, the other rider did not.
+      expect(m.items.total).toBe(3);
+      expect(m.items.items.map((t: { reason: string; waitedMin: number; gotRideLater: boolean }) => [t.reason, t.waitedMin, t.gotRideLater])).toEqual([
+        ['NO_DRIVER', 10, false],
+        ['GAVE_UP', 3, true],
+        ['NO_DRIVER', 3, true],
+      ]);
+      expect(m.items.items[0].passenger.id).toBe(other);
+      // Paging, the heatmap's unmet layer (same rule) and the dashboard count.
+      expect((await http.get(`/v1/admin/missed?${window}&page=2&pageSize=2`).set(auth).expect(200)).body.items.items).toHaveLength(1);
+      const unmet = (await http.get(`/v1/admin/heatmap?metric=unmet&${window}`).set(auth).expect(200)).body;
+      expect(unmet.cells).toEqual([{ cell, value: 3, intensity: 1 }]);
+      expect(typeof (await http.get('/v1/admin/stats').set(auth).expect(200)).body.trips.missedToday).toBe('number');
+    } finally {
+      await prisma.trip.deleteMany({ where: { id: { in: ids } } });
+    }
+  });
+
   it('nudges, then pauses a driver who cancels too often; the pause ends by the job or an admin', async () => {
     const settings = app.get(SettingsService);
     const redis = app.get(RedisService);

@@ -10,6 +10,7 @@ import { HexStatsService, type HexStatsSummary } from '../geo/hex-stats.service.
 import type { Settings } from '../settings/settings.defaults.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { AdminHeatmapService, Heatmap } from './admin-heatmap.service.js';
+import { AdminMissedService, MissedSummary } from './admin-missed.service.js';
 import { AdminOpsService, LiveDriver } from './admin-ops.service.js';
 import type { Paged } from './admin.types.js';
 import { AuditInterceptor } from './audit.interceptor.js';
@@ -30,6 +31,7 @@ export class AdminOpsController {
     private readonly heat: AdminHeatmapService,
     private readonly demand: DemandService,
     private readonly hexStats: HexStatsService,
+    private readonly missed: AdminMissedService,
   ) {}
 
   @Get('live')
@@ -41,6 +43,12 @@ export class AdminOpsController {
   @Get('heatmap')
   heatmap(@Query() q: HeatmapQueryDto): Promise<Heatmap> {
     return this.heat.heatmap(q);
+  }
+
+  /** Missed trips (no driver found, or the rider gave up while searching): ?from&to (default the last 7 days)&page&pageSize. */
+  @Get('missed')
+  missedTrips(@Query() q: ListQueryDto): Promise<MissedSummary> {
+    return this.missed.summary(q);
   }
 
   /** Live demand vs free drivers per res-7 hex, with the surge each cell gets. ?refresh=true recomputes now. */

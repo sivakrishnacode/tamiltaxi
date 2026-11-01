@@ -3,6 +3,7 @@ import { cellToParent } from 'h3-js';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { MISSED_SQL } from './admin-missed.service.js';
 import type { HeatmapMetric, HeatmapQueryDto } from './dto/heatmap-query.dto.js';
 
 /** One hexagon of the heatmap. */
@@ -53,7 +54,7 @@ export class AdminHeatmapService {
     const column = p.metric === 'drops' ? Prisma.raw('"dropCell"') : Prisma.raw('"pickupCell"');
     const value = p.metric === 'fares' ? Prisma.raw('COALESCE(SUM("fareTotal"), 0)') : Prisma.raw('COUNT(*)');
     const filters: Prisma.Sql[] = [Prisma.sql`"createdAt" >= ${p.from}`, Prisma.sql`"createdAt" <= ${p.to}`, Prisma.sql`${column} IS NOT NULL`];
-    if (p.metric === 'unmet') filters.push(Prisma.sql`status IN ('NO_DRIVERS', 'CANCELLED')`);
+    if (p.metric === 'unmet') filters.push(MISSED_SQL);
     if (p.metric === 'fares' || p.metric === 'drops') filters.push(Prisma.sql`status IN ('COMPLETED', 'DELIVERED')`);
     if (p.q.kind) filters.push(Prisma.sql`kind = ${p.q.kind}::"TripKind"`);
     if (p.q.vehicleKind) filters.push(Prisma.sql`"vehicleKind" = ${p.q.vehicleKind}::"VehicleKind"`);
