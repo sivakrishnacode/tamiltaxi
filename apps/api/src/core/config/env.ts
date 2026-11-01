@@ -31,6 +31,8 @@ export interface Env {
   readonly uploadDir: string;
   /** Private S3 bucket for KYC documents and images. Empty = local disk ([uploadDir]). */
   readonly s3Bucket: string;
+  /** Folder of database backups, read-only (Admin › System › Server health shows the newest). Empty = not tracked. */
+  readonly backupDir: string;
   readonly s3Region: string;
   /** Only for S3-compatible servers in dev (e.g. MinIO); empty = AWS. */
   readonly s3Endpoint: string;
@@ -110,6 +112,7 @@ export function loadEnv(): Env {
     adminPhones: phoneList(process.env.ADMIN_PHONES),
     uploadDir: process.env.UPLOAD_DIR ?? './uploads',
     s3Bucket: process.env.S3_BUCKET ?? '',
+    backupDir: process.env.BACKUP_DIR ?? '',
     s3Region: process.env.S3_REGION ?? process.env.AWS_REGION ?? 'ap-south-1',
     s3Endpoint: process.env.S3_ENDPOINT ?? '',
     shareBaseUrl: (process.env.SHARE_BASE_URL ?? 'http://localhost:3001').replace(/\/+$/, ''),

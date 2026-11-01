@@ -14,10 +14,11 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { RateLimitGuard } from './rate-limit/rate-limit.guard.js';
 import { RedisModule } from './redis/redis.module.js';
 import { FileStorageService } from './storage/file-storage.service.js';
+import { UsageService } from './usage/usage.service.js';
 
 const env = loadEnv();
 
-/** Cross-cutting setup: config, database, Redis, durable jobs, the driver state cache, JWT and the per-request account lookup, file storage, global guards (JWT, roles, rate limits), validation and error filter. */
+/** Cross-cutting setup: config, database, Redis, durable jobs, the driver state cache, JWT and the per-request account lookup, file storage, usage counters, global guards (JWT, roles, rate limits), validation and error filter. */
 @Global()
 @Module({
   imports: [
@@ -37,7 +38,8 @@ const env = loadEnv();
     FileStorageService,
     DriverStateCache,
     UserAccessService,
+    UsageService,
   ],
-  exports: [EnvModule, FileStorageService, DriverStateCache, UserAccessService],
+  exports: [EnvModule, FileStorageService, DriverStateCache, UserAccessService, UsageService],
 })
 export class CoreModule {}

@@ -1,7 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 
 import type { Env } from '../../core/config/env.js';
 import { ENV } from '../../core/config/env.token.js';
+import { UsageService, type UsageMetric } from '../../core/usage/usage.service.js';
 import type { LatLngBounds } from '../geo/h3.util.js';
 import { decodePolyline, LatLngLiteral } from './polyline.js';
 
@@ -136,7 +137,10 @@ const ETA_TIMEOUT_MS = 2500;
 export class GoogleMapsClient {
   private readonly logger = new Logger(GoogleMapsClient.name);
 
-  constructor(@Inject(ENV) private readonly env: Env) {}
+  constructor(
+    @Inject(ENV) private readonly env: Env,
+    @Optional() private readonly usage?: UsageService,
+  ) {}
 
   get isEnabled(): boolean {
     return this.env.googleMapsApiKey.length > 0;
@@ -162,7 +166,7 @@ export class GoogleMapsClient {
     };
     const json = await this.call<{ suggestions?: { placePrediction?: { placeId: string; distanceMeters?: number; structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } } } }[] }>(
       'https://places.googleapis.com/v1/places:autocomplete',
-      { method: 'POST', body: JSON.stringify(body) },
+      { method: 'POST', body: JSON.stringify(body), sku: 'maps.autocomplete' },
     );
     if (!json) return null;
     return (json.suggestions ?? [])
@@ -182,7 +186,7 @@ export class GoogleMapsClient {
     const json = await this.call<{ id: string; displayName?: { text: string }; formattedAddress?: string; location?: { latitude: number; longitude: number } }>(
       `https://places.googleapis.com/v1/places/${encodeURIComponent(params.placeId)}${qs}`,
       // Essentials fields only (displayName would bill at Pro); the app keeps the suggestion's name.
-      { method: 'GET', fieldMask: 'id,formattedAddress,location' },
+      { method: 'GET', fieldMask: 'id,formattedAddress,location', sku: 'maps.place_details' },
     );
     if (!json?.location) return null;
     return {
@@ -202,7 +206,7 @@ export class GoogleMapsClient {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${point.lat},${point.lng}&language=en&extra_computations=ADDRESS_DESCRIPTORS&key=${this.env.googleMapsApiKey}`;
     const json = await this.call<{ status: string; address_descriptor?: AddressDescriptor; results?: { place_id: string; formatted_address: string; types?: string[]; address_components?: { long_name: string; types: string[] }[] }[] }>(
       url,
-      { method: 'GET', isKeyInUrl: true },
+      { method: 'GET', isKeyInUrl: true, sku: 'maps.geocode' },
     );
     // The first result can be a plus code ("7Q6M+2X <city>", typed plus_code or not: "X2JR+9H, ELGI Nagar, …")
     // or an unnamed road: take the first real address; if there is none, drop the code from the front.
@@ -246,6 +250,7 @@ export class GoogleMapsClient {
       'https://routes.googleapis.com/directions/v2:computeRoutes',
       {
         method: 'POST',
+        sku: isEta ? 'maps.routes' : 'maps.routes_pro',
         // An ETA needs no path (smaller answer, same SKU).
         fieldMask: isEta ? 'routes.distanceMeters,routes.duration' : 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.routeLabels',
         timeoutMs: isEta ? ETA_TIMEOUT_MS : TIMEOUT_MS,
@@ -285,6 +290,9 @@ export class GoogleMapsClient {
     const wp = (p: LatLngLiteral): object => ({ waypoint: { location: { latLng: { latitude: p.lat, longitude: p.lng } } } });
     const json = await this.call<MatrixElement[]>('https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix', {
       method: 'POST',
+      // Billed per element: origins × one destination.
+      sku: 'maps.matrix_elements',
+      units: params.origins.length,
       fieldMask: 'originIndex,destinationIndex,duration,distanceMeters,condition',
       timeoutMs: ETA_TIMEOUT_MS,
       body: JSON.stringify({
@@ -298,7 +306,11 @@ export class GoogleMapsClient {
     return json ? parseMatrix(json, params.origins.length) : null;
   }
 
-  private async call<T>(url: string, opts: { method: 'GET' | 'POST'; body?: string; fieldMask?: string; isKeyInUrl?: boolean; timeoutMs?: number }): Promise<T | null> {
+  /** One Google call; a successful one is counted under [opts.sku] ([opts.units] elements, default 1) for Server health. */
+  private async call<T>(
+    url: string,
+    opts: { method: 'GET' | 'POST'; sku: UsageMetric; units?: number; body?: string; fieldMask?: string; isKeyInUrl?: boolean; timeoutMs?: number },
+  ): Promise<T | null> {
     if (!this.isEnabled) return null;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (!opts.isKeyInUrl) headers['X-Goog-Api-Key'] = this.env.googleMapsApiKey;
@@ -310,6 +322,7 @@ export class GoogleMapsClient {
         this.logger.warn(`Google ${new URL(url).pathname} → ${res.status}${res.status === 429 ? ' (quota exceeded)' : ''}`);
         return null;
       }
+      this.usage?.count(opts.sku, opts.units ?? 1);
       return (await res.json()) as T;
     } catch (e) {
       this.logger.warn(`Google call failed: ${(e as Error).message}`);

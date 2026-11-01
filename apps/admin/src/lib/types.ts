@@ -634,6 +634,47 @@ export interface MissedSummary {
   readonly items: Paged<MissedTrip>;
 }
 
+/** Counted outside calls (API core/usage/usage.service.ts). */
+export type UsageMetric =
+  | "maps.autocomplete"
+  | "maps.place_details"
+  | "maps.geocode"
+  | "maps.routes"
+  | "maps.routes_pro"
+  | "maps.matrix_elements"
+  | "push.sent"
+  | "push.failed";
+
+/** GET /admin/system: Admin › System › Server health. Bytes, seconds; "server" is the API's machine (the EC2 host). */
+export interface SystemHealth {
+  readonly at: string;
+  readonly server: {
+    readonly uptimeSec: number;
+    readonly cpus: number;
+    readonly loadAvg: readonly number[];
+    readonly memTotal: number;
+    readonly memAvailable: number;
+    readonly diskTotal: number | null;
+    readonly diskFree: number | null;
+  };
+  readonly api: { readonly uptimeSec: number; readonly rss: number; readonly heapUsed: number; readonly node: string };
+  readonly database: { readonly sizeBytes: number; readonly connections: number; readonly maxConnections: number };
+  readonly redis: { readonly usedMemory: number; readonly keys: number };
+  readonly usage: {
+    readonly today: Readonly<Record<UsageMetric, number>>;
+    readonly month: Readonly<Record<UsageMetric, number>>;
+    readonly freePerMonth: Readonly<Partial<Record<UsageMetric, number>>>;
+    readonly isMapsOn: boolean;
+    readonly isPushOn: boolean;
+  };
+  readonly backup: {
+    readonly dir: string | null;
+    readonly count: number;
+    readonly last: { readonly name: string; readonly at: string; readonly sizeBytes: number } | null;
+    readonly error?: string;
+  };
+}
+
 /** POST /auth/verify. */
 export interface LoginResult {
   readonly accessToken: string;

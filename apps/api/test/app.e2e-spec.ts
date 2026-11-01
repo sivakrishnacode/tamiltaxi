@@ -11,6 +11,7 @@ import { DriverStateCache } from '../src/core/driver-state/driver-state.cache.js
 import { JobsService } from '../src/core/jobs/jobs.service.js';
 import { RedisService } from '../src/core/redis/redis.service.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
+import { UsageService } from '../src/core/usage/usage.service.js';
 import { SettingsService } from '../src/modules/settings/settings.service.js';
 import { DriverBlocksService } from '../src/modules/trips/driver-blocks.service.js';
 import { TripsService } from '../src/modules/trips/trips.service.js';
@@ -1274,6 +1275,24 @@ describe('Tamil Taxi API (e2e)', () => {
     } finally {
       await prisma.trip.deleteMany({ where: { id: { in: ids } } });
     }
+  });
+
+  it('reports server health with the usage counters and the newest backup', async () => {
+    const auth = await adminAuth();
+    const before = (await http.get('/v1/admin/system').set(auth).expect(200)).body;
+    expect(before.server.cpus).toBeGreaterThan(0);
+    expect(before.server.memTotal).toBeGreaterThan(before.server.memAvailable);
+    expect(before.database.sizeBytes).toBeGreaterThan(0);
+    expect(before.database.maxConnections).toBeGreaterThan(0);
+    expect(before.usage.freePerMonth['maps.matrix_elements']).toBe(70_000);
+    expect(before.backup).toEqual({ dir: null, count: 0, last: null });
+    app.get(UsageService).count('maps.geocode', 2);
+    await new Promise((r) => setTimeout(r, 100));
+    const after = (await http.get('/v1/admin/system').set(auth).expect(200)).body;
+    expect(after.usage.today['maps.geocode'] - before.usage.today['maps.geocode']).toBe(2);
+    expect(after.usage.month['maps.geocode'] - before.usage.month['maps.geocode']).toBe(2);
+    const passenger = await login();
+    await http.get('/v1/admin/system').set('Authorization', `Bearer ${passenger}`).expect(403);
   });
 
   it('nudges, then pauses a driver who cancels too often; the pause ends by the job or an admin', async () => {

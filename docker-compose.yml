@@ -67,6 +67,9 @@ services:
       # Public admin origin for live trip links (<SHARE_BASE_URL>/track/<token>).
       SHARE_BASE_URL: ${SHARE_BASE_URL:-http://localhost:3001}
       UPLOAD_DIR: /data/uploads
+      # Folder of database backups inside the container (staging mounts /opt/tamiltaxi/backups there read-only in
+      # docker-compose.prod.yml). Empty = Admin › System › Server health shows backups as not set up.
+      BACKUP_DIR: ${BACKUP_DIR:-}
       # Private bucket for KYC documents / images (credentials from the EC2 instance role). Empty = the uploads volume.
       S3_BUCKET: ${S3_BUCKET:-}
       S3_REGION: ${S3_REGION:-ap-south-1}

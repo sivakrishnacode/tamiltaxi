@@ -137,6 +137,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: "System",
         icon: ServerCogIcon,
         pages: [
+          { href: "/system", label: "Server health" },
           { href: "/audit", label: "Audit log", searchHint: "Search audit log by action" },
           { href: "/travel-speeds", label: "Travel speeds" },
         ],

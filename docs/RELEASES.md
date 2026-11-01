@@ -118,6 +118,10 @@ Staging runs `96499af` (API and admin). Waiting to go out:
   is reminded 30 and 7 days before; the day after, the document is rejected and the driver goes offline until the
   renewed one is verified. Admin: Documents › Expiring soon, "Change date", a dashboard count. Existing documents
   have no date until an admin adds one.
+- Admin **Server health** (System › Server health): CPU, memory, disk, database and Redis, Google Maps calls per
+  SKU against the free monthly calls, push sent and failed, the last backup. **On deploy:** add
+  `/opt/tamiltaxi/backups:/backups:ro` to the `api` volumes in `docker-compose.prod.yml` and `BACKUP_DIR=/backups` to
+  `.env`. Counting starts with this deploy.
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

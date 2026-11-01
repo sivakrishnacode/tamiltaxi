@@ -11,6 +11,7 @@ import type { Settings } from '../settings/settings.defaults.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { AdminHeatmapService, Heatmap } from './admin-heatmap.service.js';
 import { AdminMissedService, MissedSummary } from './admin-missed.service.js';
+import { AdminSystemService, type SystemHealth } from './admin-system.service.js';
 import { AdminOpsService, LiveDriver } from './admin-ops.service.js';
 import type { Paged } from './admin.types.js';
 import { AuditInterceptor } from './audit.interceptor.js';
@@ -32,6 +33,7 @@ export class AdminOpsController {
     private readonly demand: DemandService,
     private readonly hexStats: HexStatsService,
     private readonly missed: AdminMissedService,
+    private readonly system: AdminSystemService,
   ) {}
 
   @Get('live')
@@ -43,6 +45,12 @@ export class AdminOpsController {
   @Get('heatmap')
   heatmap(@Query() q: HeatmapQueryDto): Promise<Heatmap> {
     return this.heat.heatmap(q);
+  }
+
+  /** Server health: the machine, the API process, database, Redis, Google Maps and push counts, the last backup. */
+  @Get('system')
+  systemHealth(): Promise<SystemHealth> {
+    return this.system.health();
   }
 
   /** Missed trips (no driver found, or the rider gave up while searching): ?from&to (default the last 7 days)&page&pageSize. */

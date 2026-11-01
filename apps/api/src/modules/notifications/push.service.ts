@@ -1,10 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { cert, initializeApp, type App } from 'firebase-admin/app';
 import { getMessaging, type Message, type Messaging } from 'firebase-admin/messaging';
 
 import type { Env } from '../../core/config/env.js';
 import { ENV } from '../../core/config/env.token.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
+import { UsageService } from '../../core/usage/usage.service.js';
 import type { AppKind } from '../../generated/prisma/enums.js';
 
 /** Android notification channels, created by the apps with the same ids. */
@@ -39,6 +40,7 @@ export class PushService {
   constructor(
     @Inject(ENV) env: Env,
     private readonly prisma: PrismaService,
+    @Optional() private readonly usage?: UsageService,
   ) {
     this.messaging = PushService.init(env.firebaseServiceAccount, this.logger);
   }
@@ -80,7 +82,13 @@ export class PushService {
 
   toTopic(topic: string, msg: PushMessage): void {
     if (!this.messaging) return;
-    void this.messaging.send({ topic, ...PushService.payload(msg) }).catch((e: Error) => this.logger.warn(`Push to /topics/${topic} failed: ${e.message}`));
+    void this.messaging
+      .send({ topic, ...PushService.payload(msg) })
+      .then(() => this.usage?.count('push.sent'))
+      .catch((e: Error) => {
+        this.usage?.count('push.failed');
+        this.logger.warn(`Push to /topics/${topic} failed: ${e.message}`);
+      });
   }
 
   private async sendToUser(userId: string, app: AppKind, msg: PushMessage): Promise<void> {
@@ -89,6 +97,8 @@ export class PushService {
     if (devices.length === 0) return;
     const tokens = devices.map((d) => d.token);
     const res = await this.messaging.sendEachForMulticast({ tokens, ...PushService.payload(msg) });
+    this.usage?.count('push.sent', res.successCount);
+    this.usage?.count('push.failed', res.failureCount);
     const dead = res.responses.flatMap((r, i) => (!r.success && r.error && DEAD_TOKEN_CODES.has(r.error.code) ? [tokens[i]] : []));
     if (dead.length) await this.prisma.deviceToken.deleteMany({ where: { token: { in: dead } } });
   }
