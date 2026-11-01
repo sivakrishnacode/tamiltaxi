@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
@@ -98,6 +98,7 @@ export class AdminPeopleService {
     if (dto.vehicleKind && dto.vehicleKind !== driver.vehicleKind && driver.isOnline) {
       throw new ConflictException('Take the driver offline before changing the vehicle');
     }
+    if (dto.cityId && !(await this.prisma.city.count({ where: { id: dto.cityId } }))) throw new BadRequestException('Unknown city');
     try {
       const updated = await this.prisma.driver.update({ where: { id: driverId }, data: { ...dto, plate: dto.plate?.toUpperCase().replace(/\s+/g, ' ').trim() } });
       await this.driverState.invalidate(driverId);

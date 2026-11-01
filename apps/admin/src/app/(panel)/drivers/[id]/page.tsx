@@ -45,7 +45,12 @@ export async function generateMetadata({ params }: PageProps<"/drivers/[id]">): 
 export default async function DriverPage({ params }: PageProps<"/drivers/[id]">) {
   const { id } = await params;
   // The offer record is extra: the page still renders without it.
-  const [d, offers, me] = await Promise.all([adminApi.driver(id), adminApi.driverOfferStats(id).catch(() => null), getSessionUser()]);
+  const [d, offers, me, cities] = await Promise.all([
+    adminApi.driver(id),
+    adminApi.driverOfferStats(id).catch(() => null),
+    getSessionUser(),
+    adminApi.cities().catch(() => []),
+  ]);
   const identity = d.user.identityChecks?.[0] ?? null;
   const kyc = kycProgress(d.documents, d.user.identityStatus ?? "NOT_STARTED");
   const name = displayName(d.user);
@@ -110,6 +115,8 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
                   vehicleColor: d.vehicleColor,
                   plate: d.plate,
                   upiId: d.upiId,
+                  cityId: d.cityId ?? null,
+                  cities: cities.map((c) => ({ id: c.id, name: c.name })),
                 }}
               />
             </>

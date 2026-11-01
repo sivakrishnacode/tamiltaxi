@@ -31,8 +31,8 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
   const { id } = await params;
   const [u, me] = await Promise.all([adminApi.user(id), getSessionUser()]);
   const canChangeAccess = isOwner(me);
-  // Admins: the city names for their access label and the Access dialog.
-  const cities = u.role === "ADMIN" ? await adminApi.cities().catch(() => []) : [];
+  // Admins: the city names for their access label and the Access dialog; drivers: their home city choices.
+  const cities = u.role === "ADMIN" || u.driver ? await adminApi.cities().catch(() => []) : [];
   const cityNames = Object.fromEntries(cities.map((c) => [c.id, c.name]));
   const driverKyc = u.driver ? kycProgress(u.driver.documents, u.identityStatus ?? "NOT_STARTED") : null;
   const name = displayName(u);
@@ -109,6 +109,8 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
                         vehicleColor: u.driver.vehicleColor,
                         plate: u.driver.plate,
                         upiId: u.driver.upiId,
+                        cityId: u.driver.cityId ?? null,
+                        cities: cities.map((c) => ({ id: c.id, name: c.name })),
                       }
                     : undefined
                 }

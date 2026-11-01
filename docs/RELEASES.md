@@ -127,6 +127,9 @@ Staging runs `96499af` (API and admin). Waiting to go out:
   Owners set it on the person's page under **Access**.
 - City page: the whole window wide, tabs as links, a new **Overview** (bookings, missed share, wait for a driver and
   drivers online, for the city and each zone; `GET /admin/cities/:id/stats`); each zone shows its 7-day numbers.
+- Drivers get a **home city** (migration `driver_city`: filled from each driver's latest trip; new ones get it when
+  they first go online in a city; admins change it in the driver's profile). The city page has a **Drivers** tab;
+  All drivers has a City column and filter.
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

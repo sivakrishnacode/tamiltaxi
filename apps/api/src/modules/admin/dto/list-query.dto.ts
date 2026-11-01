@@ -57,6 +57,12 @@ export class ListQueryDto {
   @IsIn(LIST_SORTS)
   sort?: string;
 
+  /** Drivers: home city id, or "none" for drivers without one. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  city?: string;
+
   /** Drivers and trips: one vehicle kind. */
   @IsOptional()
   @IsEnum(VehicleKind)

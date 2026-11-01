@@ -1,19 +1,22 @@
-import { ArrowLeftIcon, CarIcon, FlameIcon, HexagonIcon, RouteIcon, TimerIcon, UserXIcon, type LucideIcon } from "lucide-react";
+import { ArrowLeftIcon, CarIcon, FlameIcon, HexagonIcon, IdCardIcon, RouteIcon, TimerIcon, UserXIcon, type LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LinkTabs } from "@/components/common/link-tabs";
+import { ListFilters } from "@/components/common/list-filters";
 import { EmptyState } from "@/components/common/page";
+import { Pager } from "@/components/common/pager";
+import { DriversTable } from "@/components/people/drivers-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { isOwner } from "@/lib/access";
 import { adminApi } from "@/lib/api";
-import { formatCount, humanize } from "@/lib/format";
-import { param } from "@/lib/paging";
+import { formatCount, humanize, vehicleLabel } from "@/lib/format";
+import { pageSizeParam, param, parsePage, parsePageSize, withQuery } from "@/lib/paging";
 import { getSessionUser } from "@/lib/session";
-import type { AreaStats, CityDetail } from "@/lib/types";
+import { DRIVER_STATUSES, DRIVER_VEHICLE_KINDS, type AreaStats, type CityDetail, type DriverStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { cellsToKm2 } from "@/lib/validation";
 
@@ -27,6 +30,7 @@ const TABS = [
   { value: "overview", label: "Overview" },
   { value: "area", label: "Service area" },
   { value: "zones", label: "Zones" },
+  { value: "drivers", label: "Drivers" },
   { value: "fares", label: "Fares" },
   { value: "pricing", label: "Rentals & more" },
   { value: "settings", label: "Settings" },
@@ -149,6 +153,94 @@ function Overview({ city, stats }: { city: CityDetail; stats: (AreaStats & { zon
   );
 }
 
+const STATUS_TABS: { value: DriverStatus | "ALL"; label: string }[] = [
+  { value: "ALL", label: "All" },
+  { value: "APPROVED", label: "Approved" },
+  { value: "PENDING", label: "Pending" },
+  { value: "ON_HOLD", label: "On hold" },
+  { value: "REJECTED", label: "Rejected" },
+];
+
+/** Drivers based in the city (their home city), with the status tabs and filters of All drivers. */
+async function CityDrivers({ city, sp }: { city: CityDetail; sp: Awaited<PageProps<"/cities/[id]">["searchParams"]> }) {
+  const status = param(sp.status) as DriverStatus | undefined;
+  const pageSize = parsePageSize(sp.pageSize);
+  const query = {
+    q: param(sp.q),
+    status: status && DRIVER_STATUSES.includes(status) ? status : undefined,
+    vehicle: param(sp.vehicle),
+    online: param(sp.online),
+    sort: param(sp.sort),
+  };
+  const [data, settings, unassigned] = await Promise.all([
+    adminApi.drivers({ ...query, city: city.id, page: parsePage(sp.page), pageSize }),
+    adminApi.settings().catch(() => null),
+    adminApi.drivers({ city: "none", pageSize: 1 }).catch(() => null),
+  ]);
+  const counts = data.counts;
+  const allCount = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : undefined;
+  const isFiltered = !!(query.q || query.status || query.vehicle || query.online);
+  const base = { tab: "drivers", ...query, pageSize: pageSizeParam(pageSize) };
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Drivers whose home city is {city.name}: set when they first go online here, or from the driver&apos;s profile.
+        {unassigned && unassigned.total > 0 && (
+          <>
+            {" "}
+            <Link href="/drivers?city=none" className="font-medium text-coral-600 hover:underline">
+              {formatCount(unassigned.total)} without a city yet
+            </Link>
+            .
+          </>
+        )}
+      </p>
+      <LinkTabs
+        active={query.status ?? "ALL"}
+        tabs={STATUS_TABS.map((t) => {
+          const n = t.value === "ALL" ? allCount : counts?.[t.value];
+          return {
+            value: t.value,
+            label: t.label,
+            href: withQuery(`/cities/${city.id}`, { ...base, status: t.value === "ALL" ? undefined : t.value }),
+            count: n !== undefined ? <span className="text-xs font-normal text-muted-foreground tabular-nums">{formatCount(n)}</span> : undefined,
+          };
+        })}
+      />
+      <ListFilters
+        searchPlaceholder="Name, phone or plate"
+        filters={[
+          { name: "vehicle", label: "Vehicles", options: DRIVER_VEHICLE_KINDS.map((v) => ({ value: v, label: vehicleLabel(v) })) },
+          { name: "online", label: "Online & offline", options: [{ value: "true", label: "Online now" }, { value: "false", label: "Offline" }] },
+          {
+            name: "sort",
+            label: "Sort",
+            defaultValue: "newest",
+            options: [
+              { value: "newest", label: "Newest first" },
+              { value: "rating", label: "Best rated" },
+              { value: "trips", label: "Most trips" },
+              { value: "name", label: "Name A–Z" },
+            ],
+          },
+        ]}
+      />
+      <Card className="gap-0 py-0">
+        {data.items.length === 0 ? (
+          <EmptyState
+            icon={IdCardIcon}
+            title={isFiltered ? "No drivers match" : `No drivers in ${city.name} yet`}
+            description={isFiltered ? "Try another name, tab or filter." : "Drivers get a home city when they first go online inside its service area."}
+          />
+        ) : (
+          <DriversTable items={data.items} showPlans={settings?.driverPlansEnabled ?? true} />
+        )}
+        <Pager path={`/cities/${city.id}`} query={base} page={data.page} pageSize={data.pageSize} total={data.total} noun="drivers" canResize />
+      </Card>
+    </div>
+  );
+}
+
 export default async function CityPage({ params, searchParams }: PageProps<"/cities/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
@@ -189,6 +281,7 @@ export default async function CityPage({ params, searchParams }: PageProps<"/cit
         {tab === "overview" && <Overview city={city} stats={stats} />}
         {tab === "area" && <ServiceAreaEditor key={city.updatedAt} city={city} />}
         {tab === "zones" && <ZonesEditor city={city} stats={zoneStats} />}
+        {tab === "drivers" && <CityDrivers city={city} sp={sp} />}
         {/* Remount on new fares (a save or a reset), so the inputs show what is stored. */}
         {tab === "fares" && fares && <FaresEditor key={JSON.stringify(fares)} cityId={city.id} fares={fares} />}
         {tab === "pricing" && pricing && <PricingEditor cityId={city.id} pricing={pricing} />}

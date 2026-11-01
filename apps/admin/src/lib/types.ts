@@ -239,6 +239,8 @@ export interface DriverBase {
   readonly rating: number;
   readonly ridesCount: number;
   readonly status: DriverStatus;
+  /** Home city (City.id); null until they first go online in a city (older APIs: absent). */
+  readonly cityId?: string | null;
   readonly isOnline: boolean;
   /** Profile photo riders see (stored file; the admin opens it at /files/<name>). */
   readonly photoFile?: string | null;
@@ -833,6 +835,8 @@ export interface DriverProfileInput {
   readonly vehicleColor?: string;
   readonly plate?: string;
   readonly upiId?: string;
+  /** Home city; null clears it. */
+  readonly cityId?: string | null;
 }
 
 export type MessageApp = "DRIVER" | "PASSENGER" | "BOTH";

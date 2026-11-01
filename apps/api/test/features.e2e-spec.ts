@@ -245,6 +245,22 @@ describe('Tamil Taxi features (e2e)', () => {
     });
   });
 
+  it("sets a driver's home city when they first go online; admins list drivers by city and change it", async () => {
+    const admin = await adminAuth();
+    const d = await approvedDriver();
+    expect((await prisma.driver.findUniqueOrThrow({ where: { id: d.driverId } })).cityId).toBeNull();
+    const none = (await http.get(`/v1/admin/drivers?city=none&q=${encodeURIComponent(d.plate)}`).set(admin).expect(200)).body;
+    expect(none.items.map((x: { id: string }) => x.id)).toEqual([d.driverId]);
+    await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(200);
+    expect((await prisma.driver.findUniqueOrThrow({ where: { id: d.driverId } })).cityId).toBe('coimbatore');
+    const inCity = (await http.get(`/v1/admin/drivers?city=coimbatore&q=${encodeURIComponent(d.plate)}`).set(admin).expect(200)).body;
+    expect(inCity.items[0]).toMatchObject({ id: d.driverId, cityId: 'coimbatore' });
+    // An admin moves or clears it; an unknown city is refused.
+    await http.patch(`/v1/admin/drivers/${d.driverId}/profile`).set(admin).send({ cityId: 'nowhere' }).expect(400);
+    await http.patch(`/v1/admin/drivers/${d.driverId}/profile`).set(admin).send({ cityId: null }).expect(200);
+    expect((await prisma.driver.findUniqueOrThrow({ where: { id: d.driverId } })).cityId).toBeNull();
+  });
+
   describe('document expiry', () => {
     /** "YYYY-MM-DD" of the IST day [days] from now. */
     const istDay = (days: number) => new Date(Date.now() + 330 * 60_000 + days * 86_400_000).toISOString().slice(0, 10);

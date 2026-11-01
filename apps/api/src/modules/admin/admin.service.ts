@@ -28,6 +28,7 @@ const DRIVER_LIST_SELECT = {
   ratingCount: true,
   ridesCount: true,
   status: true,
+  cityId: true,
   isOnline: true,
   photoFile: true,
   pendingPhotoFile: true,
@@ -68,6 +69,7 @@ export class AdminService {
     const { skip, take, page, pageSize } = paging(q);
     const base: Prisma.DriverWhereInput = {
       vehicleKind: q.vehicle,
+      cityId: q.city === 'none' ? null : q.city,
       isOnline: flag(q.online),
       user: q.gender ? { gender: q.gender } : undefined,
       ...driverSearch(q.q),

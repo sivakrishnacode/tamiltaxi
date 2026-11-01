@@ -403,6 +403,10 @@ model Driver {
   bookingPrefs      Json?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  /// Home city: where the driver works (set when they first go online inside a city, or by an admin). Lists drivers
+  /// per city (admin city page); dispatch doesn't use it.
+  cityId            String?
+  city              City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents         KycDocument[]
   trips             Trip[]
@@ -413,6 +417,7 @@ model Driver {
   blocks            DriverBlock[]
 
   /// Admin lists: by status (tabs, Approvals), newest first.
+  @@index([cityId])
   @@index([status, createdAt])
   @@index([createdAt])
 }
@@ -750,6 +755,7 @@ model City {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   zones        Zone[]
+  drivers      Driver[]
   fareRules    CityFareRule[]
   modePricing  CityModePricing?
 }

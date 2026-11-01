@@ -34,6 +34,9 @@ export interface DriverFields {
   readonly vehicleColor: string;
   readonly plate: string;
   readonly upiId: string;
+  /** Home city (null = none yet) and the cities to choose from. */
+  readonly cityId: string | null;
+  readonly cities: readonly { readonly id: string; readonly name: string }[];
 }
 
 function notify(res: ActionResult): boolean {
@@ -159,7 +162,15 @@ function EditDialog({
   const [account, setAccount] = useState({ name: personName ?? "", email: email ?? "" });
   const [vehicle, setVehicle] = useState(
     driver
-      ? { vehicleKind: driver.vehicleKind, workType: driver.workType, vehicleModel: driver.vehicleModel, vehicleColor: driver.vehicleColor, plate: driver.plate, upiId: driver.upiId }
+      ? {
+          vehicleKind: driver.vehicleKind,
+          workType: driver.workType,
+          vehicleModel: driver.vehicleModel,
+          vehicleColor: driver.vehicleColor,
+          plate: driver.plate,
+          upiId: driver.upiId,
+          cityId: driver.cityId ?? "",
+        }
       : null,
   );
   const [isPending, startTransition] = useTransition();
@@ -169,9 +180,11 @@ function EditDialog({
       const accountChanges: { name?: string; email?: string } = {};
       if (account.name.trim() !== (personName ?? "")) accountChanges.name = account.name;
       if (account.email.trim() !== (email ?? "")) accountChanges.email = account.email;
-      const driverChanges: Record<string, string> = {};
+      const driverChanges: Record<string, string | null> = {};
       if (driver && vehicle) {
-        for (const [k, v] of Object.entries(vehicle)) if (v !== driver[k as keyof DriverFields]) driverChanges[k] = v;
+        const { cityId, ...rest } = vehicle;
+        for (const [k, v] of Object.entries(rest)) if (v !== driver[k as keyof DriverFields]) driverChanges[k] = v;
+        if (cityId !== (driver.cityId ?? "")) driverChanges.cityId = cityId || null;
       }
       if (Object.keys(accountChanges).length === 0 && Object.keys(driverChanges).length === 0) {
         toast.message("Nothing changed");
@@ -266,6 +279,22 @@ function EditDialog({
               <div className="grid gap-1.5">
                 <Label htmlFor="edit-upi">UPI ID</Label>
                 <Input id="edit-upi" value={vehicle.upiId} className="font-mono" onChange={(e) => setVehicle((x) => x && { ...x, upiId: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-city">Home city</Label>
+                <Select value={vehicle.cityId || "none"} onValueChange={(v) => setVehicle((x) => x && { ...x, cityId: v === "none" ? "" : v })}>
+                  <SelectTrigger id="edit-city" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No city yet</SelectItem>
+                    {driver.cities.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}

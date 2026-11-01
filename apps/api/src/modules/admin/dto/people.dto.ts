@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, Length, Matches, ValidateIf } from 'class-validator';
 
 import { VehicleKind, WorkType } from '../../../generated/prisma/enums.js';
 import { DRIVER_VEHICLE_KINDS } from '../../drivers/vehicle-match.js';
@@ -61,4 +61,11 @@ export class AdminDriverProfileDto {
   @IsOptional()
   @Matches(/^[\w.-]{2,}@[a-z]{2,}$/i, { message: 'Enter a valid UPI ID' })
   upiId?: string;
+
+  /** Home city (City.id); null = none. */
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @IsString()
+  @Length(1, 60)
+  cityId?: string | null;
 }

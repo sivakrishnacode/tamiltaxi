@@ -36,6 +36,7 @@ import { RedisService } from '../../core/redis/redis.service.js';
 import type { Driver, KycDocument, Prisma } from '../../generated/prisma/client.js';
 import { DriverStatus, Gender, IdentityStatus, KycDocType, KycStatus, PlanPeriod, Role, SubscriptionStatus, TripStatus, type VehicleKind } from '../../generated/prisma/enums.js';
 import { AuthService } from '../auth/auth.service.js';
+import { GeoService } from '../geo/geo.service.js';
 import { TRIAL_DAYS } from '../subscriptions/plan-prices.js';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
 import { nearbyVehicles, type NearbyVehicle } from './nearby-vehicles.js';
@@ -78,6 +79,7 @@ export class DriversService {
     private readonly state: DriverStateCache,
     private readonly settings: SettingsService,
     private readonly redis: RedisService,
+    private readonly geo: GeoService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -392,7 +394,9 @@ export class DriversService {
     await this.earnings.sessionStarted(driver.id);
     // Only a real offline → online (the app repeats this call on resume): keeps the driver's wait for the idle bonus.
     if (!driver.isOnline) await this.location.markOnline(driver.id);
-    const online = await this.prisma.driver.update({ where: { id: driver.id }, data: { isOnline: true }, include: { user: { select: { isBlocked: true } } } });
+    // A driver without a home city gets the one they first go online in.
+    const cityId = driver.cityId ? undefined : ((await this.geo.locate(params).catch(() => null))?.cityId ?? undefined);
+    const online = await this.prisma.driver.update({ where: { id: driver.id }, data: { isOnline: true, cityId }, include: { user: { select: { isBlocked: true } } } });
     await this.state.set(driver.id, { isOnline: true, vehicleKind: online.vehicleKind, isBlocked: online.user.isBlocked });
     return online;
   }
