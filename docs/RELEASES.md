@@ -125,6 +125,8 @@ Staging runs `96499af` (API and admin). Waiting to go out:
 - `6b1b04f` **Admin levels** (migration `admin_levels`): owners, support admins and city admins (support with assigned cities,
   who set up only those cities). Every current admin stays an owner; people made admin in the panel start as support.
   Owners set it on the person's page under **Access**.
+- City page: the whole window wide, tabs as links, a new **Overview** (bookings, missed share, wait for a driver and
+  drivers online, for the city and each zone; `GET /admin/cities/:id/stats`); each zone shows its 7-day numbers.
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

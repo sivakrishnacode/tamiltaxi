@@ -1327,6 +1327,35 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(again.user.adminLevel).toBe('OWNER');
   });
 
+  it("counts a city's and each zone's trips, missed rides, wait for a driver and drivers online", async () => {
+    const auth = await adminAuth();
+    const city = (await http.get('/v1/admin/cities/coimbatore').set(auth).expect(200)).body as { serviceCells: string[] };
+    // A hexagon at the edge of the service area, away from the other tests' trips.
+    const cell = city.serviceCells[city.serviceCells.length - 1];
+    const zone = (await http.post('/v1/admin/cities/coimbatore/zones').set(auth).send({ name: 'E2E stats zone', kind: 'DEMAND', cells: [cell] }).expect(201)).body as { id: string };
+    const rider = await login();
+    const passengerId = (await http.get('/v1/me').set('Authorization', `Bearer ${rider}`).expect(200)).body.id as string;
+    const at = new Date(Date.now() - 60 * 60_000);
+    const base = { kind: 'RIDE' as const, vehicleKind: 'BIKE' as const, passengerId, fare: {}, fareTotal: 40, otp: '1234', pickupName: 'A', pickupAddr: '', pickupLat: 11, pickupLng: 77, pickupCell: cell, dropName: 'B', dropAddr: '', dropLat: 11, dropLng: 77, distanceKm: 3, durationMin: 10, createdAt: at, searchFrom: at };
+    const ids: string[] = [];
+    for (const data of [
+      { ...base, status: 'COMPLETED' as const, assignedAt: new Date(at.getTime() + 3 * 60_000) },
+      { ...base, status: 'COMPLETED' as const, assignedAt: new Date(at.getTime() + 60_000) },
+      { ...base, status: 'NO_DRIVERS' as const, cancelCode: 'NO_DRIVERS' as const, cancelledAt: new Date(at.getTime() + 3 * 60_000) },
+    ]) {
+      ids.push((await prisma.trip.create({ data })).id);
+    }
+    try {
+      const stats = (await http.get('/v1/admin/cities/coimbatore/stats').set(auth).expect(200)).body;
+      expect(stats.booked7d).toBeGreaterThanOrEqual(3);
+      const z = stats.zones.find((x: { zoneId: string }) => x.zoneId === zone.id);
+      expect(z).toMatchObject({ booked7d: 3, completed7d: 2, missed7d: 1, avgWaitMin: 2, onlineNow: 0 });
+    } finally {
+      await prisma.trip.deleteMany({ where: { id: { in: ids } } });
+      await http.delete(`/v1/admin/zones/${zone.id}`).set(auth).expect(204);
+    }
+  });
+
   it('reports server health with the usage counters and the newest backup', async () => {
     const auth = await adminAuth();
     const before = (await http.get('/v1/admin/system').set(auth).expect(200)).body;

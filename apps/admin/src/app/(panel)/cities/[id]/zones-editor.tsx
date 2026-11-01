@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { formatCount, humanize } from "@/lib/format";
-import { ZONE_KINDS, type CityDetail, type Zone, type ZoneKind } from "@/lib/types";
+import { ZONE_KINDS, type AreaStats, type CityDetail, type Zone, type ZoneKind } from "@/lib/types";
 import { cellsToKm2 } from "@/lib/validation";
 import { zoneLabel } from "@/lib/zone-label";
 
@@ -89,7 +89,21 @@ function ZoneActiveSwitch({ cityId, zone }: { cityId: string; zone: Zone }) {
 }
 
 /** Tab b) zones: list, create/edit by painting cells, delete. */
-export function ZonesEditor({ city }: { city: CityDetail }) {
+/** "7 days: 12 booked · 2 missed · 2.1 min wait · 3 online now" under a zone. */
+function ZoneStatsLine({ stats }: { stats: AreaStats }) {
+  const missedShare = stats.booked7d ? Math.round((stats.missed7d / stats.booked7d) * 100) : 0;
+  return (
+    <p className="mt-1 pl-5 text-[11px] text-muted-foreground tabular-nums">
+      7 days: {formatCount(stats.booked7d)} booked ·{" "}
+      <span className={missedShare >= 20 ? "font-medium text-error" : undefined}>
+        {formatCount(stats.missed7d)} missed{stats.booked7d ? ` (${missedShare}%)` : ""}
+      </span>
+      {stats.avgWaitMin != null && ` · ${stats.avgWaitMin} min wait`} · {formatCount(stats.onlineNow)} online now
+    </p>
+  );
+}
+
+export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonly<Record<string, AreaStats>> }) {
   const service = useMemo(() => new Set(city.serviceCells), [city.serviceCells]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const ed = useCellEditor([]);
@@ -312,6 +326,7 @@ export function ZonesEditor({ city }: { city: CityDetail }) {
                       </Button>
                     </span>
                   </div>
+                  {stats?.[z.id] && <ZoneStatsLine stats={stats[z.id]} />}
                 </li>
               ))}
             </ul>

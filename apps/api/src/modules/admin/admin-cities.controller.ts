@@ -7,6 +7,7 @@ import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
 import type { City, CityFareRule, Zone } from '../../generated/prisma/client.js';
 import { Role, VehicleKind } from '../../generated/prisma/enums.js';
 import { AdminCitiesService, type CityPricing } from './admin-cities.service.js';
+import { AdminCityStatsService, type CityStats } from './admin-city-stats.service.js';
 import { AuditInterceptor } from './audit.interceptor.js';
 import { CellsDto } from './dto/cells.dto.js';
 import { CreateCityDto, UpdateCityDto } from './dto/city.dto.js';
@@ -21,7 +22,10 @@ import { CreateZoneDto, UpdateZoneDto } from './dto/zone.dto.js';
 @UseInterceptors(AuditInterceptor)
 @Controller('admin')
 export class AdminCitiesController {
-  constructor(private readonly cities: AdminCitiesService) {}
+  constructor(
+    private readonly cities: AdminCitiesService,
+    private readonly cityStats: AdminCityStatsService,
+  ) {}
 
   @Get('cities')
   list(): Promise<City[]> {
@@ -37,6 +41,12 @@ export class AdminCitiesController {
   @Get('cities/:id')
   get(@Param('id') id: string): Promise<City> {
     return this.cities.city(id);
+  }
+
+  /** Trips today and in the last 7 days (booked, completed, missed, wait for a driver) and drivers online now, for the city and each zone. */
+  @Get('cities/:id/stats')
+  stats(@Param('id') id: string): Promise<CityStats> {
+    return this.cityStats.stats(id);
   }
 
   @Patch('cities/:id')

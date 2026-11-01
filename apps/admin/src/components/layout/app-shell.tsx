@@ -152,6 +152,8 @@ export function AppShell({
   const pathname = usePathname();
   const [isMenuOpen, setMenuOpen] = useState(false);
   const { item: section, isExact } = activePage(pathname);
+  // Map editors use the whole window (a city's service area, zones and drivers).
+  const isWide = /^\/cities\/[^/]+/.test(pathname);
   // Related pages show as tabs on each of them (not on detail pages like /drivers/abc).
   const visibleTabs = section.pages.filter((p) => visibleNavGroups(access).some((g) => g.items.some((i) => i.pages.some((v) => v.href === p.href))));
   const tabs = hasTabs(section) && isExact && visibleTabs.length > 1 ? visibleTabs.map((p) => ({ href: p.href, label: p.label, badge: tabBadges?.[p.href] })) : null;
@@ -188,7 +190,7 @@ export function AppShell({
           <CommandPalette pathname={pathname} access={access} />
           <div className="ml-auto">{userMenu}</div>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">
+        <main className={cn("mx-auto w-full flex-1 px-4 py-6 sm:px-6 lg:py-8", isWide ? "max-w-none" : "max-w-7xl")}>
           {tabs && <PageTabs tabs={tabs} active={pathname} label={section.label} />}
           {children}
         </main>

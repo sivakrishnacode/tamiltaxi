@@ -598,6 +598,21 @@ export interface AdminStats {
   readonly tripsLast7Days: { readonly date: string; readonly count: number }[];
 }
 
+/** Trips of a city or zone (GET /admin/cities/:id/stats): today, the last 7 days, wait for a driver, drivers online now. */
+export interface AreaStats {
+  readonly bookedToday: number;
+  readonly missedToday: number;
+  readonly booked7d: number;
+  readonly completed7d: number;
+  readonly missed7d: number;
+  readonly avgWaitMin: number | null;
+  readonly onlineNow: number;
+}
+
+export interface CityStats extends AreaStats {
+  readonly zones: readonly (AreaStats & { readonly zoneId: string })[];
+}
+
 /** One trip in GET /admin/missed: a rider who got no driver, to call back. */
 export interface MissedTrip {
   readonly id: string;

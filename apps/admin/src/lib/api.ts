@@ -43,6 +43,7 @@ import type {
   KycQueueItem,
   LiveData,
   MissedSummary,
+  CityStats,
   SystemHealth,
   PaymentRow,
   Role,
@@ -373,6 +374,7 @@ export const adminApi = {
   hexStats: (q: { res: HexStatRes; hour?: number; sort?: HexStatsSort; used?: boolean; limit?: number }) => apiFetch<HexStats>("/admin/hex-stats", { query: q }),
   rebuildHexStats: () => apiFetch<{ pairs: number; trips: number }>("/admin/hex-stats/rebuild", { method: "POST" }),
   system: () => apiFetch<SystemHealth>("/admin/system"),
+  cityStats: (id: string) => apiFetch<CityStats>(`/admin/cities/${encodeURIComponent(id)}/stats`),
   missed: (q: { from?: string; to?: string; page?: number; pageSize?: number } = {}) => apiFetch<MissedSummary>("/admin/missed", { query: q }),
   heatmap: (q: HeatmapQuery = {}) => apiFetch<Heatmap>("/admin/heatmap", { query: { ...q } }),
 };
