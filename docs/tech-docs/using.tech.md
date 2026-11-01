@@ -326,7 +326,9 @@ Never commit real `.env` files.
   admin): level, role, permissions and cities. The migration made the roles **Support** (`support`) and **City admin**
   (`city-admin`, city-limited) and gave them to the support admins and city admins of the levels release. Admin:
   **Setup › Team** with **Staff** (Add staff by phone, Access, Remove, last sign-in) and **Roles** (a View / Change grid
-  per area, exports, deleting accounts, "Only their own cities"); the sidebar, tabs, palette and buttons follow
+  per area, exports, deleting accounts, "Only their own cities"; a city-limited person's cities come from
+  `components/common/city-picker.tsx`: search by city or state, grouped by state with "Pick all", picked ones as chips,
+  built for hundreds of cities); the sidebar, tabs, palette and buttons follow
   `GET /admin/me` on every render (`lib/access-server.ts` `getAccess`), and `proxy.ts` sends staff from pages their
   role doesn't open to the Dashboard (the same call, cached 30 s per token). A person's own page links admins to Team;
   its role menu only switches rider / driver.

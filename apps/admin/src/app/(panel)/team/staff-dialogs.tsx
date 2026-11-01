@@ -4,18 +4,19 @@ import { Loader2Icon, PencilIcon, UserMinusIcon, UserPlusIcon } from "lucide-rea
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { CityPicker } from "@/components/common/city-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import type { PickCity } from "@/lib/city-pick";
 import { permissionSummary } from "@/lib/permissions";
 import type { StaffMember, StaffRole } from "@/lib/types";
 
 import { addStaff, removeStaff, updateStaff } from "../actions";
 
-type City = { readonly id: string; readonly name: string };
+type City = PickCity;
 const OWNER = "owner";
 
 /** Owner, or one of the roles, and the cities for a city-limited role. */
@@ -62,24 +63,11 @@ function AccessFields({
       </div>
       {role?.isCityScoped && (
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium">Cities they set up</legend>
+          <legend className="mb-1 text-sm font-medium">Cities they set up</legend>
           {cities.length === 0 ? (
             <p className="text-xs text-error">Add a city under Cities & zones first.</p>
           ) : (
-            <ul className="max-h-48 divide-y overflow-y-auto rounded-lg border">
-              {cities.map((c) => (
-                <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                  <Label htmlFor={`staff-city-${c.id}`} className="font-normal">
-                    {c.name}
-                  </Label>
-                  <Switch
-                    id={`staff-city-${c.id}`}
-                    checked={cityIds.includes(c.id)}
-                    onCheckedChange={(on) => onCityIds(on ? [...cityIds, c.id] : cityIds.filter((x) => x !== c.id))}
-                  />
-                </li>
-              ))}
-            </ul>
+            <CityPicker cities={cities} value={cityIds} onChange={onCityIds} />
           )}
         </fieldset>
       )}

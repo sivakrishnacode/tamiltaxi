@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminApi } from "@/lib/api";
+import { citiesShort } from "@/lib/city-pick";
 import { formatAgo, formatPhone } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 
@@ -16,7 +17,7 @@ export const metadata: Metadata = { title: "Staff" };
 export default async function StaffPage() {
   const [{ staff, roles }, cities, me] = await Promise.all([adminApi.team(), adminApi.cities(), getSessionUser()]);
   const cityName = new Map(cities.map((c) => [c.id, c.name]));
-  const cityList = cities.map((c) => ({ id: c.id, name: c.name }));
+  const cityList = cities.map((c) => ({ id: c.id, name: c.name, state: c.state }));
   const now = new Date();
   const myPhone = me?.phone ?? "";
 
@@ -74,7 +75,7 @@ export default async function StaffPage() {
                     </TableCell>
                     <TableCell className="text-navy-700">
                       {m.staffRole?.isCityScoped ? (
-                        m.adminCityIds.map((id) => cityName.get(id) ?? id).join(", ") || "–"
+                        <span title={m.adminCityIds.map((id) => cityName.get(id) ?? id).join(", ")}>{citiesShort(m.adminCityIds, cityName) || "–"}</span>
                       ) : (
                         <span className="text-muted-foreground">All</span>
                       )}
