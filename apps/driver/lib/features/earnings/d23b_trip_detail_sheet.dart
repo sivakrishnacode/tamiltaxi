@@ -98,7 +98,8 @@ class D23bTripDetailSheet extends ConsumerWidget {
             const Divider(height: TtSpacing.l),
             _line(context, 'Subtotal', formatInr(quote.subtotal), bold: true),
             if (quote.hasPeak)
-              _line(context, 'Peak time', formatInrSigned(quote.peakCharge), tag: '${quote.multiplier.toStringAsFixed(1)}x'),
+              _line(context, quote.night ? 'Night fare' : 'Peak time', formatInrSigned(quote.peakCharge),
+                  tag: '${quote.multiplier.toStringAsFixed(1)}x'),
           ] else
             _line(context, 'Trip fare · ${formatKm(trip.distanceKm)} · ${trip.durationMin} min',
                 formatInr(trip.fare - extras)),

@@ -6,6 +6,7 @@ import 'package:tamiltaxi_driver/features/account/booking_preferences_screen.dar
 import 'package:tamiltaxi_driver/features/home/widgets/direction_panel.dart';
 import 'package:tamiltaxi_driver/state/booking_prefs.dart';
 import 'package:tamiltaxi_driver/state/driver_account.dart';
+import 'package:tamiltaxi_driver/state/rate_card.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -227,6 +228,23 @@ void main() {
     await tester.tap(find.text('Parcels'));
     await tester.pump();
     expect(find.text('₹55'), findsOneWidget, reason: 'Parcel on Auto minimum fare');
+    expect(find.text('Night fare'), findsNothing, reason: 'the demo card has no night fare');
+  });
+
+  testWidgets('Rate card: autos see the government night fare; other vehicles do not', (tester) async {
+    final card = RateCard(
+      rules: RateCard.demo.rules,
+      autoNight: const AutoNightFare(multiplier: 1.5, startHour: 22, endHour: 5),
+    );
+    await pumpRoute(tester, '/account/rate-card', overrides: [
+      driverProfileProvider.overrideWith(_AutoDriver.new),
+      rateCardProvider.overrideWith((ref) async => card),
+    ]);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Night fare'), findsOneWidget);
+    expect(find.text('1.5×'), findsOneWidget);
+    expect(find.text('Booked 10 pm to 5 am: the whole fare, instead of peak'), findsOneWidget);
+    expect(find.text('Time'), findsNothing, reason: 'the government auto fare has no time charge');
   });
 
   testWidgets('add an area, turn Go To on, then Stay In there within 8 km (Go To goes off)', (tester) async {

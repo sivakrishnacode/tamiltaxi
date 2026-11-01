@@ -41,6 +41,9 @@ export const FARE_RULES: Readonly<Record<VehicleKind, FareRule>> = {
   TRUCK: { base: 500, perKm: 70, perMin: 1.5, minFare: 1000, waitPerMin: 4, etaMin: 15, isGoods: true, capacity: 4000 },
 } as const;
 
+/** Tiers that charge the government night fare (settings `autoNightMultiplier`, fares.service.ts `nightMultiplier`). */
+export const NIGHT_FARE_KINDS: ReadonlySet<VehicleKind> = new Set<VehicleKind>(['AUTO', 'AUTO_PRIORITY', 'AUTO_PARCEL']);
+
 /**
  * The vehicles listed for a ride or a parcel in town (P-10, PP-06, "Book any"), in [FARE_RULES] order. Like Porter, the
  * truck isn't one: it goes with Packers & Movers and goods to another town (goods-modes.ts).

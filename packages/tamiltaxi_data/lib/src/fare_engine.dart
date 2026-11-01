@@ -30,6 +30,8 @@ class RouteEstimate {
 ///
 /// fare = max(minFare, (base + perKm × km + perMin × min) × multiplier), multiplier capped at 1.5.
 /// The multiplier applies to the ride only, never to the minimum-fare top-up.
+/// A night multiplier (autos at night, the Tamil Nadu government fare) multiplies the whole fare, the minimum
+/// included, and replaces the peak price when higher; it shows on the peak line with [FareQuote.night].
 /// Every line is rounded DOWN to a whole rupee and the peak line is the difference,
 /// so the breakdown always adds up exactly to the total (same as apps/api fare-engine.ts).
 abstract final class FareEngine {
@@ -90,10 +92,12 @@ abstract final class FareEngine {
   static FareQuote quote(VehicleType vehicle, RouteEstimate route, {double multiplier = currentMultiplier}) =>
       quoteRule(vehicle, vehicle.fareRule, route, multiplier: multiplier);
 
-  /// [quote] with explicit [rule] rates (per-city fares; shared fixture tests).
+  /// [quote] with explicit [rule] rates (per-city fares; shared fixture tests). [night] is the night fare multiplier
+  /// (1 = none), as the API's `nightMultiplier` gives it.
   static FareQuote quoteRule(VehicleType vehicle, FareRule rule, RouteEstimate route,
       {double multiplier = currentMultiplier,
       double cap = maxMultiplier,
+      double night = 1,
       int freeWaitMin = freeWaitMin,
       int waitMaxCharge = waitMaxCharge}) {
     final m = multiplier.clamp(1.0, math.max(1.0, cap)).toDouble();
@@ -102,9 +106,15 @@ abstract final class FareEngine {
     final timeCharge = _floor(rule.perMin * route.durationMin);
     final raw = base + distanceCharge + timeCharge;
     final surged = _floor(raw * m);
-    final topUp = math.max(0, rule.minFare - surged);
+    final dayTopUp = math.max(0, rule.minFare - surged);
+    final dayTotal = surged + dayTopUp;
+    final n = math.max(1.0, night);
+    final regular = math.max(raw, rule.minFare);
+    final nightTotal = _floor(regular * n);
+    final isNight = n > 1 && nightTotal >= dayTotal;
+    final topUp = isNight ? regular - raw : dayTopUp;
     final subtotal = raw + topUp;
-    final total = surged + topUp;
+    final total = isNight ? nightTotal : dayTotal;
     return FareQuote(
       vehicle: vehicle,
       distanceKm: route.distanceKm,
@@ -114,8 +124,9 @@ abstract final class FareEngine {
       timeCharge: timeCharge,
       minFareTopUp: topUp,
       subtotal: subtotal,
-      multiplier: m,
+      multiplier: isNight ? n : m,
       peakCharge: total - subtotal,
+      night: isNight,
       total: total,
       pickupEtaMin: vehicle.etaMin,
       freeWaitMin: freeWaitMin,

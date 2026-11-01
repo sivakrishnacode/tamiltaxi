@@ -17,6 +17,7 @@ class RateCard {
     this.waitMaxCharge = FareEngine.waitMaxCharge,
     this.maxMultiplier = FareEngine.maxMultiplier,
     this.cancellationFee,
+    this.autoNight,
     this.pricing = ModePricing.defaults,
   });
 
@@ -25,6 +26,9 @@ class RateCard {
   final int waitMaxCharge;
   final double maxMultiplier;
   final int? cancellationFee;
+
+  /// The autos' government night fare (null while off, and from older servers).
+  final AutoNightFare? autoNight;
   final ModePricing pricing;
 
   /// [kind]'s rates (built-in when the card has none for it).
@@ -55,7 +59,30 @@ class RateCard {
       waitMaxCharge: n(j['waitMaxCharge'], FareEngine.waitMaxCharge).round(),
       maxMultiplier: n(j['maxMultiplier'], FareEngine.maxMultiplier).toDouble(),
       cancellationFee: j['cancellationFee'] is num ? (j['cancellationFee'] as num).round() : null,
+      autoNight: AutoNightFare.fromJson(j['autoNight']),
       pricing: j['pricing'] is Map ? ModePricing.fromJson(j['pricing']) : ModePricing.defaults,
+    );
+  }
+}
+
+/// Autos' night fare (Tamil Nadu government fare): bookings from [startHour] to [endHour] IST pay the whole fare ×
+/// [multiplier] (API `autoNightMultiplier`, `autoNightStartHour`, `autoNightEndHour`).
+@immutable
+class AutoNightFare {
+  const AutoNightFare({required this.multiplier, required this.startHour, required this.endHour});
+
+  final double multiplier;
+  final int startHour;
+  final int endHour;
+
+  /// Null when [j] isn't a night fare that applies (missing, or a multiplier of 1 or less).
+  static AutoNightFare? fromJson(Object? j) {
+    if (j is! Map || j['multiplier'] is! num || (j['multiplier'] as num) <= 1) return null;
+    int hour(Object? v, int fallback) => v is num ? v.round() % 24 : fallback;
+    return AutoNightFare(
+      multiplier: (j['multiplier'] as num).toDouble(),
+      startHour: hour(j['startHour'], 22),
+      endHour: hour(j['endHour'], 5),
     );
   }
 }

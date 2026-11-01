@@ -12,6 +12,9 @@ function inRange(v: unknown, min: number, max: number, isInteger = false): boole
 const RULES: Record<string, (v: SettingValue) => string | null> = {
   maxMultiplier: (v) => (inRange(v, 1, 1.5) ? null : "Maximum multiplier must be 1.0–1.5"),
   currentMultiplier: (v) => (inRange(v, 1, 1.5) ? null : "Current multiplier must be 1.0–1.5"),
+  autoNightMultiplier: (v) => (inRange(v, 1, 2) ? null : "Auto night fare must be 1.0–2.0"),
+  autoNightStartHour: (v) => (inRange(v, 0, 23, true) ? null : "Auto night starts must be an hour 0–23"),
+  autoNightEndHour: (v) => (inRange(v, 0, 23, true) ? null : "Auto night ends must be an hour 0–23"),
   searchRadiusKm: (v) => (inRange(v, 0.5, 30) ? null : "Search radius must be 0.5–30 km"),
   maxSearchRadiusKm: (v) => (inRange(v, 0.5, 30) ? null : "Maximum search radius must be 0.5–30 km"),
   searchExpandSeconds: (v) => (inRange(v, 0, 600, true) ? null : "Widen over must be 0–600 whole seconds"),

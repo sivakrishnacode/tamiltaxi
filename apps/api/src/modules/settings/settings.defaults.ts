@@ -37,6 +37,14 @@ export const SETTING_DEFAULTS = {
   /** Waiting charge cap per trip, in rupees. */
   waitMaxCharge: 30,
   /**
+   * Night fare for autos (Auto, Auto Priority, Parcel on Auto), as the Tamil Nadu government fare has it (G.O. Ms. No.
+   * 366, 27 Oct 2026): booked from [autoNightStartHour]:00 to [autoNightEndHour]:00 IST (wrapping past midnight), the
+   * whole fare, the minimum included, × this. Replaces any peak price; never stacks with it. 1.0 = off; at most 2.0.
+   */
+  autoNightMultiplier: 1.5,
+  autoNightStartHour: 22,
+  autoNightEndHour: 5,
+  /**
    * Cancellation fee. Off until the owner decides the policy (rides are cash, there is no settlement between drivers).
    * On: a passenger who cancels after the driver arrived and waited the free minutes (verdict PASSENGER) owes
    * [cancellationFee] to that driver, added to their next completed ride as "Previous cancellation fee".

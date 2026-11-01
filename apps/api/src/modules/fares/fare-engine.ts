@@ -23,6 +23,8 @@ export interface RouteEstimate {
  * Itemised quote; every line is a whole rupee and they add up exactly to [total]:
  * base + distanceCharge + timeCharge + minFareTopUp = subtotal, subtotal + peakCharge + waitingCharge = total.
  * A quote has waitingCharge 0; the trip's stored fare gets it when the ride starts ([withWaitingCharge]).
+ * At night an auto's peak line is the night fare ([night] true, [multiplier] the night one), so older apps that know
+ * only "Peak time" still add up.
  */
 export interface FareQuote extends RouteEstimate {
   readonly vehicleKind: VehicleKind;
@@ -33,6 +35,8 @@ export interface FareQuote extends RouteEstimate {
   readonly subtotal: number;
   readonly multiplier: number;
   readonly peakCharge: number;
+  /** The night fare applied: [peakCharge] is the night charge and [multiplier] the night multiplier ("Night fare 1.5x"). */
+  readonly night: boolean;
   /** Waiting at the pickup past the free minutes (never surged). 0 until the ride starts. */
   readonly waitingCharge: number;
   /** The waiting terms quoted with this fare: free minutes, rupees per started minute after them, and the cap. */
@@ -96,6 +100,8 @@ export function estimateRoute(from: GeoPoint, to: GeoPoint): RouteEstimate {
  * Builds the itemised fare for one vehicle:
  * total = max(minFare, floor((base + perKm·km + perMin·min) × multiplier)), each line floored to the rupee.
  * The multiplier applies to the ride (base + distance + time) only, never to the minimum-fare top-up.
+ * [night] (autos at night, as the Tamil Nadu government fare has it) multiplies the whole fare, the minimum included:
+ * floor(max(minFare, base + distance + time) × night). It replaces the peak price when it is higher; they never stack.
  */
 export function quoteFare(params: {
   vehicleKind: VehicleKind;
@@ -107,6 +113,8 @@ export function quoteFare(params: {
   rule?: { base: number; perKm: number; perMin: number; minFare: number; waitPerMin?: number | null };
   /** Free waiting minutes and the waiting-charge cap (admin settings); defaults to [WAIT_DEFAULTS]. */
   waiting?: { freeMin: number; maxCharge: number };
+  /** Night fare multiplier for this vehicle now (fares.service.ts `nightMultiplier`); missing or 1 = none. */
+  night?: number;
 }): FareQuote {
   const { vehicleKind, route } = params;
   const rule = params.rule ?? FARE_RULES[vehicleKind];
@@ -117,9 +125,15 @@ export function quoteFare(params: {
   const timeCharge = floorRupee(rule.perMin * route.durationMin);
   const raw = rule.base + distanceCharge + timeCharge;
   const surged = floorRupee(raw * multiplier);
-  const minFareTopUp = Math.max(0, rule.minFare - surged);
+  const dayTopUp = Math.max(0, rule.minFare - surged);
+  const dayTotal = surged + dayTopUp;
+  const night = Math.max(1, params.night ?? 1);
+  const regular = Math.max(raw, rule.minFare);
+  const nightTotal = floorRupee(regular * night);
+  const isNight = night > 1 && nightTotal >= dayTotal;
+  const minFareTopUp = isNight ? regular - raw : dayTopUp;
   const subtotal = raw + minFareTopUp;
-  const total = surged + minFareTopUp;
+  const total = isNight ? nightTotal : dayTotal;
   return {
     vehicleKind,
     ...route,
@@ -128,8 +142,9 @@ export function quoteFare(params: {
     timeCharge,
     minFareTopUp,
     subtotal,
-    multiplier,
+    multiplier: isNight ? night : multiplier,
     peakCharge: total - subtotal,
+    night: isNight,
     waitingCharge: 0,
     freeWaitMin: Math.max(0, waiting.freeMin),
     waitPerMin: Math.max(0, Math.floor(rule.waitPerMin ?? FARE_RULES[vehicleKind].waitPerMin)),

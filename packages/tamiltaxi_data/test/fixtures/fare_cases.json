@@ -116,6 +116,111 @@
       }
     },
     {
+      "name": "Auto at night: 1.5× the whole fare, on the peak line",
+      "input": {
+        "vehicleKind": "AUTO",
+        "distanceKm": 4.2,
+        "durationMin": 14,
+        "multiplier": 1,
+        "night": 1.5
+      },
+      "expected": {
+        "base": 5,
+        "distanceCharge": 105,
+        "timeCharge": 0,
+        "minFareTopUp": 0,
+        "subtotal": 110,
+        "multiplier": 1.5,
+        "peakCharge": 55,
+        "night": true,
+        "total": 165
+      }
+    },
+    {
+      "name": "Auto 1 km at night: 1.5× the ₹50 minimum = ₹75",
+      "input": {
+        "vehicleKind": "AUTO",
+        "distanceKm": 1,
+        "durationMin": 3,
+        "multiplier": 1,
+        "night": 1.5
+      },
+      "expected": {
+        "base": 5,
+        "distanceCharge": 25,
+        "timeCharge": 0,
+        "minFareTopUp": 20,
+        "subtotal": 50,
+        "multiplier": 1.5,
+        "peakCharge": 25,
+        "night": true,
+        "total": 75
+      }
+    },
+    {
+      "name": "Auto at night with peak 1.2x: the night fare replaces it",
+      "input": {
+        "vehicleKind": "AUTO",
+        "distanceKm": 4.2,
+        "durationMin": 14,
+        "multiplier": 1.2,
+        "night": 1.5
+      },
+      "expected": {
+        "base": 5,
+        "distanceCharge": 105,
+        "timeCharge": 0,
+        "minFareTopUp": 0,
+        "subtotal": 110,
+        "multiplier": 1.5,
+        "peakCharge": 55,
+        "night": true,
+        "total": 165
+      }
+    },
+    {
+      "name": "Auto, peak 1.5x above a 1.2x night fare: the peak stays",
+      "input": {
+        "vehicleKind": "AUTO",
+        "distanceKm": 4.2,
+        "durationMin": 14,
+        "multiplier": 1.5,
+        "night": 1.2
+      },
+      "expected": {
+        "base": 5,
+        "distanceCharge": 105,
+        "timeCharge": 0,
+        "minFareTopUp": 0,
+        "subtotal": 110,
+        "multiplier": 1.5,
+        "peakCharge": 55,
+        "night": false,
+        "total": 165
+      }
+    },
+    {
+      "name": "Auto, night multiplier 1 = no night fare",
+      "input": {
+        "vehicleKind": "AUTO",
+        "distanceKm": 4.2,
+        "durationMin": 14,
+        "multiplier": 1,
+        "night": 1
+      },
+      "expected": {
+        "base": 5,
+        "distanceCharge": 105,
+        "timeCharge": 0,
+        "minFareTopUp": 0,
+        "subtotal": 110,
+        "multiplier": 1,
+        "peakCharge": 0,
+        "night": false,
+        "total": 110
+      }
+    },
+    {
       "name": "Cab, same route, design peak 1.1x",
       "input": {
         "vehicleKind": "CAB",

@@ -116,6 +116,8 @@ class _RateCardScreenState extends ConsumerState<RateCardScreen> {
   List<Widget> _inTown(BuildContext context, RateCard rc, VehicleKind v) {
     final r = rc.ruleFor(v);
     final t = context.type;
+    // The government night fare: autos only (the API's NIGHT_FARE_KINDS).
+    final night = const {VehicleKind.auto, VehicleKind.autoPriority, VehicleKind.autoParcel}.contains(v) ? rc.autoNight : null;
     return [
       _Section(title: 'Trip fare', lines: [
         _Line('Base fare', 'To start the trip', formatInr(r.base)),
@@ -128,6 +130,9 @@ class _RateCardScreenState extends ConsumerState<RateCardScreen> {
       _Section(title: 'Extras', lines: [
         _Line('Waiting at pickup', 'Free for ${rc.freeWaitMin} min, then per minute, up to ${formatInr(rc.waitMaxCharge)}',
             '${formatInr(r.waitPerMin)}/min'),
+        if (night != null)
+          _Line('Night fare', 'Booked ${_hour(night.startHour)} to ${_hour(night.endHour)}: the whole fare, instead of peak',
+              _x(night.multiplier)),
         _Line('Peak time', 'Busy hours and areas, shown on the request', 'Up to ${_x(rc.maxMultiplier)}'),
         const _Line('Rider’s extra', 'Riders can add ₹10–30 when nobody took the trip', 'All yours'),
         if (rc.cancellationFee != null)
@@ -185,6 +190,9 @@ class _RateCardScreenState extends ConsumerState<RateCardScreen> {
 
   /// "1.5×".
   static String _x(double m) => '${m == m.roundToDouble() ? m.toStringAsFixed(0) : m.toStringAsFixed(1)}×';
+
+  /// "10 pm", "5 am", "12 am".
+  static String _hour(int h) => '${h % 12 == 0 ? 12 : h % 12} ${h < 12 ? 'am' : 'pm'}';
 }
 
 class _Line {

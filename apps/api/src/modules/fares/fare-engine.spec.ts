@@ -6,8 +6,8 @@ import { estimateRoute, quoteFare, WAIT_DEFAULTS, waitingCharge, waitingTerms, w
 /** Shared with the Dart engine's test, so the two engines can't drift apart. */
 interface FareCase {
   readonly name: string;
-  readonly input: { vehicleKind: VehicleKind; distanceKm: number; durationMin: number; multiplier: number; maxMultiplier?: number };
-  readonly expected: Record<string, number>;
+  readonly input: { vehicleKind: VehicleKind; distanceKm: number; durationMin: number; multiplier: number; maxMultiplier?: number; night?: number };
+  readonly expected: Record<string, number | boolean>;
 }
 interface WaitingCase {
   readonly name: string;
@@ -100,6 +100,7 @@ describe('fare engine', () => {
       route: { distanceKm: input.distanceKm, durationMin: input.durationMin },
       multiplier: input.multiplier,
       maxMultiplier: input.maxMultiplier,
+      night: input.night,
     });
     expect(q).toMatchObject(expected);
   });

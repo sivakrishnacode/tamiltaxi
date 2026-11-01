@@ -7,10 +7,11 @@ import { womenAmong } from '../drivers/women-drivers.js';
 import { GeoService } from '../geo/geo.service.js';
 import { EtaService, etasByMode } from '../maps/eta.service.js';
 import { MapsService } from '../maps/maps.service.js';
+import { isNightIst } from '../safety/night-window.js';
 import type { Settings } from '../settings/settings.defaults.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { FareQuote, GeoPoint, quoteFare, type RouteEstimate } from './fare-engine.js';
-import { FARE_RULES, inTownKinds } from './fare-rules.js';
+import { FARE_RULES, inTownKinds, NIGHT_FARE_KINDS } from './fare-rules.js';
 import {
   GOODS_TRUCKS,
   goodsOutstationTerms,
@@ -77,6 +78,8 @@ export interface RateCard {
   waitMaxCharge: number;
   maxMultiplier: number;
   cancellationFee: number | null;
+  /** The autos' night fare (null while off): × multiplier from startHour to endHour IST. */
+  autoNight: { multiplier: number; startHour: number; endHour: number } | null;
   pricing: ModePricing;
 }
 
@@ -90,6 +93,16 @@ export const waitingSettings = (s: Pick<Settings, 'freeWaitMin' | 'waitMaxCharge
   freeMin: s.freeWaitMin,
   maxCharge: s.waitMaxCharge,
 });
+
+type NightSettings = Pick<Settings, 'autoNightMultiplier' | 'autoNightStartHour' | 'autoNightEndHour'>;
+
+/** The night fare multiplier (1.0–2.0) from the settings. */
+const nightOf = (s: NightSettings): number => Math.min(2, Math.max(1, s.autoNightMultiplier));
+
+/** [kind]'s night fare multiplier for a booking at [at]: the setting for autos in the night hours (IST), else 1. */
+export function nightMultiplier(kind: VehicleKind, s: NightSettings, at: Date = new Date()): number {
+  return NIGHT_FARE_KINDS.has(kind) && isNightIst(at, s.autoNightStartHour, s.autoNightEndHour) ? nightOf(s) : 1;
+}
 
 /** Nearest drivers (by straight line) whose road ETA is measured per vehicle; the fastest of them wins. */
 const ETA_SAMPLE = 3;
@@ -155,6 +168,7 @@ export class FaresService {
       waitMaxCharge: s.waitMaxCharge,
       maxMultiplier: s.maxMultiplier,
       cancellationFee: s.cancellationFeeEnabled ? s.cancellationFee : null,
+      autoNight: nightOf(s) > 1 ? { multiplier: nightOf(s), startHour: s.autoNightStartHour, endHour: s.autoNightEndHour } : null,
       pricing: await this.geo.pricing(cityId),
     };
   }
@@ -168,7 +182,7 @@ export class FaresService {
     return Promise.all(
       kinds.map(async (vehicleKind) => {
         const rule = (await this.geo.fareRule(here.cityId, vehicleKind)) ?? undefined;
-        return quoteFare({ vehicleKind, route, multiplier: here.multiplier, maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s) });
+        return quoteFare({ vehicleKind, route, multiplier: here.multiplier, maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s), night: nightMultiplier(vehicleKind, s) });
       }),
     );
   }
@@ -178,7 +192,15 @@ export class FaresService {
     const here = await this.geo.locate(params.pickup);
     const rule = (await this.geo.fareRule(here.cityId, params.vehicleKind)) ?? undefined;
     const s = await this.settings.all();
-    return quoteFare({ vehicleKind: params.vehicleKind, route: params.route, multiplier: here.multiplier, maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s) });
+    return quoteFare({
+      vehicleKind: params.vehicleKind,
+      route: params.route,
+      multiplier: here.multiplier,
+      maxMultiplier: s.maxMultiplier,
+      rule,
+      waiting: waitingSettings(s),
+      night: nightMultiplier(params.vehicleKind, s),
+    });
   }
 
   /**
@@ -190,7 +212,7 @@ export class FaresService {
     const here = await this.geo.locate(params.pickup);
     const rule = (await this.geo.fareRule(here.cityId, params.vehicleKind)) ?? undefined;
     const s = await this.settings.all();
-    return quoteFare({ vehicleKind: params.vehicleKind, route, multiplier: here.multiplier, maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s) });
+    return quoteFare({ vehicleKind: params.vehicleKind, route, multiplier: here.multiplier, maxMultiplier: s.maxMultiplier, rule, waiting: waitingSettings(s), night: nightMultiplier(params.vehicleKind, s) });
   }
 
   /**

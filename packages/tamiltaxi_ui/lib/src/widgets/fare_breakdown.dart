@@ -56,7 +56,8 @@ class FareBreakdown extends StatelessWidget {
           ),
         if (q.minFareTopUp > 0) FareLine('Minimum fare top-up', q.minFareTopUp),
         FareLine('Subtotal', q.subtotal, emphasis: true),
-        if (q.hasPeak) FareLine('Peak time', q.peakCharge, tag: '${q.multiplier.toStringAsFixed(1)}x', signed: true),
+        if (q.hasPeak)
+          FareLine(q.night ? 'Night fare' : 'Peak time', q.peakCharge, tag: '${q.multiplier.toStringAsFixed(1)}x', signed: true),
         if (q.hasWaiting) waitingLine(q),
         if (q.hasCancellationFee) cancellationFeeLine(q),
         if (q.hasExtra) extraLine(q),

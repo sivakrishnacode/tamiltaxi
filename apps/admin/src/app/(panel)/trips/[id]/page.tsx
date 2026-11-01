@@ -287,7 +287,8 @@ export default async function TripPage({ params }: PageProps<"/trips/[id]">) {
               {Number(fare.peakCharge ?? 0) !== 0 && (
                 <div className="flex justify-between">
                   <dt className="text-navy-700">
-                    Peak charge{fare.multiplier && fare.multiplier > 1 ? ` (×${fare.multiplier})` : ""}
+                    {fare.night ? "Night fare" : "Peak charge"}
+                    {fare.multiplier && fare.multiplier > 1 ? ` (×${fare.multiplier})` : ""}
                   </dt>
                   <dd className="tabular-nums">{formatInr(Number(fare.peakCharge ?? 0))}</dd>
                 </div>

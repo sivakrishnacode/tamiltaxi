@@ -49,6 +49,9 @@ const GROUPS: readonly Group[] = [
       { key: "surgeMinRequests", label: "Minimum bookings", hint: "No surge in a hexagon below this many bookings", step: "1" },
       { key: "maxMultiplier", label: "Maximum multiplier", hint: "Hard cap, surge zones included", step: "0.05", suffix: "×" },
       { key: "currentMultiplier", label: "Current multiplier", hint: "Platform-wide base multiplier (\"Peak time\")", step: "0.05", suffix: "×" },
+      { key: "autoNightMultiplier", label: "Auto night fare", hint: "Government night fare for Auto, Auto Priority and Parcel on Auto: the whole fare × this, instead of any peak (1.0 = off)", step: "0.05", suffix: "×" },
+      { key: "autoNightStartHour", label: "Auto night starts", hint: "Hour in IST, by booking time (22 = 10 pm)", step: "1", suffix: "h" },
+      { key: "autoNightEndHour", label: "Auto night ends", hint: "Hour in IST (5 = 5 am)", step: "1", suffix: "h" },
     ],
   },
   {

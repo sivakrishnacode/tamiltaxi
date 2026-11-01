@@ -393,6 +393,8 @@ export interface FareBreakdown {
   readonly subtotal: number;
   readonly multiplier?: number;
   readonly peakCharge: number;
+  /** The autos' night fare applied: [peakCharge] is the night charge and [multiplier] the night one. */
+  readonly night?: boolean;
   /** Waiting at the pickup past the free minutes (set when the ride starts; never surged). */
   readonly waitingCharge?: number;
   /** The waiting terms quoted with the fare. */
@@ -905,6 +907,10 @@ export interface Campaign {
 export interface Settings {
   readonly currentMultiplier: number;
   readonly maxMultiplier: number;
+  /** Autos' government night fare: the whole fare × this from start to end hour IST (1.0 = off). */
+  readonly autoNightMultiplier: number;
+  readonly autoNightStartHour: number;
+  readonly autoNightEndHour: number;
   readonly searchRadiusKm: number;
   /** The search widens up to this while nobody accepts. */
   readonly maxSearchRadiusKm: number;

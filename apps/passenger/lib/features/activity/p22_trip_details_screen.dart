@@ -92,7 +92,7 @@ class _Details extends StatelessWidget {
     'Base ${formatInr(q.base)} · Distance ${formatInr(q.distanceCharge)}'
         '${q.timeCharge > 0 ? ' · Time ${formatInr(q.timeCharge)}' : ''}'
         '${q.minFareTopUp > 0 ? ' · Minimum fare ${formatInr(q.minFareTopUp)}' : ''}'
-        '${q.hasPeak ? ' · Peak ${formatInr(q.peakCharge)}' : ''}'
+        '${q.hasPeak ? ' · ${q.night ? 'Night fare' : 'Peak'} ${formatInr(q.peakCharge)}' : ''}'
         '${q.hasWaiting ? ' · Waiting ${formatInr(q.waitingCharge)}' : ''}'
         '${q.hasCancellationFee ? ' · Previous cancellation fee ${formatInr(q.previousCancellationFee)}' : ''}'
         '${q.hasExtra ? ' · Extra you added ${formatInr(q.extra)}' : ''}',
@@ -359,7 +359,7 @@ class _FareTable extends StatelessWidget {
         const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: CustomPaint(painter: _DashPainter(), size: Size(double.infinity, 1))),
         row('Subtotal', formatInr(quote.subtotal), bold: true),
         if (quote.hasPeak)
-          row('Peak time', formatInrSigned(quote.peakCharge),
+          row(quote.night ? 'Night fare' : 'Peak time', formatInrSigned(quote.peakCharge),
               tag: pill('${quote.multiplier.toStringAsFixed(1)}x', TtColors.warningTint, TtColors.warningText))
         else if (quote.peakCharge != 0)
           row('Adjustment', formatInrSigned(quote.peakCharge)),

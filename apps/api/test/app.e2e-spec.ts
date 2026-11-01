@@ -20,6 +20,7 @@ import { cellAt } from '../src/modules/geo/h3.util.js';
 import { haversineMeters } from '../src/modules/fares/fare-engine.js';
 import { DriverLocationService } from '../src/modules/drivers/driver-location.service.js';
 import { DiditClient } from '../src/modules/kyc/didit.client.js';
+import { istHourOf } from '../src/modules/safety/night-window.js';
 import type { DiditDecision } from '../src/modules/kyc/didit.js';
 
 const GANDHIPURAM = { lat: 11.0183, lng: 76.9725, placeId: 'gandhipuram', name: 'Gandhipuram Central Bus Stand' };
@@ -92,9 +93,12 @@ describe('Tamil Taxi API (e2e)', () => {
     if (keys.length) await redis.del(...keys);
     http = request(app.getHttpServer());
     quoter = { Authorization: `Bearer ${await login()}` };
+    // Fares that don't depend on the hour: the autos' night fare is off except in its own test.
+    await app.get(SettingsService).update({ autoNightMultiplier: 1 });
   });
 
   afterAll(async () => {
+    await app.get(SettingsService).update({ autoNightMultiplier: 1.5 });
     await app.close();
   });
 
@@ -143,6 +147,29 @@ describe('Tamil Taxi API (e2e)', () => {
     // Bike, Scooty, Auto, Auto Priority, Mini, Sedan, SUV.
     expect(res.body.quotes.map((q: { vehicleKind: string }) => q.vehicleKind)).toEqual(['BIKE', 'SCOOTY', 'AUTO', 'AUTO_PRIORITY', 'CAB', 'SEDAN', 'SUV']);
     expect(res.body.quotes.map((q: { total: number }) => q.total)).toEqual([35, 39, 110, 132, 132, 158, 210]);
+  });
+
+  it('charges autos the government night fare (1.5x, the whole fare) in the night hours only', async () => {
+    const settings = app.get(SettingsService);
+    // A night window that covers now (two hours, so the hour can turn mid-test).
+    const hour = istHourOf(new Date());
+    await settings.update({ autoNightMultiplier: 1.5, autoNightStartHour: hour, autoNightEndHour: (hour + 2) % 24 });
+    try {
+      const res = await http.post('/v1/fares/quote').set(quoter).send({ pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(200);
+      const by = Object.fromEntries(res.body.quotes.map((q: { vehicleKind: string }) => [q.vehicleKind, q]));
+      expect(by.AUTO).toMatchObject({ subtotal: 110, multiplier: 1.5, peakCharge: 55, night: true, total: 165 });
+      expect(by.AUTO_PRIORITY).toMatchObject({ night: true, total: 198 });
+      expect(by.BIKE).toMatchObject({ night: false, total: 35 });
+      expect(by.CAB).toMatchObject({ night: false, total: 132 });
+      const card = (await http.get('/v1/fares/rate-card').set(quoter).expect(200)).body;
+      expect(card.autoNight).toEqual({ multiplier: 1.5, startHour: hour, endHour: (hour + 2) % 24 });
+      // Outside the window: the day fare.
+      await settings.update({ autoNightStartHour: (hour + 2) % 24, autoNightEndHour: (hour + 4) % 24 });
+      const day = await http.post('/v1/fares/quote').set(quoter).send({ pickup: GANDHIPURAM, drop: BROOKEFIELDS }).expect(200);
+      expect(day.body.quotes.find((q: { vehicleKind: string }) => q.vehicleKind === 'AUTO')).toMatchObject({ night: false, total: 110 });
+    } finally {
+      await settings.update({ autoNightMultiplier: 1, autoNightStartHour: 22, autoNightEndHour: 5 });
+    }
   });
 
   it('runs a bike ride end to end', async () => {

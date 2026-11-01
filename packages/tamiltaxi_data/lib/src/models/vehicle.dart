@@ -153,6 +153,7 @@ class VehicleType {
 
 /// A fully itemised fare. Every line is a whole rupee and the lines add up exactly to [total]:
 /// subtotal + peakCharge + waitingCharge + previousCancellationFee + extra = total.
+/// At night an auto's peak line is its night fare ([night]; "Night fare 1.5x").
 @immutable
 class FareQuote {
   const FareQuote({
@@ -166,6 +167,7 @@ class FareQuote {
     required this.multiplier,
     required this.peakCharge,
     required this.total,
+    this.night = false,
     this.minFareTopUp = 0,
     this.pickupEtaMin,
     this.travelMin,
@@ -209,6 +211,9 @@ class FareQuote {
   final double multiplier;
   final int peakCharge;
   final int total;
+
+  /// The night fare applied (autos, 10 pm–5 am): [peakCharge] is the night charge, [multiplier] the night one.
+  final bool night;
 
   /// Vehicle list only: minutes until the nearest free driver of this vehicle reaches the pickup
   /// (live: measured by the server; null = nobody near right now).
@@ -258,6 +263,7 @@ class FareQuote {
     double? multiplier,
     int? peakCharge,
     int? total,
+    bool? night,
     int? pickupEtaMin,
     int? travelMin,
     int? waitingCharge,
@@ -282,6 +288,7 @@ class FareQuote {
         multiplier: multiplier ?? this.multiplier,
         peakCharge: peakCharge ?? this.peakCharge,
         total: total ?? this.total,
+        night: night ?? this.night,
         pickupEtaMin: pickupEtaMin ?? this.pickupEtaMin,
         travelMin: travelMin ?? this.travelMin,
         waitingCharge: waitingCharge ?? this.waitingCharge,

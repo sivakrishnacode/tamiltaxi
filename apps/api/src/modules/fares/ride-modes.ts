@@ -161,6 +161,7 @@ export function modeQuote(kind: VehicleKind, terms: ModeTerms, plan: { distanceK
     subtotal: total,
     multiplier: 1,
     peakCharge: 0,
+    night: false,
     waitingCharge: 0,
     freeWaitMin: 0,
     waitPerMin: 0,

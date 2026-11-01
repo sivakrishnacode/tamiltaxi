@@ -104,6 +104,7 @@ FareQuote quoteFromJson(Json j) => FareQuote(
       multiplier: _d(j['multiplier'], 1),
       peakCharge: _i(j['peakCharge']),
       total: _i(j['total']),
+      night: j['night'] == true,
       pickupEtaMin: j['pickupEtaMin'] is num ? _i(j['pickupEtaMin']) : null,
       // Older servers (and fares stored before it) have no travelMin: the apps show durationMin.
       travelMin: j['travelMin'] is num ? _i(j['travelMin']) : null,

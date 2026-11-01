@@ -87,6 +87,7 @@ void main() {
           RouteEstimate(distanceKm: (input['distanceKm'] as num).toDouble(), durationMin: input['durationMin'] as int),
           multiplier: (input['multiplier'] as num).toDouble(),
           cap: (input['maxMultiplier'] as num?)?.toDouble() ?? FareEngine.maxMultiplier,
+          night: (input['night'] as num?)?.toDouble() ?? 1,
         );
         expect({
           'base': q.base,
@@ -96,6 +97,7 @@ void main() {
           'subtotal': q.subtotal,
           'multiplier': q.multiplier,
           'peakCharge': q.peakCharge,
+          if (expected.containsKey('night')) 'night': q.night,
           'total': q.total,
         }, expected);
       });
@@ -156,6 +158,25 @@ void main() {
       expect([fee.previousCancellationFee, fee.hasCancellationFee], [10, true]);
       final old = quoteFromJson({'vehicleKind': 'CAB', 'total': 132});
       expect([old.waitingCharge, old.freeWaitMin, old.waitPerMin, old.waitMaxCharge, old.hasWaiting], [0, 3, 2, 30, false]);
+    });
+  });
+
+  group('Night fare (autos, Tamil Nadu government fare)', () {
+    test("an auto's night quote from the API puts the night fare on the peak line", () {
+      final q = quoteFromJson(
+          {'vehicleKind': 'AUTO', 'subtotal': 110, 'multiplier': 1.5, 'peakCharge': 55, 'night': true, 'total': 165});
+      expect([q.night, q.hasPeak, q.subtotal + q.peakCharge], [true, true, q.total]);
+      expect(quoteFromJson({'vehicleKind': 'AUTO', 'total': 110}).night, isFalse);
+    });
+
+    test('the rate card carries it; off or missing is null', () {
+      final card = RateCard.fromJson({
+        'rules': <String, dynamic>{},
+        'autoNight': {'multiplier': 1.5, 'startHour': 22, 'endHour': 5},
+      });
+      expect([card.autoNight?.multiplier, card.autoNight?.startHour, card.autoNight?.endHour], [1.5, 22, 5]);
+      expect(RateCard.fromJson({'rules': <String, dynamic>{}}).autoNight, isNull);
+      expect(RateCard.fromJson({'rules': <String, dynamic>{}, 'autoNight': {'multiplier': 1}}).autoNight, isNull);
     });
   });
 }
