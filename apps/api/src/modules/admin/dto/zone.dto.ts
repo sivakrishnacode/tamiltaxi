@@ -80,6 +80,13 @@ export class CreateZoneDto {
   @IsOptional()
   @IsBoolean()
   nudgeDrivers?: boolean;
+
+  /** PICKUP_POINT: where riders and drivers meet, e.g. "Gate 2, P1 parking"; null clears it. */
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @IsString()
+  @Length(3, 80)
+  meetingPoint?: string | null;
 }
 
 /** PATCH /admin/zones/:id body. */
@@ -167,6 +174,13 @@ export class UpdateZoneDto {
   @IsOptional()
   @IsBoolean()
   nudgeDrivers?: boolean;
+
+  /** PICKUP_POINT: where riders and drivers meet, e.g. "Gate 2, P1 parking"; null clears it. */
+  @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
+  @IsString()
+  @Length(3, 80)
+  meetingPoint?: string | null;
 }
 
 /** POST /admin/cities/:id/surge-now body: a surge for the next [hours], over the city or one zone's cells. */

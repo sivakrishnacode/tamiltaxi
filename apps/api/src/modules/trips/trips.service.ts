@@ -102,6 +102,12 @@ function checkNoShowWait(trip: Trip, now = Date.now()): void {
 const hideOtp = <T extends Trip>(trip: T): T => ({ ...trip, otp: '' });
 
 /** Rides and parcels: booking, the status lifecycle, cancel and rating. */
+/** "Meet at Gate 2, P1 parking" when the pickup is in a live pickup-point zone with a meeting spot. */
+export function meetingLandmark(zones: readonly { kind: string; meetingPoint: string | null }[]): string | null {
+  const spot = zones.find((z) => z.kind === 'PICKUP_POINT' && z.meetingPoint?.trim())?.meetingPoint?.trim();
+  return spot ? `Meet at ${spot}` : null;
+}
+
 @Injectable()
 export class TripsService {
   private readonly logger = new Logger(TripsService.name);
@@ -239,7 +245,8 @@ export class TripsService {
         searchFrom: now,
         pickupName: dto.pickup.name ?? 'Pinned location',
         pickupAddr: dto.pickup.address ?? '',
-        pickupLandmark: dto.pickupLandmark?.trim() || null,
+        // A pickup point's meeting spot ("Meet at Gate 2, P1 parking") comes before the app's landmark.
+        pickupLandmark: meetingLandmark(from.zones) ?? (dto.pickupLandmark?.trim() || null),
         pickupLat: dto.pickup.lat,
         pickupLng: dto.pickup.lng,
         dropName: drop.name ?? 'Pinned location',

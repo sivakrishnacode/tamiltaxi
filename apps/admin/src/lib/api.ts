@@ -229,6 +229,7 @@ export interface ZoneInput {
   readonly blockPickups?: boolean;
   readonly blockDrops?: boolean;
   readonly nudgeDrivers?: boolean;
+  readonly meetingPoint?: string | null;
 }
 
 export interface FareInput {

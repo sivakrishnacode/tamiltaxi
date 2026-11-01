@@ -735,6 +735,8 @@ export interface Zone {
   readonly blockDrops: boolean;
   /** DEMAND / SURGE: push the city's offline drivers when riders there go unserved. */
   readonly nudgeDrivers: boolean;
+  /** PICKUP_POINT: where riders and drivers meet ("Gate 2, P1 parking"). */
+  readonly meetingPoint: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

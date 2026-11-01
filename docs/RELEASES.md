@@ -135,6 +135,8 @@ Staging runs `96499af` (API and admin). Waiting to go out:
   a few hours that ends by itself and can tell the city's drivers). The apps get only the zones live now.
 - **Busy-zone nudges** (migration `zone_nudges`): a demand or surge zone can push the city's offline drivers when its
   riders go unserved (2 in 15 minutes, hardly any driver free; daytime, a driver at most once an hour).
+- Pickup points get a **meeting spot** (migration `zone_meeting_point`): bookings picked up inside show the driver
+  "Meet at Gate 2, P1 parking".
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

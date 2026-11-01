@@ -786,6 +786,8 @@ model Zone {
   blockDrops      Boolean  @default(true)
   /// DEMAND / SURGE: when riders there go unserved, push the city's offline drivers (automations/zone-nudges.service.ts).
   nudgeDrivers    Boolean  @default(false)
+  /// PICKUP_POINT: where riders and drivers meet ("Gate 2, P1 parking"); a pickup inside shows the driver "Meet at …".
+  meetingPoint    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   city            City     @relation(fields: [cityId], references: [id], onDelete: Cascade)

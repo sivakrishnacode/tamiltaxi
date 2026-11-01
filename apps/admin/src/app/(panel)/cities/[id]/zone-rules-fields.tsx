@@ -20,6 +20,7 @@ export interface RulesDraft {
   blockPickups: boolean;
   blockDrops: boolean;
   nudgeDrivers: boolean;
+  meetingPoint: string;
 }
 
 /** ISO → "2026-11-12T18:30" in the browser's time (India for our admins). */
@@ -42,6 +43,7 @@ export function rulesDraftOf(z?: Zone): RulesDraft {
     blockPickups: z?.blockPickups ?? true,
     blockDrops: z?.blockDrops ?? true,
     nudgeDrivers: z?.nudgeDrivers ?? false,
+    meetingPoint: z?.meetingPoint ?? "",
   };
 }
 
@@ -55,6 +57,8 @@ export function rulesError(r: RulesDraft, kind: ZoneKind): string | null {
   }
   if (r.startsAt && r.endsAt && new Date(r.endsAt) <= new Date(r.startsAt)) return "The end must be after the start";
   if (kind === "NO_SERVICE" && !r.blockPickups && !r.blockDrops) return "Stop pickups, drops or both";
+  const spot = r.meetingPoint.trim();
+  if (kind === "PICKUP_POINT" && spot && (spot.length < 3 || spot.length > 80)) return "The meeting spot is 3–80 characters";
   return null;
 }
 
@@ -70,6 +74,7 @@ export function rulesPayload(r: RulesDraft, kind: ZoneKind) {
     blockPickups: kind === "NO_SERVICE" ? r.blockPickups : true,
     blockDrops: kind === "NO_SERVICE" ? r.blockDrops : true,
     nudgeDrivers: (kind === "DEMAND" || kind === "SURGE") && r.nudgeDrivers,
+    meetingPoint: kind === "PICKUP_POINT" ? r.meetingPoint.trim() || null : null,
   };
 }
 
@@ -156,6 +161,20 @@ export function ZoneRulesFields({ kind, value, onChange }: { kind: ZoneKind; val
           </div>
           <p className="text-xs text-muted-foreground">None picked = every vehicle. Autos charge the government fare: leave them out to keep it.</p>
         </fieldset>
+      )}
+
+      {kind === "PICKUP_POINT" && (
+        <div className="grid gap-1.5">
+          <Label htmlFor="zone-meet">Meeting spot</Label>
+          <Input
+            id="zone-meet"
+            value={value.meetingPoint}
+            maxLength={80}
+            placeholder="e.g. Gate 2, P1 parking"
+            onChange={(e) => set({ meetingPoint: e.target.value })}
+          />
+          <p className="text-xs text-muted-foreground">Drivers see “Meet at …” for every pickup inside, instead of the nearest landmark.</p>
+        </div>
       )}
 
       {(kind === "DEMAND" || kind === "SURGE") && (

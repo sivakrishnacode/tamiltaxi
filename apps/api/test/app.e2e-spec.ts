@@ -2021,7 +2021,13 @@ describe('Tamil Taxi API (e2e)', () => {
       await zone({ name: 'Taxi stand', kind: 'NO_SERVICE', cells: [cellB], blockPickups: true, blockDrops: false }).expect(201);
       expect(await check(cellB)).toMatchObject({ isServiceable: false, canDrop: true });
       await http.post('/v1/trips').set(rider).send({ kind: 'RIDE', vehicleKind: 'CAB', pickup: at(cellB), drop: at(cellA) }).expect(400);
-      const trip = (await http.post('/v1/trips').set(rider).send({ kind: 'RIDE', vehicleKind: 'CAB', pickup: at(cellA), drop: at(cellB) }).expect(201)).body as { id: string };
+      // A pickup point's meeting spot reaches the driver as the pickup landmark.
+      await zone({ name: 'Station', kind: 'PICKUP_POINT', meetingPoint: 'Gate 2, P1 parking' }).expect(201);
+      const trip = (await http.post('/v1/trips').set(rider).send({ kind: 'RIDE', vehicleKind: 'CAB', pickup: at(cellA), drop: at(cellB) }).expect(201)).body as {
+        id: string;
+        pickupLandmark: string | null;
+      };
+      expect(trip.pickupLandmark).toBe('Meet at Gate 2, P1 parking');
       await http.post(`/v1/trips/${trip.id}/cancel`).set(rider).send({ code: 'CHANGED_MIND' }).expect(200);
 
       // Surge now: cabs, 2 hours, and the city's cab drivers hear about it.
