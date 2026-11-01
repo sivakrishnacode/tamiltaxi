@@ -109,9 +109,15 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Staging runs `56f879c` (API and admin). Waiting to go out:
+Nothing yet: staging runs `2fb594b` (admin) and `56f879c` (API).
 
-- Team: picking a city-limited person's cities scales to hundreds of cities: a search over city and state names,
+### 1 Nov 2026 (fourth) · admin at `2fb594b`
+
+Release: `staging-2026-11-01.4` at `2fb594b`
+
+Admin only (no API or database change).
+
+- `2fb594b` Team: picking a city-limited person's cities scales to hundreds of cities: a search over city and state names,
   results grouped by state with "Pick all", the picked ones as removable chips and a count; the Staff table shows the
   first three cities and "+N more".
 
