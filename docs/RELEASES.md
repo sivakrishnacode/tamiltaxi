@@ -39,6 +39,10 @@ pre-releases on GitHub.
   showing the vehicle and helpers; items go in one line ("2 chairs", "Fridge - single door").
 - `33d87de` Packers & Movers step 3 cleaned up: the 7 days in one row (weekends +10%), vehicle and packing as simple
   lists, no rows running off the screen; "Pickup truck" instead of "Pickup" in the move's text and price lines.
+- `bad701e` Autos at the Tamil Nadu government fare (₹50 for 1.8 km, then ₹25 a km; Auto Priority 1.2× that;
+  Parcel on Auto ₹55 minimum): the in-app rates, so P-11 shows "× ₹25"; no "Time charge ₹0" line on P-11 / P-22.
+- `1840740` Autos' night fare (10 pm–5 am, 1.5×) is labelled "Night fare" on P-11, P-22 and the receipt (0.1.0 shows
+  it as "Peak time 1.5x").
 
 ### 0.1.0 (code 1) · 16 Oct 2026
 
@@ -62,6 +66,10 @@ Release: `passenger-v0.1.0+1` at `42008b6`
   `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission (see [driver.md](play-store/driver.md), "Other permissions").
 - `7a6adce` Scooter drivers get Scooty parcels (up to 20 kg): Services and the Rate card say so. Truck drivers: no
   parcels in town; Services shows "Big loads" (Packers & Movers and goods to another town).
+- `bad701e` Auto rates at the Tamil Nadu government fare in the app; the Rate card and D-23b trip details show no ₹0
+  time charge.
+- `1840740` Rate card: auto tabs show the government night fare (booked 10 pm to 5 am, 1.5×); D-23b says
+  "Night fare" for it.
 
 ### 0.1.0 (code 1) · 16 Oct 2026
 
@@ -106,6 +114,12 @@ API and admin changes committed since the last deploy (staging runs `824a1c1` / 
   migration `20261018060000_scooty_parcel`), no `TRUCK` in parcel quotes, "Book any" or the parcel map, and a truck
   parcel in town is refused. Admin: "Parcel on Scooty" label and map colour. The Play rider 0.1.0 hides the new
   Scooty quote (unknown tier) and stops showing Truck once this is deployed.
+- `bad701e` Autos charge the Tamil Nadu government fare (G.O. Ms. No. 366, 27 Oct 2026): Auto ₹50 for 1.8 km, then
+  ₹25 a km, no time charge; Auto Priority 1.2× that; Parcel on Auto the same with a ₹55 minimum. After deploying,
+  check admin City › Fares: a city's own Auto rows override these.
+- `1840740` Autos' night fare: booked 10 pm–5 am IST, the whole fare × 1.5 instead of any peak (settings
+  `autoNightMultiplier` / `autoNightStartHour` / `autoNightEndHour`, admin Settings › Pricing & surge; 1.0 = off);
+  `night: true` on the fare, `autoNight` on `GET /fares/rate-card`; admin trip page says "Night fare".
 
 ### 16 Oct 2026 · API at `824a1c1`
 
