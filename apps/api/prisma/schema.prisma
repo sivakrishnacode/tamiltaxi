@@ -784,6 +784,8 @@ model Zone {
   /// NO_SERVICE: whether it stops pickups, drops or both (e.g. no pickups next to a taxi stand).
   blockPickups    Boolean  @default(true)
   blockDrops      Boolean  @default(true)
+  /// DEMAND / SURGE: when riders there go unserved, push the city's offline drivers (automations/zone-nudges.service.ts).
+  nudgeDrivers    Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   city            City     @relation(fields: [cityId], references: [id], onDelete: Cascade)

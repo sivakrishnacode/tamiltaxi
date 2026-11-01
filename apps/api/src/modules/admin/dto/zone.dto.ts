@@ -75,6 +75,11 @@ export class CreateZoneDto {
   @IsOptional()
   @IsBoolean()
   blockDrops?: boolean;
+
+  /** DEMAND / SURGE: push the city's offline drivers when riders there go unserved. */
+  @IsOptional()
+  @IsBoolean()
+  nudgeDrivers?: boolean;
 }
 
 /** PATCH /admin/zones/:id body. */
@@ -157,6 +162,11 @@ export class UpdateZoneDto {
   @IsOptional()
   @IsBoolean()
   blockDrops?: boolean;
+
+  /** DEMAND / SURGE: push the city's offline drivers when riders there go unserved. */
+  @IsOptional()
+  @IsBoolean()
+  nudgeDrivers?: boolean;
 }
 
 /** POST /admin/cities/:id/surge-now body: a surge for the next [hours], over the city or one zone's cells. */

@@ -133,6 +133,8 @@ Staging runs `96499af` (API and admin). Waiting to go out:
 - **Zone rules** (migration `zone_rules`): zones on set days and hours or between two dates, surge for chosen
   vehicles only, no-service zones that stop only pickups or only drops, and **Surge now** (rain or a rush: a surge for
   a few hours that ends by itself and can tell the city's drivers). The apps get only the zones live now.
+- **Busy-zone nudges** (migration `zone_nudges`): a demand or surge zone can push the city's offline drivers when its
+  riders go unserved (2 in 15 minutes, hardly any driver free; daytime, a driver at most once an hour).
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

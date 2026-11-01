@@ -14,6 +14,7 @@ import { RedisService } from '../src/core/redis/redis.service.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
 import { UsageService } from '../src/core/usage/usage.service.js';
 import { NotifierService } from '../src/modules/notifications/notifier.service.js';
+import { ZoneNudgesService } from '../src/modules/automations/zone-nudges.service.js';
 import { SettingsService } from '../src/modules/settings/settings.service.js';
 import { DriverBlocksService } from '../src/modules/trips/driver-blocks.service.js';
 import { TripsService } from '../src/modules/trips/trips.service.js';
@@ -2042,6 +2043,49 @@ describe('Tamil Taxi API (e2e)', () => {
         await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${token}`).expect(200);
       }
     } finally {
+      await http.delete(`/v1/admin/cities/${id}`).set(admin).expect(204);
+    }
+  });
+
+  it("nudges a busy zone's city drivers who are offline: once per zone and driver, never in quiet hours", async () => {
+    const admin = await adminAuth();
+    const id = `nudge-${Date.now()}`;
+    const city = (await http.post('/v1/admin/cities').set(admin).send({ id, name: 'Nudge town', state: 'Tamil Nadu', centerLat: 11.1085, centerLng: 77.3411, radiusKm: 2 }).expect(201)).body as {
+      serviceCells: string[];
+    };
+    const cell = city.serviceCells[0];
+    const zone = (await http.post(`/v1/admin/cities/${id}/zones`).set(admin).send({ name: 'Bus stand', kind: 'DEMAND', cells: [cell], nudgeDrivers: true }).expect(201)).body as { id: string };
+    const token = await onlineDriver('CAB', { lat: 11.3, lng: 77.5 });
+    const driverId = (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${token}`).expect(200)).body.id as string;
+    await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${token}`).expect(200);
+    await prisma.driver.update({ where: { id: driverId }, data: { cityId: id } });
+    const passengerId = (await prisma.driver.findUniqueOrThrow({ where: { id: driverId }, select: { userId: true } })).userId;
+    // Noon IST today; two riders went unserved there 5 minutes before.
+    const noon = new Date(`${new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)}T12:00:00+05:30`);
+    const at = new Date(noon.getTime() - 5 * 60_000);
+    const [lat, lng] = cellToLatLng(cell);
+    const trip = { kind: 'RIDE' as const, vehicleKind: 'CAB' as const, passengerId, fare: {}, fareTotal: 100, otp: '1234', pickupName: 'A', pickupAddr: '', pickupLat: lat, pickupLng: lng, pickupCell: cell, dropName: 'B', dropAddr: '', dropLat: lat, dropLng: lng, distanceKm: 3, durationMin: 10, createdAt: at, searchFrom: at, status: 'NO_DRIVERS' as const };
+    const ids = [(await prisma.trip.create({ data: trip })).id];
+    const nudges = app.get(ZoneNudgesService);
+    const pushes = vi.spyOn(app.get(NotifierService), 'driverAccount');
+    const mine = () => pushes.mock.calls.filter(([p]) => p.driverId === driverId).map(([p]) => p);
+    try {
+      // One unserved rider isn't busy yet.
+      await nudges.scan(noon);
+      expect(mine()).toEqual([]);
+      ids.push((await prisma.trip.create({ data: trip })).id);
+      // Quiet hours (night) send nothing.
+      await nudges.scan(new Date(noon.getTime() + 11 * 3_600_000));
+      expect(mine()).toEqual([]);
+      await nudges.scan(noon);
+      expect(mine()).toEqual([expect.objectContaining({ kind: 'zone_busy', title: 'Riders are waiting: Bus stand' })]);
+      // Cooldowns: no second push.
+      await nudges.scan(noon);
+      expect(mine()).toHaveLength(1);
+    } finally {
+      pushes.mockRestore();
+      await prisma.trip.deleteMany({ where: { id: { in: ids } } });
+      await http.delete(`/v1/admin/zones/${zone.id}`).set(admin).expect(204);
       await http.delete(`/v1/admin/cities/${id}`).set(admin).expect(204);
     }
   });

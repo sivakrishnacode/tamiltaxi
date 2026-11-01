@@ -228,6 +228,7 @@ export interface ZoneInput {
   readonly vehicleKinds?: VehicleKind[];
   readonly blockPickups?: boolean;
   readonly blockDrops?: boolean;
+  readonly nudgeDrivers?: boolean;
 }
 
 export interface FareInput {

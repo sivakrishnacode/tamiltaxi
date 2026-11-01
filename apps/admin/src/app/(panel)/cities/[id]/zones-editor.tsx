@@ -107,6 +107,7 @@ function ZoneRulesLine({ cityId, zone }: { cityId: string; zone: Zone }) {
   const extras = [
     zone.kind === "SURGE" && zone.vehicleKinds.length ? zone.vehicleKinds.map(vehicleLabel).join(", ") : null,
     zone.kind === "NO_SERVICE" && !(zone.blockPickups && zone.blockDrops) ? (zone.blockPickups ? "No pickups" : "No drops") : null,
+    zone.nudgeDrivers ? "Nudges drivers" : null,
   ].filter(Boolean);
   const canEnd = !!zone.endsAt && zoneState(zone) === "live";
   return (

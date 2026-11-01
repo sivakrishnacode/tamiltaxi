@@ -733,6 +733,8 @@ export interface Zone {
   /** NO_SERVICE: stops pickups / drops. */
   readonly blockPickups: boolean;
   readonly blockDrops: boolean;
+  /** DEMAND / SURGE: push the city's offline drivers when riders there go unserved. */
+  readonly nudgeDrivers: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

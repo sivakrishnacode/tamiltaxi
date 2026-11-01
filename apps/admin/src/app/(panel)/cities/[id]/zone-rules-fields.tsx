@@ -19,6 +19,7 @@ export interface RulesDraft {
   vehicleKinds: VehicleKind[];
   blockPickups: boolean;
   blockDrops: boolean;
+  nudgeDrivers: boolean;
 }
 
 /** ISO → "2026-11-12T18:30" in the browser's time (India for our admins). */
@@ -40,6 +41,7 @@ export function rulesDraftOf(z?: Zone): RulesDraft {
     vehicleKinds: [...(z?.vehicleKinds ?? [])],
     blockPickups: z?.blockPickups ?? true,
     blockDrops: z?.blockDrops ?? true,
+    nudgeDrivers: z?.nudgeDrivers ?? false,
   };
 }
 
@@ -67,6 +69,7 @@ export function rulesPayload(r: RulesDraft, kind: ZoneKind) {
     vehicleKinds: kind === "SURGE" ? r.vehicleKinds : [],
     blockPickups: kind === "NO_SERVICE" ? r.blockPickups : true,
     blockDrops: kind === "NO_SERVICE" ? r.blockDrops : true,
+    nudgeDrivers: (kind === "DEMAND" || kind === "SURGE") && r.nudgeDrivers,
   };
 }
 
@@ -153,6 +156,19 @@ export function ZoneRulesFields({ kind, value, onChange }: { kind: ZoneKind; val
           </div>
           <p className="text-xs text-muted-foreground">None picked = every vehicle. Autos charge the government fare: leave them out to keep it.</p>
         </fieldset>
+      )}
+
+      {(kind === "DEMAND" || kind === "SURGE") && (
+        <label className="flex items-center justify-between gap-3 border-t pt-3">
+          <span>
+            <span className="block text-sm font-medium text-navy-900">Nudge drivers when it&apos;s busy</span>
+            <span className="block text-xs text-muted-foreground">
+              When 2 or more riders here go unserved in 15 minutes and hardly any driver is free, the city&apos;s offline drivers
+              get a push. Daytime only; a driver at most once an hour.
+            </span>
+          </span>
+          <Switch checked={value.nudgeDrivers} onCheckedChange={(on) => set({ nudgeDrivers: on })} aria-label="Nudge drivers when it's busy" />
+        </label>
       )}
 
       {kind === "NO_SERVICE" && (
