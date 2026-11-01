@@ -4,6 +4,7 @@ import { assertCityAccess, isOwner } from '../../core/auth/admin-access.js';
 import type { AuthUser } from '../../core/auth/auth-user.js';
 import { CurrentUser } from '../../core/auth/current-user.decorator.js';
 import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
+import { AnyStaff, NeedsArea } from '../../core/auth/permissions.js';
 import type { City, CityFareRule, Zone } from '../../generated/prisma/client.js';
 import { Role, VehicleKind } from '../../generated/prisma/enums.js';
 import { AdminCitiesService, type CityPricing } from './admin-cities.service.js';
@@ -19,6 +20,7 @@ import { CreateZoneDto, SurgeNowDto, UpdateZoneDto } from './dto/zone.dto.js';
  * admin (support with assigned cities) only theirs, and only owners add, delete or switch cities on and off.
  */
 @Roles(Role.ADMIN)
+@NeedsArea('cities')
 @UseInterceptors(AuditInterceptor)
 @Controller('admin')
 export class AdminCitiesController {
@@ -28,6 +30,7 @@ export class AdminCitiesController {
   ) {}
 
   @Get('cities')
+  @AnyStaff()
   list(): Promise<City[]> {
     return this.cities.cities();
   }

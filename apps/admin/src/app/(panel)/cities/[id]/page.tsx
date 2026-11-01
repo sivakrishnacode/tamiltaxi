@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { canManageCity, isOwner } from "@/lib/access";
+import { getAccess } from "@/lib/access-server";
 import { adminApi } from "@/lib/api";
 import { formatCount, humanize, vehicleLabel } from "@/lib/format";
 import { pageSizeParam, param, parsePage, parsePageSize, withQuery } from "@/lib/paging";
-import { getSessionUser } from "@/lib/session";
 import { DRIVER_STATUSES, DRIVER_VEHICLE_KINDS, type AreaStats, type CityDetail, type DriverStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { cellsToKm2 } from "@/lib/validation";
@@ -249,7 +249,7 @@ export default async function CityPage({ params, searchParams }: PageProps<"/cit
   // Only what the open tab shows.
   const [city, me, stats, fares, pricing] = await Promise.all([
     adminApi.city(id),
-    getSessionUser(),
+    getAccess(),
     tab === "overview" || tab === "zones" ? adminApi.cityStats(id).catch(() => null) : null,
     tab === "fares" ? adminApi.fares(id) : null,
     tab === "pricing" ? adminApi.pricing(id) : null,

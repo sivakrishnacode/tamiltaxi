@@ -282,12 +282,50 @@ export async function setUserRole(userId: string, role: Role): Promise<ActionRes
   return plain(res);
 }
 
-/** An admin's level and, for support, the cities they set up (owner admins only; the API checks). Audited. */
-export async function setAdminAccess(userId: string, level: "OWNER" | "SUPPORT", cityIds: string[]): Promise<ActionResult> {
-  if (level !== "OWNER" && level !== "SUPPORT") return { ok: false, error: "Unknown level" };
-  const cities = level === "SUPPORT" ? [...new Set(cityIds)] : [];
-  const message = level === "OWNER" ? "Now an owner admin" : cities.length ? "Now a city admin" : "Now a support admin";
-  return plain(await run(() => adminApi.updateUser(userId, { adminLevel: level, adminCityIds: cities }), message, [`/users/${userId}`, "/users"]));
+const STAFF_PHONE = /^(\+91)?[6-9]\d{9}$/;
+
+/** Team › Staff: someone joins by phone (their account is made if they have none). Owners only (the API checks). */
+export async function addStaff(input: { phone: string; name: string; level: "OWNER" | "SUPPORT"; roleId: string | null; cityIds: string[] }): Promise<ActionResult> {
+  const phone = input.phone.replace(/[\s-]/g, "");
+  if (!STAFF_PHONE.test(phone)) return { ok: false, error: "Enter a 10-digit mobile number" };
+  if (input.level === "SUPPORT" && !input.roleId) return { ok: false, error: "Pick a role" };
+  const name = input.name.trim();
+  if (name && (name.length < 2 || name.length > 60)) return { ok: false, error: "Name must be 2–60 characters" };
+  return plain(
+    await run(
+      () => adminApi.addStaff({ phone, name: name || undefined, level: input.level, roleId: input.level === "SUPPORT" ? input.roleId : null, cityIds: input.cityIds }),
+      (m) => `${m.name ?? m.phone} joined the team`,
+      ["/team", "/team/roles"],
+    ),
+  );
+}
+
+/** Team › Staff: a member's role, level or cities. */
+export async function updateStaff(userId: string, input: { level: "OWNER" | "SUPPORT"; roleId: string | null; cityIds: string[] }): Promise<ActionResult> {
+  if (input.level === "SUPPORT" && !input.roleId) return { ok: false, error: "Pick a role" };
+  return plain(
+    await run(() => adminApi.updateStaff(userId, { level: input.level, roleId: input.level === "SUPPORT" ? input.roleId : null, cityIds: input.cityIds }), "Access saved", [
+      "/team",
+      "/team/roles",
+    ]),
+  );
+}
+
+/** Team › Staff: off the team (back to a rider, or driver). */
+export async function removeStaff(userId: string): Promise<ActionResult> {
+  return plain(await run(() => adminApi.removeStaff(userId), "Removed from the team", ["/team", "/team/roles"]));
+}
+
+/** Team › Roles: create ([id] null) or change a role. */
+export async function saveRole(id: string | null, input: { name: string; description: string; permissions: string[]; isCityScoped: boolean }): Promise<ActionResult> {
+  const name = input.name.trim();
+  if (name.length < 2 || name.length > 40) return { ok: false, error: "Name must be 2–40 characters" };
+  const data = { name, description: input.description.trim() || null, permissions: input.permissions, isCityScoped: input.isCityScoped };
+  return plain(await run(() => (id ? adminApi.updateRole(id, data) : adminApi.createRole(data)), id ? "Role saved" : `Role “${name}” created`, ["/team", "/team/roles"]));
+}
+
+export async function deleteRole(id: string): Promise<ActionResult> {
+  return plain(await run(() => adminApi.deleteRole(id), "Role deleted", ["/team", "/team/roles"]));
 }
 
 /** A new ride OTP for the person (typed, or random when [otp] is empty): when theirs was overheard. Audited. */

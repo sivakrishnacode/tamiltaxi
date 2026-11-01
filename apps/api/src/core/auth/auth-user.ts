@@ -7,8 +7,11 @@ export interface AuthUser {
   readonly driverId?: string;
   /** ADMIN only: what the admin may do (read from the account on every request, like the role). */
   readonly adminLevel?: AdminLevel;
-  /** SUPPORT admins: the cities they may set up (empty = none). */
+  /** Staff: the cities assigned to them (a city-limited role sets up only these). */
   readonly adminCityIds?: readonly string[];
+  /** Staff: their role's permissions (core/auth/permissions.ts) and whether it is limited to their cities. */
+  readonly permissions?: readonly string[];
+  readonly cityScoped?: boolean;
 }
 
 /** JWT payload shape. */

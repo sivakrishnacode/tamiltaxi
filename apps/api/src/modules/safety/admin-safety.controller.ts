@@ -3,6 +3,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, UseInterceptors } 
 import type { AuthUser } from '../../core/auth/auth-user.js';
 import { CurrentUser } from '../../core/auth/current-user.decorator.js';
 import { Roles } from '../../core/auth/roles.decorator.js';
+import { NeedsArea } from '../../core/auth/permissions.js';
 import type { Sos } from '../../generated/prisma/client.js';
 import { Role } from '../../generated/prisma/enums.js';
 import { AuditInterceptor } from '../admin/audit.interceptor.js';
@@ -12,6 +13,7 @@ import { SosService } from './sos.service.js';
 
 /** Admin SOS queue (the admin page polls it). Acknowledge / resolve are audit logged. */
 @Roles(Role.ADMIN)
+@NeedsArea('support')
 @UseInterceptors(AuditInterceptor)
 @Controller('admin/sos')
 export class AdminSafetyController {

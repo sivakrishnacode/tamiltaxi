@@ -8,12 +8,15 @@ export function isOwner(user: Pick<AuthUser, 'adminLevel'>): boolean {
   return user.adminLevel !== AdminLevel.SUPPORT;
 }
 
-/** Owners set up every city; a support admin only the cities assigned to them (a city admin). */
-export function canManageCity(user: Pick<AuthUser, 'adminLevel' | 'adminCityIds'>, cityId: string): boolean {
-  return isOwner(user) || (user.adminCityIds ?? []).includes(cityId);
+/**
+ * Owners set up every city; staff need `cities.manage` (the guard checks it) and, in a city-limited role, the city
+ * among those assigned to them.
+ */
+export function canManageCity(user: Pick<AuthUser, 'adminLevel' | 'adminCityIds' | 'cityScoped'>, cityId: string): boolean {
+  return isOwner(user) || !user.cityScoped || (user.adminCityIds ?? []).includes(cityId);
 }
 
 /** 403 unless [user] may set up [cityId]. */
-export function assertCityAccess(user: Pick<AuthUser, 'adminLevel' | 'adminCityIds'>, cityId: string): void {
+export function assertCityAccess(user: Pick<AuthUser, 'adminLevel' | 'adminCityIds' | 'cityScoped'>, cityId: string): void {
   if (!canManageCity(user, cityId)) throw new ForbiddenException('You can only set up the cities assigned to you');
 }

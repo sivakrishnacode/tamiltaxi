@@ -5,6 +5,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { AuthUser } from '../../core/auth/auth-user.js';
 import { CurrentUser } from '../../core/auth/current-user.decorator.js';
 import { Roles } from '../../core/auth/roles.decorator.js';
+import { Needs } from '../../core/auth/permissions.js';
 import { FileStorageService, MAX_UPLOAD_BYTES, type UploadedBlob } from '../../core/storage/file-storage.service.js';
 import type { Driver, KycDocument } from '../../generated/prisma/client.js';
 import { KycDocType, Role, TripKind } from '../../generated/prisma/enums.js';
@@ -151,6 +152,7 @@ export class DriversController {
 
   @Roles(Role.ADMIN)
   @Post('admin/drivers/:id/photo')
+  @Needs('drivers.manage')
   @HttpCode(200)
   @UseInterceptors(AuditInterceptor)
   reviewPhoto(@Param('id') id: string, @Body() body: ReviewPhotoDto): Promise<Driver> {

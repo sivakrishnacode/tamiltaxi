@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { ExportButton } from "@/components/common/export-button";
 import { ListFilters } from "@/components/common/list-filters";
-import { OwnerOnly } from "@/components/common/owner-only";
+import { Can } from "@/components/common/can";
 import { EmptyState, PageHeader } from "@/components/common/page";
 import { Pager } from "@/components/common/pager";
 import { StatusBadge } from "@/components/common/status";
@@ -58,9 +58,9 @@ export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
         title="All trips"
         description={`${formatCount(data.total)} ${isFiltered ? "matching" : ""} rides and parcel deliveries.`}
         actions={
-          <OwnerOnly>
+          <Can permission="exports">
             <ExportButton entity="trips" />
-          </OwnerOnly>
+          </Can>
         }
       />
       <ListFilters

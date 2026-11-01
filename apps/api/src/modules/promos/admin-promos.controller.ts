@@ -1,7 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 
-import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
+import { Roles } from '../../core/auth/roles.decorator.js';
+import { NeedsArea } from '../../core/auth/permissions.js';
 import type { UploadedBlob } from '../../core/storage/file-storage.service.js';
 import { Role } from '../../generated/prisma/enums.js';
 import { AuditInterceptor } from '../admin/audit.interceptor.js';
@@ -11,7 +12,7 @@ import { type AdminPromo, PromosService } from './promos.service.js';
 
 /** Admin › Splash & banners: upload, show or hide, order and delete the passenger app's pictures. */
 @Roles(Role.ADMIN)
-@OwnerOnly('writes')
+@NeedsArea('engage')
 @UseInterceptors(AuditInterceptor)
 @Controller('admin/promos')
 export class AdminPromosController {

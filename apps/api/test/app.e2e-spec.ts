@@ -1280,52 +1280,74 @@ describe('Tamil Taxi API (e2e)', () => {
     }
   });
 
-  it('support admins do day-to-day work; owners alone change setup, exports and access; city admins set up their cities', async () => {
+  it('team: owners add staff by phone with a role; staff get what their role allows, at once; city roles set up their cities', async () => {
     const owner = await adminAuth();
     const ownerId = (await http.get('/v1/me').set(owner).expect(200)).body.id as string;
-    // Someone made an admin in the panel starts as support.
+    const tag = Date.now();
+    const kyc = (await http.post('/v1/admin/team/roles').set(owner).send({ name: `KYC reviewer ${tag}`, permissions: ['drivers.manage', 'trips.view'] }).expect(201)).body as { id: string };
+    await http.post('/v1/admin/team/roles').set(owner).send({ name: `KYC reviewer ${tag}`, permissions: [] }).expect(409);
+    await http.post('/v1/admin/team/roles').set(owner).send({ name: `Bad ${tag}`, permissions: ['team.manage'] }).expect(400);
+
+    // Added by phone: the account is made now; they sign in with it later.
     const p = phone();
-    const signIn = async () => {
-      await http.post('/v1/auth/otp').send({ phone: p }).expect(200);
-      const res = await http.post('/v1/auth/verify').send({ phone: p, code: '123456', app: 'admin' }).expect(200);
-      return { Authorization: `Bearer ${res.body.accessToken as string}` };
-    };
-    const first = await signIn();
-    const userId = (await http.get('/v1/me').set(first).expect(200)).body.id as string;
-    const promoted = (await http.patch(`/v1/admin/users/${userId}`).set(owner).send({ role: 'ADMIN' }).expect(200)).body;
-    expect(promoted).toMatchObject({ role: 'ADMIN', adminLevel: 'SUPPORT', adminCityIds: [] });
-    const support = await signIn();
+    const added = (await http.post('/v1/admin/team/staff').set(owner).send({ phone: p, name: 'Kavya', level: 'SUPPORT', roleId: kyc.id }).expect(201)).body;
+    expect(added).toMatchObject({ name: 'Kavya', adminLevel: 'SUPPORT', staffRole: { id: kyc.id }, lastSignInAt: null });
+    await http.post('/v1/admin/team/staff').set(owner).send({ phone: p, level: 'SUPPORT', roleId: kyc.id }).expect(409);
+    await http.post('/v1/auth/otp').send({ phone: p }).expect(200);
+    const staff = { Authorization: `Bearer ${(await http.post('/v1/auth/verify').send({ phone: p, code: '123456', app: 'admin' }).expect(200)).body.accessToken as string}` };
+    const me = (await http.get('/v1/admin/me').set(staff).expect(200)).body;
+    expect(me).toMatchObject({ adminLevel: 'SUPPORT', role: { id: kyc.id }, permissions: ['drivers.manage', 'trips.view'], cityScoped: false });
 
-    // Day-to-day work is open; setup, exports and access are not.
-    await http.get('/v1/admin/stats').set(support).expect(200);
-    await http.get('/v1/admin/cities').set(support).expect(200);
-    await http.get('/v1/admin/settings').set(support).expect(200);
-    const denied = (await http.put('/v1/admin/settings').set(support).send({}).expect(403)).body;
-    expect(denied.message).toBe('Only an owner admin can do this');
-    await http.get('/v1/admin/export/trips.csv').set(support).expect(403);
-    await http.post('/v1/admin/announcements').set(support).send({ title: 'Hi there', body: 'Hello everyone' }).expect(403);
-    await http.post('/v1/admin/cities').set(support).send({}).expect(403);
-    await http.delete(`/v1/admin/users/${ownerId}`).set(support).expect(403);
-    await http.patch(`/v1/admin/users/${ownerId}`).set(support).send({ role: 'PASSENGER' }).expect(403);
-    await http.patch(`/v1/admin/users/${userId}`).set(support).send({ adminLevel: 'OWNER' }).expect(403);
-    const city = (await http.get('/v1/admin/cities/coimbatore').set(support).expect(200)).body as { name: string; serviceCells: string[] };
-    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ name: city.name }).expect(403);
+    // Exactly what the role allows; the dashboard's shared reads stay open.
+    await http.get('/v1/admin/stats').set(staff).expect(200);
+    await http.get('/v1/admin/cities').set(staff).expect(200);
+    await http.get('/v1/admin/settings').set(staff).expect(200);
+    await http.get('/v1/admin/drivers').set(staff).expect(200);
+    await http.get('/v1/admin/trips').set(staff).expect(200);
+    expect((await http.get('/v1/admin/users').set(staff).expect(403)).body.message).toBe("Your role doesn't allow this");
+    await http.patch('/v1/admin/trips/nope/review').set(staff).send({ needsReview: false }).expect(403);
+    await http.put('/v1/admin/settings').set(staff).send({}).expect(403);
+    await http.get('/v1/admin/export/trips.csv').set(staff).expect(403);
+    await http.get('/v1/admin/cities/coimbatore').set(staff).expect(403);
+    await http.get('/v1/admin/team').set(staff).expect(403);
+    // A changed role applies to the next request.
+    await http.patch(`/v1/admin/team/roles/${kyc.id}`).set(owner).send({ permissions: ['drivers.manage', 'trips.view', 'riders.view'] }).expect(200);
+    await http.get('/v1/admin/users').set(staff).expect(200);
 
-    // A city admin: sets up their city (not its on/off switch); others' stay closed.
-    await http.patch(`/v1/admin/users/${userId}`).set(owner).send({ adminCityIds: ['nowhere'] }).expect(400);
-    await http.patch(`/v1/admin/users/${userId}`).set(owner).send({ adminCityIds: ['coimbatore'] }).expect(200);
-    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ name: city.name }).expect(200);
-    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ name: city.name, isActive: true }).expect(200);
-    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ isActive: false }).expect(403);
-    const zone = (
-      await http.post('/v1/admin/cities/coimbatore/zones').set(support).send({ name: 'E2E city admin zone', kind: 'DEMAND', cells: city.serviceCells.slice(0, 1) }).expect(201)
-    ).body as { id: string };
-    await http.delete(`/v1/admin/zones/${zone.id}`).set(support).expect(204);
+    // A city-limited role sets up only the cities assigned to the person.
+    const cityRole = (await http.post('/v1/admin/team/roles').set(owner).send({ name: `City manager ${tag}`, permissions: ['cities.manage'], isCityScoped: true }).expect(201)).body as { id: string };
+    await http.patch(`/v1/admin/team/staff/${added.id}`).set(owner).send({ roleId: cityRole.id, cityIds: [] }).expect(400);
+    await http.patch(`/v1/admin/team/staff/${added.id}`).set(owner).send({ roleId: cityRole.id, cityIds: ['coimbatore'] }).expect(200);
+    const other = `other-${tag}`;
+    await http.post('/v1/admin/cities').set(owner).send({ id: other, name: 'Other town', state: 'Tamil Nadu', centerLat: 11.1085, centerLng: 77.3411, radiusKm: 1 }).expect(201);
+    try {
+      const city = (await http.get('/v1/admin/cities/coimbatore').set(staff).expect(200)).body as { name: string; serviceCells: string[] };
+      await http.patch('/v1/admin/cities/coimbatore').set(staff).send({ name: city.name }).expect(200);
+      const zone = (await http.post('/v1/admin/cities/coimbatore/zones').set(staff).send({ name: 'Team test zone', kind: 'DEMAND', cells: city.serviceCells.slice(0, 1) }).expect(201)).body as { id: string };
+      await http.delete(`/v1/admin/zones/${zone.id}`).set(staff).expect(204);
+      await http.patch(`/v1/admin/cities/${other}`).set(staff).send({ name: 'Mine now' }).expect(403);
+      await http.post('/v1/admin/cities').set(staff).send({}).expect(403);
+      await http.get('/v1/admin/drivers').set(staff).expect(403);
+    } finally {
+      await http.delete(`/v1/admin/cities/${other}`).set(owner).expect(204);
+    }
 
-    // Owners never change their own access; an ADMIN_PHONES number signs in as an owner again.
-    await http.patch(`/v1/admin/users/${ownerId}`).set(owner).send({ role: 'PASSENGER' }).expect(400);
+    // Guard rails: a role in use stays, owners keep their own access, ADMIN_PHONES stay owners.
+    await http.delete(`/v1/admin/team/roles/${cityRole.id}`).set(owner).expect(409);
+    await http.patch(`/v1/admin/team/staff/${ownerId}`).set(owner).send({ level: 'SUPPORT', roleId: kyc.id }).expect(400);
+    await http.delete(`/v1/admin/team/staff/${ownerId}`).set(owner).expect(400);
+    const team = (await http.get('/v1/admin/team').set(owner).expect(200)).body as { staff: { id: string; lastSignInAt: string | null; isServerOwner: boolean }[] };
+    expect(team.staff.find((m) => m.id === added.id)?.lastSignInAt).not.toBeNull();
+    expect(team.staff.find((m) => m.id === ownerId)?.isServerOwner).toBe(true);
+
+    // Off the team: the panel token stops working at once.
+    await http.delete(`/v1/admin/team/staff/${added.id}`).set(owner).expect(204);
+    await http.get('/v1/admin/stats').set(staff).expect(403);
+    await http.delete(`/v1/admin/team/roles/${cityRole.id}`).set(owner).expect(204);
+    await http.delete(`/v1/admin/team/roles/${kyc.id}`).set(owner).expect(204);
+
+    // An ADMIN_PHONES number signs in as an owner, even if made support by hand.
     await prisma.user.update({ where: { id: ownerId }, data: { adminLevel: 'SUPPORT' } });
-    // This sign-in is one more code for the admin phone (5 per 15 min): don't let it starve the tests after this one.
     const redis = app.get(RedisService);
     await redis.del(`otp:sends:+91${ADMIN_PHONE}`);
     await http.post('/v1/auth/otp').send({ phone: ADMIN_PHONE }).expect(200);

@@ -2,8 +2,6 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-import type { AdminAccess } from "./access";
-
 import { decodeJwt } from "./jwt";
 import type { User } from "./types";
 
@@ -12,7 +10,7 @@ export const TOKEN_COOKIE = "tt_admin_token";
 /** httpOnly cookie with the signed-in admin's name/phone for the user menu. */
 export const USER_COOKIE = "tt_admin_user";
 
-export interface SessionUser extends AdminAccess {
+export interface SessionUser {
   readonly name: string | null;
   readonly phone: string;
 }
@@ -49,7 +47,7 @@ export async function setSession(token: string, user: User): Promise<void> {
   const maxAge = exp ? Math.max(60, Math.floor(exp - Date.now() / 1000)) : THIRTY_DAYS;
   const store = await cookies();
   store.set(TOKEN_COOKIE, token, cookieOptions(maxAge));
-  const session: SessionUser = { name: user.name, phone: user.phone, adminLevel: user.adminLevel, adminCityIds: user.adminCityIds };
+  const session: SessionUser = { name: user.name, phone: user.phone };
   store.set(USER_COOKIE, JSON.stringify(session), cookieOptions(maxAge));
 }
 

@@ -114,6 +114,11 @@ Staging runs `6e7fdc4` (API and admin). Waiting to go out:
 - Zones tab: the map and the zone list share one height (the list scrolls beside the map instead of stretching the
   map's card with an empty band), a wider list on large screens, and a surge's vehicles in short ("All except Auto,
   Auto Priority, Parcel on Auto").
+- **Team** (Setup › Team, migration `staff_roles`): staff added by phone (no sign-in needed first) and **custom
+  roles** that say what each kind of staff may view or change per area (trips, drivers and documents, riders, support
+  and SOS, cities and zones, engage, plans and payments, settings, system), plus CSV exports, deleting accounts and
+  "only their own cities". The API checks every admin request; sidebar and pages follow at once. Current support and
+  city admins move to the ready-made roles Support and City admin. Owners only.
 
 ### 1 Nov 2026 (second) · API and admin at `6e7fdc4`
 

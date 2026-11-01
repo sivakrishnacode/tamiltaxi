@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseInterceptors } from '@nestjs/common';
 
-import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
+import { Roles } from '../../core/auth/roles.decorator.js';
+import { NeedsArea } from '../../core/auth/permissions.js';
 import type { Campaign } from '../../generated/prisma/client.js';
 import { Role } from '../../generated/prisma/enums.js';
 import { AuditInterceptor } from '../admin/audit.interceptor.js';
@@ -10,7 +11,7 @@ import { CreateCampaignDto } from './dto/campaign.dto.js';
 
 /** Admin › Automations: how the reminder pushes do, and festival / weekend campaigns to every passenger. */
 @Roles(Role.ADMIN)
-@OwnerOnly('writes')
+@NeedsArea('engage')
 @UseInterceptors(AuditInterceptor)
 @Controller('admin')
 export class AdminAutomationsController {

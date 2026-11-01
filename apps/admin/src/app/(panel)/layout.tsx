@@ -3,6 +3,7 @@ import { Suspense, cache } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getAccess } from "@/lib/access-server";
 import { adminApi } from "@/lib/api";
 import { getSessionUser } from "@/lib/session";
 
@@ -80,10 +81,10 @@ async function SosBadge() {
 }
 
 export default async function PanelLayout({ children }: LayoutProps<"/">) {
-  const user = await getSessionUser();
+  const access = await getAccess();
   return (
     <AppShell
-      access={user ? { adminLevel: user.adminLevel, adminCityIds: user.adminCityIds } : null}
+      access={access}
       userMenu={
         <Suspense fallback={<Skeleton className="size-9 rounded-full" />}>
           <SessionUserMenu />

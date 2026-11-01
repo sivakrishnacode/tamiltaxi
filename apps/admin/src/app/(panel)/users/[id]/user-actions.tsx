@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRoundIcon, Loader2Icon, ShieldCheckIcon } from "lucide-react";
+import { KeyRoundIcon, Loader2Icon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -17,12 +17,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { accessLabel, type AdminAccess } from "@/lib/access";
 import { humanize } from "@/lib/format";
 import { ROLES, type Role } from "@/lib/types";
 
-import { changeRideOtp, setAdminAccess, setUserRole } from "../../actions";
+import { changeRideOtp, setUserRole } from "../../actions";
 
 /** Role select with a confirmation dialog → PATCH /admin/users/:id {role}. */
 export function RoleControl({ userId, role, name }: { userId: string; role: Role; name: string }) {
@@ -36,7 +34,7 @@ export function RoleControl({ userId, role, name }: { userId: string; role: Role
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {ROLES.map((r) => (
+          {ROLES.filter((r) => r !== "ADMIN").map((r) => (
             <SelectItem key={r} value={r}>
               {humanize(r)}
             </SelectItem>
@@ -50,9 +48,8 @@ export function RoleControl({ userId, role, name }: { userId: string; role: Role
               Make {name} {target === "ADMIN" ? "an" : "a"} {target ? humanize(target).toLowerCase() : ""}?
             </DialogTitle>
             <DialogDescription>
-              {target === "ADMIN"
-                ? "They can sign in to this panel as a support admin: trips, tickets, SOS, people and documents, no setup or exports. Change that with Access afterwards. Phones in ADMIN_PHONES always sign in as owners."
-                : "The new role applies at once, also to the sessions the user already has. A driver role still needs a driver profile to take rides."}
+              The new role applies at once, also to the sessions the user already has. A driver role still needs a driver
+              profile to take rides. To give someone the admin panel, add them in Team.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -157,118 +154,6 @@ export function RideOtpControl({ userId, name, rideOtp }: { userId: string; name
               </DialogClose>
               <Button type="submit" disabled={!isTypedValid || isPending}>
                 {isPending ? <Loader2Icon className="animate-spin" /> : <KeyRoundIcon />} Change OTP
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-const LEVEL_TEXT = {
-  OWNER: "Everything: pricing, cities and zones, settings, plans, announcements, campaigns, exports and who is an admin.",
-  SUPPORT: "Day-to-day work: trips, tickets, SOS, riders and drivers, documents and approvals. No setup, exports or account deletion.",
-} as const;
-
-/**
- * Owner or support, and the cities a support admin sets up (a city admin: that city's service area, zones, fares,
- * rentals and settings) → PATCH /admin/users/:id. Owner admins only.
- */
-export function AdminAccessControl({
-  userId,
-  name,
-  access,
-  cities,
-}: {
-  userId: string;
-  name: string;
-  access: AdminAccess;
-  cities: readonly { id: string; name: string }[];
-}) {
-  const [isOpen, setOpen] = useState(false);
-  const [level, setLevel] = useState<"OWNER" | "SUPPORT">(access.adminLevel ?? "OWNER");
-  const [cityIds, setCityIds] = useState<string[]>([...(access.adminCityIds ?? [])]);
-  const [isPending, startTransition] = useTransition();
-  const names = Object.fromEntries(cities.map((c) => [c.id, c.name]));
-
-  function open() {
-    setLevel(access.adminLevel ?? "OWNER");
-    setCityIds([...(access.adminCityIds ?? [])]);
-    setOpen(true);
-  }
-
-  return (
-    <>
-      <Button variant="outline" onClick={open}>
-        <ShieldCheckIcon /> {accessLabel(access, names)}
-      </Button>
-      <Dialog open={isOpen} onOpenChange={setOpen}>
-        <DialogContent>
-          <form
-            className="grid gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              startTransition(async () => {
-                const res = await setAdminAccess(userId, level, cityIds);
-                if (res.ok) {
-                  toast.success(res.message);
-                  setOpen(false);
-                } else toast.error(res.error);
-              });
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>What can {name} do?</DialogTitle>
-              <DialogDescription>Applies to their next request. Their sidebar updates when they sign in again.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-2">
-              <Label htmlFor="admin-level">Access</Label>
-              <Select value={level} onValueChange={(v) => setLevel(v as "OWNER" | "SUPPORT")}>
-                <SelectTrigger id="admin-level" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="OWNER">Owner</SelectItem>
-                  <SelectItem value="SUPPORT">Support</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">{LEVEL_TEXT[level]}</p>
-            </div>
-            {level === "SUPPORT" && (
-              <fieldset className="grid gap-2">
-                <legend className="text-sm font-medium">Cities they set up</legend>
-                <p className="text-xs text-muted-foreground">
-                  A support admin with cities is a city admin: they also edit those cities&apos; service area, zones, fares,
-                  rentals and city settings (not switching a city on or off).
-                </p>
-                <ul className="mt-1 max-h-56 divide-y overflow-y-auto rounded-lg border">
-                  {cities.map((c) => {
-                    const isOn = cityIds.includes(c.id);
-                    return (
-                      <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                        <Label htmlFor={`city-${c.id}`} className="font-normal">
-                          {c.name}
-                        </Label>
-                        <Switch
-                          id={`city-${c.id}`}
-                          checked={isOn}
-                          onCheckedChange={(on) => setCityIds((ids) => (on ? [...ids, c.id] : ids.filter((x) => x !== c.id)))}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </fieldset>
-            )}
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2Icon className="animate-spin" />} Save access
               </Button>
             </DialogFooter>
           </form>

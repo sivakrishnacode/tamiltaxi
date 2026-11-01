@@ -12,6 +12,7 @@ import {
   SettingsIcon,
   ShieldAlertIcon,
   UsersIcon,
+  UsersRoundIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -127,6 +128,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { label: "Cities & zones", icon: HexagonIcon, pages: [{ href: "/cities", label: "Cities & zones" }] },
       { label: "Settings", icon: SettingsIcon, pages: [{ href: "/settings", label: "Settings" }] },
+      {
+        label: "Team",
+        icon: UsersRoundIcon,
+        pages: [
+          { href: "/team", label: "Staff" },
+          { href: "/team/roles", label: "Roles" },
+        ],
+      },
       {
         label: "Driver plans",
         icon: BadgeIndianRupeeIcon,

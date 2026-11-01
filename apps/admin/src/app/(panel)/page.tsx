@@ -120,7 +120,8 @@ export default async function DashboardPage() {
     adminApi.trips({ review: "true", pageSize: 1 }).catch(() => null),
     adminApi.users({ blocked: "true", pageSize: 1 }).catch(() => null),
     adminApi.cities(),
-    adminApi.live(),
+    // A role without Trips can't see the live map.
+    adminApi.live().catch(() => null),
     adminApi.settings().catch(() => null),
     adminApi.demand().catch(() => null),
     adminApi.heatmap({ metric: "pickups", ...presetRange("30d") }).catch(() => null),
@@ -243,22 +244,24 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <Card className="mt-6 gap-0 overflow-hidden pb-0">
-        <CardHeader className="border-b">
-          <CardTitle className="font-semibold">Live now</CardTitle>
-          <CardDescription>
-            {formatCount(live.drivers.length)} drivers online · {formatCount(live.trips.length)} active trips
-          </CardDescription>
-          <CardAction>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/live">Open live map</Link>
-            </Button>
-          </CardAction>
-        </CardHeader>
-        <div className="h-64">
-          <MiniLiveMap data={live} center={mapCenter} />
-        </div>
-      </Card>
+      {live && (
+        <Card className="mt-6 gap-0 overflow-hidden pb-0">
+          <CardHeader className="border-b">
+            <CardTitle className="font-semibold">Live now</CardTitle>
+            <CardDescription>
+              {formatCount(live.drivers.length)} drivers online · {formatCount(live.trips.length)} active trips
+            </CardDescription>
+            <CardAction>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/live">Open live map</Link>
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <div className="h-64">
+            <MiniLiveMap data={live} center={mapCenter} />
+          </div>
+        </Card>
+      )}
 
       <Card className="mt-6 gap-0 pb-0">
         <CardHeader className="border-b">

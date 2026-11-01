@@ -59,10 +59,11 @@ export class AuthService {
     const { role, promote } = loginRole({ app: params.app, role: created.role, isAdminPhone: this.env.adminPhones.includes(phone), hasDriver: !!created.driver });
     // ADMIN_PHONES numbers are always owners (also when an owner had made them support in the panel).
     const isOwnerPhone = role === Role.ADMIN && this.env.adminPhones.includes(phone) && created.adminLevel !== AdminLevel.OWNER;
-    const user =
-      promote || isOwnerPhone
-        ? await this.prisma.user.update({ where: { id: created.id }, data: { role: Role.ADMIN, adminLevel: AdminLevel.OWNER }, include: { driver: true } })
-        : created;
+    const user = await this.prisma.user.update({
+      where: { id: created.id },
+      data: { lastSignInAt: new Date(), ...(promote || isOwnerPhone ? { role: Role.ADMIN, adminLevel: AdminLevel.OWNER } : {}) },
+      include: { driver: true },
+    });
     // A passenger token never acts as the account's driver profile.
     const driverId = role === Role.PASSENGER ? undefined : user.driver?.id;
     const accessToken = await this.issueToken({ sub: user.id, role, driverId, app: params.app });

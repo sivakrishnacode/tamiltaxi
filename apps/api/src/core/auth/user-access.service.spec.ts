@@ -12,9 +12,16 @@ describe('effectiveAccess', () => {
   it("an admin's token keeps the app it signed in to; DRIVER needs a driver profile", () => {
     const admin = { role: Role.ADMIN, driverId: 'd1' };
     // Admins cached before admin levels existed were all owners.
-    expect(effectiveAccess({ role: Role.ADMIN }, admin)).toEqual({ role: Role.ADMIN, driverId: 'd1', adminLevel: AdminLevel.OWNER, adminCityIds: [] });
-    const cityAdmin = { role: Role.ADMIN, driverId: null, adminLevel: AdminLevel.SUPPORT, adminCityIds: ['tiruppur'] };
-    expect(effectiveAccess({ role: Role.ADMIN }, cityAdmin)).toEqual({ role: Role.ADMIN, driverId: undefined, adminLevel: AdminLevel.SUPPORT, adminCityIds: ['tiruppur'] });
+    expect(effectiveAccess({ role: Role.ADMIN }, admin)).toEqual({ role: Role.ADMIN, driverId: 'd1', adminLevel: AdminLevel.OWNER, adminCityIds: [], permissions: [], cityScoped: false });
+    const cityAdmin = { role: Role.ADMIN, driverId: null, adminLevel: AdminLevel.SUPPORT, adminCityIds: ['tiruppur'], permissions: ['cities.manage'], cityScoped: true };
+    expect(effectiveAccess({ role: Role.ADMIN }, cityAdmin)).toEqual({
+      role: Role.ADMIN,
+      driverId: undefined,
+      adminLevel: AdminLevel.SUPPORT,
+      adminCityIds: ['tiruppur'],
+      permissions: ['cities.manage'],
+      cityScoped: true,
+    });
     expect(effectiveAccess({ role: Role.DRIVER }, admin)).toEqual({ role: Role.DRIVER, driverId: 'd1' });
     expect(effectiveAccess({ role: Role.PASSENGER }, admin)).toEqual({ role: Role.PASSENGER });
     expect(effectiveAccess({ role: Role.DRIVER }, { role: Role.ADMIN, driverId: null })).toEqual({ role: Role.PASSENGER });
@@ -32,7 +39,15 @@ describe('effectiveAccess', () => {
 
 describe('UserAccessService', () => {
   function setup(
-    row: { role: Role; isBlocked: boolean; deletedAt?: Date | null; driver: { id: string } | null; adminLevel?: AdminLevel; adminCityIds?: string[] } | null,
+    row: {
+      role: Role;
+      isBlocked: boolean;
+      deletedAt?: Date | null;
+      driver: { id: string } | null;
+      adminLevel?: AdminLevel;
+      adminCityIds?: string[];
+      staffRole?: { permissions: string[]; isCityScoped: boolean } | null;
+    } | null,
   ) {
     const store = new Map<string, string>();
     const redis = {
@@ -40,7 +55,7 @@ describe('UserAccessService', () => {
       set: async (k: string, v: string) => (store.set(k, v), 'OK'),
       del: async (k: string) => Number(store.delete(k)),
     } as unknown as RedisService;
-    const findUnique = vi.fn(async () => (row ? { adminLevel: AdminLevel.OWNER, adminCityIds: [], ...row } : null));
+    const findUnique = vi.fn(async () => (row ? { adminLevel: AdminLevel.OWNER, adminCityIds: [], staffRole: null, ...row } : null));
     const prisma = { user: { findUnique } } as unknown as PrismaService;
     return { store, findUnique, access: new UserAccessService(prisma, redis) };
   }
@@ -49,7 +64,7 @@ describe('UserAccessService', () => {
   it('reads the account once, then from the cache until invalidated', async () => {
     const { store, findUnique, access } = setup({ role: Role.DRIVER, isBlocked: false, driver: { id: 'd1' } });
     expect(await access.resolve(token)).toEqual({ userId: 'u1', role: Role.DRIVER, driverId: 'd1' });
-    expect(store.get(accessKey('u1'))).toBe('DRIVER|d1|OWNER|');
+    expect(store.get(accessKey('u1'))).toBe('DRIVER|d1|OWNER|||');
     await access.resolve(token);
     expect(findUnique).toHaveBeenCalledTimes(1);
     await access.invalidate('u1');
@@ -57,12 +72,27 @@ describe('UserAccessService', () => {
     expect(findUnique).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps a support admin's level and cities in the cache", async () => {
-    const { store, findUnique, access } = setup({ role: Role.ADMIN, isBlocked: false, driver: null, adminLevel: AdminLevel.SUPPORT, adminCityIds: ['tiruppur', 'erode'] });
+  it("keeps a staff member's level, cities and role permissions in the cache", async () => {
+    const { store, findUnique, access } = setup({
+      role: Role.ADMIN,
+      isBlocked: false,
+      driver: null,
+      adminLevel: AdminLevel.SUPPORT,
+      adminCityIds: ['tiruppur', 'erode'],
+      staffRole: { permissions: ['cities.manage', 'trips.view'], isCityScoped: true },
+    });
     const panel = { sub: 'u1', role: Role.ADMIN, app: 'admin' as const };
-    const expected = { userId: 'u1', role: Role.ADMIN, driverId: undefined, adminLevel: AdminLevel.SUPPORT, adminCityIds: ['tiruppur', 'erode'] };
+    const expected = {
+      userId: 'u1',
+      role: Role.ADMIN,
+      driverId: undefined,
+      adminLevel: AdminLevel.SUPPORT,
+      adminCityIds: ['tiruppur', 'erode'],
+      permissions: ['cities.manage', 'trips.view'],
+      cityScoped: true,
+    };
     expect(await access.resolve(panel)).toEqual(expected);
-    expect(store.get(accessKey('u1'))).toBe('ADMIN||SUPPORT|tiruppur,erode');
+    expect(store.get(accessKey('u1'))).toBe('ADMIN||SUPPORT|tiruppur,erode|cities.manage,trips.view|1');
     expect(await access.resolve(panel)).toEqual(expected);
     expect(findUnique).toHaveBeenCalledTimes(1);
   });

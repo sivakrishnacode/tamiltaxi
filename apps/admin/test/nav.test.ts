@@ -67,7 +67,7 @@ describe("activeNav", () => {
 
 describe("NAV", () => {
   it("keeps the sidebar short enough to fit without scrolling", () => {
-    expect(NAV.length).toBeLessThanOrEqual(13);
+    expect(NAV.length).toBeLessThanOrEqual(14);
     expect(NAV_GROUPS.every((g) => g.items.length > 0)).toBe(true);
   });
 

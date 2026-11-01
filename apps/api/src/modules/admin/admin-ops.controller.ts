@@ -1,7 +1,8 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, ParseBoolPipe, Patch, Post, Put, Query, Res, StreamableFile, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 
-import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
+import { Roles } from '../../core/auth/roles.decorator.js';
+import { Needs } from '../../core/auth/permissions.js';
 import { FileStorageService } from '../../core/storage/file-storage.service.js';
 import type { Announcement, AuditLog, CancellationDue, Payment } from '../../generated/prisma/client.js';
 import { Role } from '../../generated/prisma/enums.js';
@@ -37,30 +38,35 @@ export class AdminOpsController {
   ) {}
 
   @Get('live')
+  @Needs('trips.view')
   live(): Promise<{ drivers: LiveDriver[]; trips: unknown[] }> {
     return this.ops.live();
   }
 
   /** Trip heatmap per H3 cell: ?metric=pickups|drops|unmet|fares&from&to&kind&vehicleKind&hourFrom&hourTo&resolution */
   @Get('heatmap')
+  @Needs('trips.view')
   heatmap(@Query() q: HeatmapQueryDto): Promise<Heatmap> {
     return this.heat.heatmap(q);
   }
 
   /** Server health: the machine, the API process, database, Redis, Google Maps and push counts, the last backup. */
   @Get('system')
+  @Needs('system.view')
   systemHealth(): Promise<SystemHealth> {
     return this.system.health();
   }
 
   /** Missed trips (no driver found, or the rider gave up while searching): ?from&to (default the last 7 days)&page&pageSize. */
   @Get('missed')
+  @Needs('trips.view')
   missedTrips(@Query() q: ListQueryDto): Promise<MissedSummary> {
     return this.missed.summary(q);
   }
 
   /** Live demand vs free drivers per res-7 hex, with the surge each cell gets. ?refresh=true recomputes now. */
   @Get('demand')
+  @Needs('trips.view')
   demandSnapshot(@Query('refresh') refresh?: string): Promise<DemandSnapshot> {
     return refresh === 'true' ? this.demand.refresh(true) : this.demand.snapshot();
   }
@@ -70,6 +76,7 @@ export class AdminOpsController {
    * (≥ historicalEtaMinTrips), sorted by ?sort=busiest|slowest|fastest; speed by hour, slow areas and ETA accuracy.
    */
   @Get('hex-stats')
+  @Needs('system.view')
   async hexStatsSummary(@Query() q: HexStatsQueryDto): Promise<HexStatsSummary> {
     return this.hexStats.summary({
       res: q.res ?? 8,
@@ -82,7 +89,7 @@ export class AdminOpsController {
   }
 
   @Post('hex-stats/rebuild')
-  @OwnerOnly()
+  @Needs('system.manage')
   @HttpCode(200)
   rebuildHexStats(): Promise<{ pairs: number; trips: number }> {
     return this.hexStats.rebuild();
@@ -90,6 +97,7 @@ export class AdminOpsController {
 
   /** Uploaded KYC documents (admin panel proxies this at /files/:name). */
   @Get('files/:name')
+  @Needs('drivers.view', 'support.view', 'riders.view')
   async file(@Param('name') name: string, @Res({ passthrough: true }) res: Response): Promise<StreamableFile> {
     const f = await this.files.open(name);
     res.setHeader('cache-control', 'private, no-store');
@@ -97,35 +105,38 @@ export class AdminOpsController {
   }
 
   @Get('payments')
+  @Needs('finance.view')
   payments(@Query() q: ListQueryDto): Promise<Paged<Payment>> {
     return this.ops.payments(q);
   }
 
   /** Cancellation fees report (who owed whom; the ride that collected it). */
   @Get('cancellation-dues')
+  @Needs('finance.view')
   cancellationDues(@Query() q: ListQueryDto): Promise<Paged<CancellationDue> & { totals: { pending: number; applied: number } }> {
     return this.ops.cancellationDues(q);
   }
 
   @Get('announcements')
+  @Needs('engage.view')
   announcements(): Promise<Announcement[]> {
     return this.ops.announcements();
   }
 
   @Post('announcements')
-  @OwnerOnly()
+  @Needs('engage.manage')
   createAnnouncement(@Body() body: CreateAnnouncementDto): Promise<Announcement> {
     return this.ops.createAnnouncement(body);
   }
 
   @Patch('announcements/:id')
-  @OwnerOnly()
+  @Needs('engage.manage')
   toggleAnnouncement(@Param('id') id: string, @Body('isActive', ParseBoolPipe) isActive: boolean): Promise<Announcement> {
     return this.ops.setAnnouncementActive(id, isActive);
   }
 
   @Delete('announcements/:id')
-  @OwnerOnly()
+  @Needs('engage.manage')
   @HttpCode(204)
   removeAnnouncement(@Param('id') id: string): Promise<void> {
     return this.ops.removeAnnouncement(id);
@@ -137,19 +148,20 @@ export class AdminOpsController {
   }
 
   @Put('settings')
-  @OwnerOnly()
+  @Needs('settings.manage')
   putSettings(@Body() body: Record<string, unknown>): Promise<Settings> {
     return this.settings.update(body);
   }
 
   /** ?kind=<entity>&q=<action text> */
   @Get('audit')
+  @Needs('system.view')
   audit(@Query() q: ListQueryDto): Promise<Paged<AuditLog>> {
     return this.ops.audit(q);
   }
 
   @Get('export/trips.csv')
-  @OwnerOnly()
+  @Needs('exports')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="tamiltaxi-trips.csv"')
   exportTrips(): Promise<string> {
@@ -157,7 +169,7 @@ export class AdminOpsController {
   }
 
   @Get('export/drivers.csv')
-  @OwnerOnly()
+  @Needs('exports')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="tamiltaxi-drivers.csv"')
   exportDrivers(): Promise<string> {
@@ -165,7 +177,7 @@ export class AdminOpsController {
   }
 
   @Get('export/payments.csv')
-  @OwnerOnly()
+  @Needs('exports')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="tamiltaxi-payments.csv"')
   exportPayments(): Promise<string> {

@@ -15,12 +15,25 @@ enum Role {
   ADMIN
 }
 
-/// What an ADMIN may do in the panel. OWNER: everything. SUPPORT: day-to-day operations (trips, tickets, SOS, people,
-/// documents and approvals) but not pricing, cities and zones, settings, plans, announcements, campaigns, exports,
-/// account deletion or roles; with [User.adminCityIds] a support admin is a city admin who also sets up those cities.
+/// What an ADMIN may do in the panel. OWNER: everything, and only owners manage the team. SUPPORT: staff, who may do
+/// what their [StaffRole] allows (core/auth/permissions.ts).
 enum AdminLevel {
   OWNER
   SUPPORT
+}
+
+/// A staff role (admin Team › Roles): the permissions its members have and whether they only set up their own cities.
+model StaffRole {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  /// Permission keys: "trips.view", "drivers.manage", "exports", … (manage includes view).
+  permissions  String[]
+  /// Members change only the cities assigned to them ([User.adminCityIds]).
+  isCityScoped Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  members      User[]
 }
 
 enum Gender {
@@ -266,8 +279,13 @@ model User {
   role               Role                   @default(PASSENGER)
   /// Only for ADMIN: OWNER or SUPPORT. ADMIN_PHONES numbers are always OWNER; admins made in the panel start as SUPPORT.
   adminLevel         AdminLevel             @default(OWNER)
-  /// SUPPORT admins only: the cities (City.id) they set up: service area, zones, fares, rentals and city settings.
+  /// Staff (SUPPORT) with a city-limited role: the cities (City.id) they set up.
   adminCityIds       String[]               @default([])
+  /// Staff (SUPPORT): their role in Team › Roles; null = no permissions beyond the dashboard.
+  staffRoleId        String?
+  staffRole          StaffRole?             @relation(fields: [staffRoleId], references: [id], onDelete: SetNull)
+  /// Last successful sign-in (any app), shown in Team › Staff.
+  lastSignInAt       DateTime?
   preferWomenDriver  Boolean                @default(false)
   autoShareTrips     Boolean                @default(true)
   /// The rider's ride OTP: one code for every ride they take themselves (Rapido style, chosen for speed: riders learn

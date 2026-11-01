@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { ExportButton } from "@/components/common/export-button";
 import { LinkTabs } from "@/components/common/link-tabs";
 import { ListFilters } from "@/components/common/list-filters";
-import { OwnerOnly } from "@/components/common/owner-only";
+import { Can } from "@/components/common/can";
 import { EmptyState, PageHeader } from "@/components/common/page";
 import { Pager } from "@/components/common/pager";
 import { DriversTable } from "@/components/people/drivers-table";
@@ -64,9 +64,9 @@ export default async function DriversPage({ searchParams }: PageProps<"/drivers"
         title="All drivers"
         description={`${formatCount(data.total)} ${isFiltered ? "matching" : "registered"} drivers. Approve new ones in Approvals; open a driver to hold or reactivate them.`}
         actions={
-          <OwnerOnly>
+          <Can permission="exports">
             <ExportButton entity="drivers" />
-          </OwnerOnly>
+          </Can>
         }
       />
       <LinkTabs

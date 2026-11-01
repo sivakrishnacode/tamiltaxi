@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { canOpen, type AdminAccess } from "@/lib/access";
+import { apiBaseUrl, apiUrl } from "@/lib/api-core";
 import { isUsableAdminToken } from "@/lib/jwt";
 import { publicUrl } from "@/lib/public-url";
 
@@ -8,28 +9,42 @@ import { publicUrl } from "@/lib/public-url";
 const TOKEN_COOKIE = "tt_admin_token";
 const USER_COOKIE = "tt_admin_user";
 
-/** The admin level and cities saved at sign-in (the API checks them again on every call). */
-function sessionAccess(request: NextRequest): AdminAccess | null {
+/** Each token's access for a short while, so a page load costs at most one GET /admin/me. */
+const ACCESS_TTL_MS = 30_000;
+const accessCache = new Map<string, { at: number; access: AdminAccess | null }>();
+
+/** The admin's access now (GET /admin/me); null when the API can't say (the pages and the API decide then). */
+async function liveAccess(token: string): Promise<AdminAccess | null> {
+  const hit = accessCache.get(token);
+  if (hit && Date.now() - hit.at < ACCESS_TTL_MS) return hit.access;
+  let access: AdminAccess | null = null;
   try {
-    const raw = request.cookies.get(USER_COOKIE)?.value;
-    return raw ? (JSON.parse(raw) as AdminAccess) : null;
+    const res = await fetch(apiUrl(apiBaseUrl(), "/admin/me"), { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(3_000) });
+    if (res.ok) access = (await res.json()) as AdminAccess;
   } catch {
-    return null;
+    // API unreachable: let the page load and show its own error.
   }
+  if (accessCache.size > 500) accessCache.clear();
+  accessCache.set(token, { at: Date.now(), access });
+  return access;
 }
 
 /**
  * Optimistic auth check (Next 16 proxy, formerly middleware): no usable admin cookie → /login.
  * The API still verifies the JWT on every call; a 401 there also signs the admin out.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const token = request.cookies.get(TOKEN_COOKIE)?.value;
   const isSignedIn = isUsableAdminToken(token);
   const isLogin = pathname === "/login";
 
   if (isLogin && isSignedIn) return NextResponse.redirect(publicUrl(request, "/"));
-  if (isSignedIn && !canOpen(sessionAccess(request), pathname)) return NextResponse.redirect(publicUrl(request, "/"));
+  // A staff member whose role doesn't open this page goes to the Dashboard.
+  if (isSignedIn && token && !isLogin && pathname !== "/") {
+    const access = await liveAccess(token);
+    if (access && !canOpen(access, pathname)) return NextResponse.redirect(publicUrl(request, "/"));
+  }
   if (isLogin || isSignedIn) return NextResponse.next();
 
   const url = publicUrl(request, "/login");

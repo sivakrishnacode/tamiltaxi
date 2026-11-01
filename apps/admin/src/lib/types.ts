@@ -142,7 +142,7 @@ export interface User {
   readonly email: string | null;
   readonly gender: Gender | null;
   readonly role: Role;
-  /** ADMIN: OWNER (everything) or SUPPORT; a support admin with [adminCityIds] is a city admin (older APIs: absent). */
+  /** ADMIN: OWNER (everything) or SUPPORT (staff with a role in Team; older APIs: absent). */
   readonly adminLevel?: "OWNER" | "SUPPORT";
   readonly adminCityIds?: readonly string[];
   readonly preferWomenDriver: boolean;
@@ -693,6 +693,56 @@ export interface SystemHealth {
     readonly last: { readonly name: string; readonly at: string; readonly sizeBytes: number } | null;
     readonly error?: string;
   };
+}
+
+/** GET /admin/me: the signed-in admin's access (the sidebar, pages and buttons follow it). */
+export interface AdminMe {
+  readonly id: string;
+  readonly name: string | null;
+  readonly phone: string;
+  readonly adminLevel: "OWNER" | "SUPPORT";
+  readonly role: { readonly id: string; readonly name: string } | null;
+  readonly permissions: readonly string[];
+  readonly cityIds: readonly string[];
+  readonly cityScoped: boolean;
+}
+
+/** A staff role (Team › Roles). */
+export interface StaffRole {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly permissions: readonly string[];
+  readonly isCityScoped: boolean;
+  readonly _count?: { readonly members: number };
+}
+
+/** One person on the team (Team › Staff). */
+export interface StaffMember {
+  readonly id: string;
+  readonly name: string | null;
+  readonly phone: string;
+  readonly adminLevel: "OWNER" | "SUPPORT";
+  readonly staffRole: { readonly id: string; readonly name: string; readonly isCityScoped: boolean } | null;
+  readonly adminCityIds: readonly string[];
+  readonly lastSignInAt: string | null;
+  readonly isBlocked: boolean;
+  /** In ADMIN_PHONES on the server: always an owner, removed only there. */
+  readonly isServerOwner: boolean;
+}
+
+export interface StaffInput {
+  readonly name?: string;
+  readonly level?: "OWNER" | "SUPPORT";
+  readonly roleId?: string | null;
+  readonly cityIds?: string[];
+}
+
+export interface StaffRoleInput {
+  readonly name: string;
+  readonly description: string | null;
+  readonly permissions: string[];
+  readonly isCityScoped: boolean;
 }
 
 /** POST /auth/verify. */

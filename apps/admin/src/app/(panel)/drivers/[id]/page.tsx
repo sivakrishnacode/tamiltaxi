@@ -15,7 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { isOwner } from "@/lib/access";
+import { can } from "@/lib/access";
+import { getAccess } from "@/lib/access-server";
 import { adminApi, docFileHref } from "@/lib/api";
 import {
   displayName,
@@ -31,7 +32,6 @@ import {
   vehicleLabel,
 } from "@/lib/format";
 import { GOODS_TRUCKS, KYC_DOC_TYPES, type GoodsTruck, type KycDocument } from "@/lib/types";
-import { getSessionUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 import { LiftBlockButton } from "./block-actions";
@@ -48,7 +48,7 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
   const [d, offers, me, cities] = await Promise.all([
     adminApi.driver(id),
     adminApi.driverOfferStats(id).catch(() => null),
-    getSessionUser(),
+    getAccess(),
     adminApi.cities().catch(() => []),
   ]);
   const identity = d.user.identityChecks?.[0] ?? null;
@@ -105,7 +105,7 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
                 email={d.user.email}
                 personName={d.user.name}
                 isBlocked={!!d.user.isBlocked}
-                canDelete={isOwner(me)}
+                canDelete={can(me, "accounts.delete")}
                 driver={{
                   id: d.id,
                   isOnline: d.isOnline,
