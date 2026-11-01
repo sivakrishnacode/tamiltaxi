@@ -7,7 +7,7 @@ import type { Env } from '../../core/config/env.js';
 import { ENV } from '../../core/config/env.token.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { User } from '../../generated/prisma/client.js';
-import { Role } from '../../generated/prisma/enums.js';
+import { AdminLevel, Role } from '../../generated/prisma/enums.js';
 import type { LoginApp } from './dto/verify-otp.dto.js';
 import { OtpService } from './otp.service.js';
 
@@ -57,7 +57,12 @@ export class AuthService {
     if (existing?.isBlocked) throw new ForbiddenException(existing.blockedReason ?? 'Your account is blocked. Contact support.');
     const created = existing ?? (await this.prisma.user.create({ data: { phone }, include: { driver: true } }));
     const { role, promote } = loginRole({ app: params.app, role: created.role, isAdminPhone: this.env.adminPhones.includes(phone), hasDriver: !!created.driver });
-    const user = promote ? await this.prisma.user.update({ where: { id: created.id }, data: { role: Role.ADMIN }, include: { driver: true } }) : created;
+    // ADMIN_PHONES numbers are always owners (also when an owner had made them support in the panel).
+    const isOwnerPhone = role === Role.ADMIN && this.env.adminPhones.includes(phone) && created.adminLevel !== AdminLevel.OWNER;
+    const user =
+      promote || isOwnerPhone
+        ? await this.prisma.user.update({ where: { id: created.id }, data: { role: Role.ADMIN, adminLevel: AdminLevel.OWNER }, include: { driver: true } })
+        : created;
     // A passenger token never acts as the account's driver profile.
     const driverId = role === Role.PASSENGER ? undefined : user.driver?.id;
     const accessToken = await this.issueToken({ sub: user.id, role, driverId, app: params.app });

@@ -122,6 +122,9 @@ Staging runs `96499af` (API and admin). Waiting to go out:
   SKU against the free monthly calls, push sent and failed, the last backup. **On deploy:** add
   `/opt/tamiltaxi/backups:/backups:ro` to the `api` volumes in `docker-compose.prod.yml` and `BACKUP_DIR=/backups` to
   `.env`. Counting starts with this deploy.
+- **Admin levels** (migration `admin_levels`): owners, support admins and city admins (support with assigned cities,
+  who set up only those cities). Every current admin stays an owner; people made admin in the panel start as support.
+  Owners set it on the person's page under **Access**.
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

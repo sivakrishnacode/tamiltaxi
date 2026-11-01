@@ -79,9 +79,11 @@ async function SosBadge() {
   );
 }
 
-export default function PanelLayout({ children }: LayoutProps<"/">) {
+export default async function PanelLayout({ children }: LayoutProps<"/">) {
+  const user = await getSessionUser();
   return (
     <AppShell
+      access={user ? { adminLevel: user.adminLevel, adminCityIds: user.adminCityIds } : null}
       userMenu={
         <Suspense fallback={<Skeleton className="size-9 rounded-full" />}>
           <SessionUserMenu />

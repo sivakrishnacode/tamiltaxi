@@ -80,6 +80,11 @@ export class AdminCitiesService {
     return updated;
   }
 
+  /** The city a zone belongs to (404 for an unknown zone). */
+  async zoneCityId(id: string): Promise<string> {
+    return (await this.prisma.zone.findUniqueOrThrow({ where: { id }, select: { cityId: true } })).cityId;
+  }
+
   async removeZone(id: string): Promise<void> {
     await this.prisma.zone.delete({ where: { id } });
     this.geo.invalidate();

@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Use
 
 import type { AuthUser } from '../../core/auth/auth-user.js';
 import { CurrentUser } from '../../core/auth/current-user.decorator.js';
-import { Roles } from '../../core/auth/roles.decorator.js';
+import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
 import type { KycDocument, User } from '../../generated/prisma/client.js';
 import { Role } from '../../generated/prisma/enums.js';
 import { type ActivityEntry, type AdminNoteView, AdminPeopleService } from './admin-people.service.js';
@@ -39,12 +39,13 @@ export class AdminUsersController {
   }
 
   @Patch('users/:id')
-  update(@Param('id') id: string, @Body() body: UpdateUserDto): Promise<User> {
-    return this.users.update(id, body);
+  update(@Param('id') id: string, @Body() body: UpdateUserDto, @CurrentUser() user: AuthUser): Promise<User> {
+    return this.users.update(id, body, user);
   }
 
   /** Deletes the person's account like DELETE /me does (204; 409 while a trip is unfinished; not your own). Audited. */
   @Delete('users/:id')
+  @OwnerOnly()
   @HttpCode(204)
   remove(@Param('id') id: string, @CurrentUser() user: AuthUser): Promise<void> {
     return this.deletion.delete(id, { kind: 'admin', adminId: user.userId });

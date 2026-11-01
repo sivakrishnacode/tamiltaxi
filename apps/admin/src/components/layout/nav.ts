@@ -15,6 +15,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { canOpen, isOwner, type AdminAccess } from "@/lib/access";
+
 /** One page (URL). Pages of the same sidebar item are shown as tabs above the page. */
 export interface NavPage {
   readonly href: string;
@@ -147,6 +149,21 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 ];
 
 export const NAV: readonly NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+/**
+ * The sidebar an admin sees: pages they can't open are left out, and an item or collection with nothing left too
+ * (support admins; lib/access.ts). Groups and items keep their labels, so compare those, not the objects.
+ */
+export function visibleNavGroups(access: AdminAccess | null): readonly NavGroup[] {
+  if (isOwner(access)) return NAV_GROUPS;
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.flatMap((item) => {
+      const pages = item.pages.filter((p) => canOpen(access, p.href));
+      return pages.length ? [{ ...item, pages: pages as [NavPage, ...NavPage[]] }] : [];
+    }),
+  })).filter((group) => group.items.length > 0);
+}
 
 /** The group a nav item sits in (its collection). */
 export function groupOf(item: NavItem): NavGroup {

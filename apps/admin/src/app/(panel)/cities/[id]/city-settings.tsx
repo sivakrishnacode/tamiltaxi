@@ -6,7 +6,13 @@ import { toast } from "sonner";
 
 import { PointPicker } from "@/components/map/google/point-picker";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -24,7 +30,13 @@ import type { CityDetail } from "@/lib/types";
 import { deleteCity, updateCity } from "../../actions";
 
 /** Tab d) name/state/centre/active → PATCH; delete (danger dialog) → DELETE. */
-export function CitySettings({ city }: { city: CityDetail }) {
+export function CitySettings({
+  city,
+  isOwner = true,
+}: {
+  city: CityDetail;
+  isOwner?: boolean;
+}) {
   const [name, setName] = useState(city.name);
   const [state, setState] = useState(city.state);
   const [lat, setLat] = useState(String(city.centerLat));
@@ -35,7 +47,13 @@ export function CitySettings({ city }: { city: CityDetail }) {
   const [isPending, startTransition] = useTransition();
   const latN = Number(lat);
   const lngN = Number(lng);
-  const isValid = name.trim().length >= 2 && state.trim().length >= 2 && lat !== "" && lng !== "" && Math.abs(latN) <= 90 && Math.abs(lngN) <= 180;
+  const isValid =
+    name.trim().length >= 2 &&
+    state.trim().length >= 2 &&
+    lat !== "" &&
+    lng !== "" &&
+    Math.abs(latN) <= 90 &&
+    Math.abs(lngN) <= 180;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -43,7 +61,8 @@ export function CitySettings({ city }: { city: CityDetail }) {
         <CardHeader>
           <CardTitle className="font-semibold">City details</CardTitle>
           <CardDescription>
-            Id <span className="font-mono">{city.id}</span> · H3 resolution {city.h3Resolution} (fixed after creation)
+            Id <span className="font-mono">{city.id}</span> · H3 resolution{" "}
+            {city.h3Resolution} (fixed after creation)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,7 +72,13 @@ export function CitySettings({ city }: { city: CityDetail }) {
               e.preventDefault();
               if (!isValid) return;
               startTransition(async () => {
-                const res = await updateCity(city.id, { name: name.trim(), state: state.trim(), centerLat: latN, centerLng: lngN, isActive });
+                const res = await updateCity(city.id, {
+                  name: name.trim(),
+                  state: state.trim(),
+                  centerLat: latN,
+                  centerLng: lngN,
+                  isActive,
+                });
                 if (res.ok) toast.success(res.message);
                 else toast.error(res.error);
               });
@@ -62,19 +87,37 @@ export function CitySettings({ city }: { city: CityDetail }) {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="cs-name">Name</Label>
-                <Input id="cs-name" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input
+                  id="cs-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="cs-state">State</Label>
-                <Input id="cs-state" value={state} onChange={(e) => setState(e.target.value)} />
+                <Input
+                  id="cs-state"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="cs-lat">Centre lat</Label>
-                <Input id="cs-lat" inputMode="decimal" value={lat} onChange={(e) => setLat(e.target.value)} />
+                <Input
+                  id="cs-lat"
+                  inputMode="decimal"
+                  value={lat}
+                  onChange={(e) => setLat(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="cs-lng">Centre lng</Label>
-                <Input id="cs-lng" inputMode="decimal" value={lng} onChange={(e) => setLng(e.target.value)} />
+                <Input
+                  id="cs-lng"
+                  inputMode="decimal"
+                  value={lng}
+                  onChange={(e) => setLng(e.target.value)}
+                />
               </div>
             </div>
             <div className="h-56 overflow-hidden rounded-xl border">
@@ -89,40 +132,74 @@ export function CitySettings({ city }: { city: CityDetail }) {
             </div>
             <label className="flex items-center justify-between gap-3 rounded-lg border p-3">
               <span>
-                <span className="block text-sm font-medium text-navy-900">Active</span>
-                <span className="block text-xs text-muted-foreground">Inactive cities are ignored by fares and dispatch.</span>
+                <span className="block text-sm font-medium text-navy-900">
+                  Active
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {isOwner
+                    ? "Inactive cities are ignored by fares and dispatch."
+                    : "Only an owner admin switches a city on or off."}
+                </span>
               </span>
-              <Switch checked={isActive} onCheckedChange={setActive} aria-label="City active" />
+              <Switch
+                checked={isActive}
+                onCheckedChange={setActive}
+                disabled={!isOwner}
+                aria-label="City active"
+              />
             </label>
-            <Button type="submit" disabled={!isValid || isPending} className="justify-self-start">
-              {isPending ? <Loader2Icon className="animate-spin" /> : <SaveIcon />} Save city
+            <Button
+              type="submit"
+              disabled={!isValid || isPending}
+              className="justify-self-start"
+            >
+              {isPending ? (
+                <Loader2Icon className="animate-spin" />
+              ) : (
+                <SaveIcon />
+              )}{" "}
+              Save city
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="h-fit ring-error/30">
-        <CardHeader>
-          <CardTitle className="font-semibold text-error">Danger zone</CardTitle>
-          <CardDescription>Deleting removes the service area, all zones and city fares.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-            <Trash2Icon /> Delete {city.name}
-          </Button>
-        </CardContent>
-      </Card>
+      {isOwner && (
+        <Card className="h-fit ring-error/30">
+          <CardHeader>
+            <CardTitle className="font-semibold text-error">
+              Danger zone
+            </CardTitle>
+            <CardDescription>
+              Deleting removes the service area, all zones and city fares.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2Icon /> Delete {city.name}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={isDeleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete {city.name}?</DialogTitle>
             <DialogDescription>
-              {city.serviceCells.length.toLocaleString("en-IN")} hexagons and {city.zones.length} zones are removed. Type the city id{" "}
-              <span className="font-mono font-medium">{city.id}</span> to confirm.
+              {city.serviceCells.length.toLocaleString("en-IN")} hexagons and{" "}
+              {city.zones.length} zones are removed. Type the city id{" "}
+              <span className="font-mono font-medium">{city.id}</span> to
+              confirm.
             </DialogDescription>
           </DialogHeader>
-          <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-label="City id" className="font-mono" autoFocus />
+          <Input
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            aria-label="City id"
+            className="font-mono"
+            autoFocus
+          />
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
@@ -138,7 +215,12 @@ export function CitySettings({ city }: { city: CityDetail }) {
                 })
               }
             >
-              {isPending ? <Loader2Icon className="animate-spin" /> : <Trash2Icon />} Delete city
+              {isPending ? (
+                <Loader2Icon className="animate-spin" />
+              ) : (
+                <Trash2Icon />
+              )}{" "}
+              Delete city
             </Button>
           </DialogFooter>
         </DialogContent>

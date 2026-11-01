@@ -1,6 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseEnumPipe, Patch, Post, Put, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, ParseEnumPipe, Patch, Post, Put, UseInterceptors } from '@nestjs/common';
 
-import { Roles } from '../../core/auth/roles.decorator.js';
+import { assertCityAccess, isOwner } from '../../core/auth/admin-access.js';
+import type { AuthUser } from '../../core/auth/auth-user.js';
+import { CurrentUser } from '../../core/auth/current-user.decorator.js';
+import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
 import type { City, CityFareRule, Zone } from '../../generated/prisma/client.js';
 import { Role, VehicleKind } from '../../generated/prisma/enums.js';
 import { AdminCitiesService, type CityPricing } from './admin-cities.service.js';
@@ -10,7 +13,10 @@ import { CreateCityDto, UpdateCityDto } from './dto/city.dto.js';
 import { FareRuleDto } from './dto/fare-rule.dto.js';
 import { CreateZoneDto, UpdateZoneDto } from './dto/zone.dto.js';
 
-/** Cities, H3 service areas, zones and per-city fares. */
+/**
+ * Cities, H3 service areas, zones and per-city fares. Reads are open to every admin; owners change any city, a city
+ * admin (support with assigned cities) only theirs, and only owners add, delete or switch cities on and off.
+ */
 @Roles(Role.ADMIN)
 @UseInterceptors(AuditInterceptor)
 @Controller('admin')
@@ -23,6 +29,7 @@ export class AdminCitiesController {
   }
 
   @Post('cities')
+  @OwnerOnly()
   create(@Body() body: CreateCityDto): Promise<City> {
     return this.cities.create(body);
   }
@@ -33,34 +40,44 @@ export class AdminCitiesController {
   }
 
   @Patch('cities/:id')
-  update(@Param('id') id: string, @Body() body: UpdateCityDto): Promise<City> {
+  async update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: UpdateCityDto): Promise<City> {
+    assertCityAccess(user, id);
+    // The settings form always sends the switch: only a change is an owner's call.
+    if (body.isActive !== undefined && !isOwner(user) && body.isActive !== (await this.cities.city(id)).isActive) {
+      throw new ForbiddenException('Only an owner admin can switch a city on or off');
+    }
     return this.cities.update(id, body);
   }
 
   @Delete('cities/:id')
+  @OwnerOnly()
   @HttpCode(204)
   remove(@Param('id') id: string): Promise<void> {
     return this.cities.remove(id);
   }
 
   @Put('cities/:id/service-cells')
-  setCells(@Param('id') id: string, @Body() body: CellsDto): Promise<{ count: number; rejected: string[] }> {
+  setCells(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: CellsDto): Promise<{ count: number; rejected: string[] }> {
+    assertCityAccess(user, id);
     return this.cities.setServiceCells(id, body.cells);
   }
 
   @Post('cities/:id/zones')
-  createZone(@Param('id') id: string, @Body() body: CreateZoneDto): Promise<Zone> {
+  createZone(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: CreateZoneDto): Promise<Zone> {
+    assertCityAccess(user, id);
     return this.cities.createZone(id, body);
   }
 
   @Patch('zones/:id')
-  updateZone(@Param('id') id: string, @Body() body: UpdateZoneDto): Promise<Zone> {
+  async updateZone(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: UpdateZoneDto): Promise<Zone> {
+    assertCityAccess(user, await this.cities.zoneCityId(id));
     return this.cities.updateZone(id, body);
   }
 
   @Delete('zones/:id')
   @HttpCode(204)
-  removeZone(@Param('id') id: string): Promise<void> {
+  async removeZone(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<void> {
+    assertCityAccess(user, await this.cities.zoneCityId(id));
     return this.cities.removeZone(id);
   }
 
@@ -71,16 +88,19 @@ export class AdminCitiesController {
 
   @Put('cities/:id/fares/:vehicleKind')
   setFare(
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Param('vehicleKind', new ParseEnumPipe(VehicleKind)) kind: VehicleKind,
     @Body() body: FareRuleDto,
   ): Promise<CityFareRule> {
+    assertCityAccess(user, id);
     return this.cities.setFare(id, kind, body);
   }
 
   @Delete('cities/:id/fares/:vehicleKind')
   @HttpCode(204)
-  resetFare(@Param('id') id: string, @Param('vehicleKind', new ParseEnumPipe(VehicleKind)) kind: VehicleKind): Promise<void> {
+  resetFare(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('vehicleKind', new ParseEnumPipe(VehicleKind)) kind: VehicleKind): Promise<void> {
+    assertCityAccess(user, id);
     return this.cities.resetFare(id, kind);
   }
 
@@ -92,13 +112,15 @@ export class AdminCitiesController {
 
   /** Sets one whole section (`rental`, `outstation`, `goodsOutstation`, `shifting`); checked in fares/pricing.ts. */
   @Put('cities/:id/pricing/:section')
-  setPricing(@Param('id') id: string, @Param('section') section: string, @Body() body: unknown): Promise<CityPricing> {
+  setPricing(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('section') section: string, @Body() body: unknown): Promise<CityPricing> {
+    assertCityAccess(user, id);
     return this.cities.setPricing(id, section, body);
   }
 
   @Delete('cities/:id/pricing/:section')
   @HttpCode(204)
-  resetPricing(@Param('id') id: string, @Param('section') section: string): Promise<void> {
+  resetPricing(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('section') section: string): Promise<void> {
+    assertCityAccess(user, id);
     return this.cities.resetPricing(id, section);
   }
 }

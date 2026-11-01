@@ -318,7 +318,11 @@ export const adminApi = {
   // Users and the KYC queue
   users: (q: ListQuery = {}) => apiFetch<Paged<AdminUser>>("/admin/users", { query: listQuery(q) }),
   user: (id: string) => orNotFound(apiFetch<UserDetail>(`/admin/users/${enc(id)}`)),
-  updateUser: (id: string, data: { name?: string; email?: string | null; role?: Role; isBlocked?: boolean; blockedReason?: string }) =>
+  /** Role, adminLevel and adminCityIds: owner admins only, never their own account. */
+  updateUser: (
+    id: string,
+    data: { name?: string; email?: string | null; role?: Role; adminLevel?: "OWNER" | "SUPPORT"; adminCityIds?: string[]; isBlocked?: boolean; blockedReason?: string },
+  ) =>
     apiFetch<UserDetail>(`/admin/users/${enc(id)}`, { method: "PATCH", body: data }),
   /** A new ride OTP ([otp], or a random one); their rides that haven't started move to it. */
   setRideOtp: (id: string, otp?: string) =>

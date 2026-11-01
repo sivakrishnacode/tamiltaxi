@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 
+import { isOwner } from '../../core/auth/admin-access.js';
+import type { AuthUser } from '../../core/auth/auth-user.js';
+import { OWNER_ONLY_MESSAGE } from '../../core/auth/roles.guard.js';
 import { UserAccessService } from '../../core/auth/user-access.service.js';
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
 import type { KycDocument, Prisma, User } from '../../generated/prisma/client.js';
-import { CancelFault, CancelledBy, KycStatus, Role } from '../../generated/prisma/enums.js';
+import { AdminLevel, CancelFault, CancelledBy, KycStatus, Role } from '../../generated/prisma/enums.js';
 import { type PassengerCancelRate, passengerCancelRate } from '../trips/cancel-rate.js';
 
 /** Window of the passenger cancellation rate on the admin user page. */
@@ -72,10 +75,31 @@ export class AdminUsersService {
   }
 
   /** Updates a user; blocking also takes effect immediately for existing tokens (Redis flag). */
-  async update(id: string, dto: UpdateUserDto): Promise<User> {
+  /**
+   * Name, email, block and, for owner admins only (never on their own account), the role, admin level and assigned
+   * cities. Someone made ADMIN here starts as SUPPORT unless a level is given; unknown city ids are refused.
+   */
+  async update(id: string, dto: UpdateUserDto, caller?: AuthUser): Promise<User> {
+    const changesAccess = dto.role !== undefined || dto.adminLevel !== undefined || dto.adminCityIds !== undefined;
+    if (changesAccess && caller) {
+      if (!isOwner(caller)) throw new ForbiddenException(OWNER_ONLY_MESSAGE);
+      if (caller.userId === id) throw new BadRequestException("You can't change your own access");
+    }
+    let access: Prisma.UserUpdateInput = {};
+    if (changesAccess) {
+      const current = await this.prisma.user.findUniqueOrThrow({ where: { id }, select: { role: true } });
+      const cities = dto.adminCityIds ? [...new Set(dto.adminCityIds)] : undefined;
+      if (cities?.length) {
+        const known = await this.prisma.city.count({ where: { id: { in: cities } } });
+        if (known !== cities.length) throw new BadRequestException('Unknown city');
+      }
+      const isNewAdmin = dto.role === Role.ADMIN && current.role !== Role.ADMIN;
+      access = { adminLevel: dto.adminLevel ?? (isNewAdmin ? AdminLevel.SUPPORT : undefined), adminCityIds: cities };
+    }
+    const { adminLevel: _level, adminCityIds: _cities, ...rest } = dto;
     const user = await this.prisma.user.update({
       where: { id, deletedAt: null },
-      data: { ...dto, blockedReason: dto.isBlocked === false ? null : dto.blockedReason },
+      data: { ...rest, ...access, blockedReason: dto.isBlocked === false ? null : dto.blockedReason },
     });
     if (user.isBlocked) await this.redis.set(`user:blocked:${id}`, '1');
     else await this.redis.del(`user:blocked:${id}`);

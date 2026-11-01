@@ -262,6 +262,14 @@ export async function setUserRole(userId: string, role: Role): Promise<ActionRes
   return plain(res);
 }
 
+/** An admin's level and, for support, the cities they set up (owner admins only; the API checks). Audited. */
+export async function setAdminAccess(userId: string, level: "OWNER" | "SUPPORT", cityIds: string[]): Promise<ActionResult> {
+  if (level !== "OWNER" && level !== "SUPPORT") return { ok: false, error: "Unknown level" };
+  const cities = level === "SUPPORT" ? [...new Set(cityIds)] : [];
+  const message = level === "OWNER" ? "Now an owner admin" : cities.length ? "Now a city admin" : "Now a support admin";
+  return plain(await run(() => adminApi.updateUser(userId, { adminLevel: level, adminCityIds: cities }), message, [`/users/${userId}`, "/users"]));
+}
+
 /** A new ride OTP for the person (typed, or random when [otp] is empty): when theirs was overheard. Audited. */
 export async function changeRideOtp(userId: string, otp?: string): Promise<ActionResult> {
   const code = otp?.trim() || undefined;

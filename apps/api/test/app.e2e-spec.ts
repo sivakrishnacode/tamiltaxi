@@ -1277,6 +1277,56 @@ describe('Tamil Taxi API (e2e)', () => {
     }
   });
 
+  it('support admins do day-to-day work; owners alone change setup, exports and access; city admins set up their cities', async () => {
+    const owner = await adminAuth();
+    const ownerId = (await http.get('/v1/me').set(owner).expect(200)).body.id as string;
+    // Someone made an admin in the panel starts as support.
+    const p = phone();
+    const signIn = async () => {
+      await http.post('/v1/auth/otp').send({ phone: p }).expect(200);
+      const res = await http.post('/v1/auth/verify').send({ phone: p, code: '123456', app: 'admin' }).expect(200);
+      return { Authorization: `Bearer ${res.body.accessToken as string}` };
+    };
+    const first = await signIn();
+    const userId = (await http.get('/v1/me').set(first).expect(200)).body.id as string;
+    const promoted = (await http.patch(`/v1/admin/users/${userId}`).set(owner).send({ role: 'ADMIN' }).expect(200)).body;
+    expect(promoted).toMatchObject({ role: 'ADMIN', adminLevel: 'SUPPORT', adminCityIds: [] });
+    const support = await signIn();
+
+    // Day-to-day work is open; setup, exports and access are not.
+    await http.get('/v1/admin/stats').set(support).expect(200);
+    await http.get('/v1/admin/cities').set(support).expect(200);
+    await http.get('/v1/admin/settings').set(support).expect(200);
+    const denied = (await http.put('/v1/admin/settings').set(support).send({}).expect(403)).body;
+    expect(denied.message).toBe('Only an owner admin can do this');
+    await http.get('/v1/admin/export/trips.csv').set(support).expect(403);
+    await http.post('/v1/admin/announcements').set(support).send({ title: 'Hi there', body: 'Hello everyone' }).expect(403);
+    await http.post('/v1/admin/cities').set(support).send({}).expect(403);
+    await http.delete(`/v1/admin/users/${ownerId}`).set(support).expect(403);
+    await http.patch(`/v1/admin/users/${ownerId}`).set(support).send({ role: 'PASSENGER' }).expect(403);
+    await http.patch(`/v1/admin/users/${userId}`).set(support).send({ adminLevel: 'OWNER' }).expect(403);
+    const city = (await http.get('/v1/admin/cities/coimbatore').set(support).expect(200)).body as { name: string; serviceCells: string[] };
+    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ name: city.name }).expect(403);
+
+    // A city admin: sets up their city (not its on/off switch); others' stay closed.
+    await http.patch(`/v1/admin/users/${userId}`).set(owner).send({ adminCityIds: ['nowhere'] }).expect(400);
+    await http.patch(`/v1/admin/users/${userId}`).set(owner).send({ adminCityIds: ['coimbatore'] }).expect(200);
+    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ name: city.name }).expect(200);
+    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ name: city.name, isActive: true }).expect(200);
+    await http.patch('/v1/admin/cities/coimbatore').set(support).send({ isActive: false }).expect(403);
+    const zone = (
+      await http.post('/v1/admin/cities/coimbatore/zones').set(support).send({ name: 'E2E city admin zone', kind: 'DEMAND', cells: city.serviceCells.slice(0, 1) }).expect(201)
+    ).body as { id: string };
+    await http.delete(`/v1/admin/zones/${zone.id}`).set(support).expect(204);
+
+    // Owners never change their own access; an ADMIN_PHONES number signs in as an owner again.
+    await http.patch(`/v1/admin/users/${ownerId}`).set(owner).send({ role: 'PASSENGER' }).expect(400);
+    await prisma.user.update({ where: { id: ownerId }, data: { adminLevel: 'SUPPORT' } });
+    await http.post('/v1/auth/otp').send({ phone: ADMIN_PHONE }).expect(200);
+    const again = (await http.post('/v1/auth/verify').send({ phone: ADMIN_PHONE, code: '123456', app: 'admin' }).expect(200)).body;
+    expect(again.user.adminLevel).toBe('OWNER');
+  });
+
   it('reports server health with the usage counters and the newest backup', async () => {
     const auth = await adminAuth();
     const before = (await http.get('/v1/admin/system').set(auth).expect(200)).body;

@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, ParseEnumPipe, Patch, Post, Que
 
 import type { AuthUser } from '../../core/auth/auth-user.js';
 import { CurrentUser } from '../../core/auth/current-user.decorator.js';
-import { Roles } from '../../core/auth/roles.decorator.js';
+import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
 import type { Driver, DriverBlock, KycDocument, Plan, SupportTicket, Trip, User } from '../../generated/prisma/client.js';
 import { KycDocType, Role } from '../../generated/prisma/enums.js';
 import type { ApprovalChecklist } from '../kyc/driver-approval.js';
@@ -144,6 +144,7 @@ export class AdminController {
   }
 
   @Patch('plans/:id')
+  @OwnerOnly()
   updatePlan(@Param('id') id: string, @Body() body: UpdatePlanDto): Promise<Plan> {
     return this.admin.updatePlan(id, body);
   }

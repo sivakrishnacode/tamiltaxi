@@ -5,9 +5,11 @@ import Link from "next/link";
 import { PageHeader } from "@/components/common/page";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isOwner } from "@/lib/access";
 import { adminApi } from "@/lib/api";
 import { formatCount } from "@/lib/format";
 import { param } from "@/lib/paging";
+import { getSessionUser } from "@/lib/session";
 import { cellsToKm2 } from "@/lib/validation";
 
 import { CitySettings } from "./city-settings";
@@ -28,7 +30,7 @@ export default async function CityPage({ params, searchParams }: PageProps<"/cit
   const sp = await searchParams;
   const tabParam = param(sp.tab);
   const tab = TABS.find((t) => t === tabParam) ?? "area";
-  const [city, fares, pricing] = await Promise.all([adminApi.city(id), adminApi.fares(id), adminApi.pricing(id)]);
+  const [city, fares, pricing, me] = await Promise.all([adminApi.city(id), adminApi.fares(id), adminApi.pricing(id), getSessionUser()]);
 
   return (
     <>
@@ -70,7 +72,7 @@ export default async function CityPage({ params, searchParams }: PageProps<"/cit
           <PricingEditor cityId={city.id} pricing={pricing} />
         </TabsContent>
         <TabsContent value="settings">
-          <CitySettings key={city.updatedAt} city={city} />
+          <CitySettings key={city.updatedAt} city={city} isOwner={isOwner(me)} />
         </TabsContent>
       </Tabs>
     </>

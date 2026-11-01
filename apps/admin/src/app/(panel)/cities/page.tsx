@@ -5,8 +5,10 @@ import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/common/page";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { canManageCity, isOwner } from "@/lib/access";
 import { adminApi } from "@/lib/api";
 import { formatCount, formatDate } from "@/lib/format";
+import { getSessionUser } from "@/lib/session";
 import { cellsToKm2 } from "@/lib/validation";
 
 import { AddCityButton, CityActiveSwitch } from "./city-controls";
@@ -14,13 +16,16 @@ import { AddCityButton, CityActiveSwitch } from "./city-controls";
 export const metadata: Metadata = { title: "Cities & zones" };
 
 export default async function CitiesPage() {
-  const cities = await adminApi.cities();
+  const [all, me] = await Promise.all([adminApi.cities(), getSessionUser()]);
+  // A city admin sees and sets up their own cities; only owners add cities or switch them on and off.
+  const cities = all.filter((c) => canManageCity(me, c.id));
+  const canAdd = isOwner(me);
   return (
     <>
       <PageHeader
         title="Cities & zones"
         description="Service areas are sets of H3 hexagons. Bookings outside them are refused; zones add surge, demand hotspots and no-service areas."
-        actions={<AddCityButton />}
+        actions={canAdd ? <AddCityButton /> : undefined}
       />
       <Card className="gap-0 py-0">
         {cities.length === 0 ? (
@@ -61,7 +66,7 @@ export default async function CitiesPage() {
                   <TableCell className="text-navy-700">res {c.h3Resolution}</TableCell>
                   <TableCell className="text-navy-700">{formatDate(c.updatedAt)}</TableCell>
                   <TableCell className="pr-4 text-center">
-                    <CityActiveSwitch id={c.id} name={c.name} isActive={c.isActive} />
+                    {canAdd ? <CityActiveSwitch id={c.id} name={c.name} isActive={c.isActive} /> : c.isActive ? "Active" : "Off"}
                   </TableCell>
                 </TableRow>
               ))}

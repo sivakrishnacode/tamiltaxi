@@ -17,9 +17,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminApi } from "@/lib/api";
 import { displayName, formatDate, formatDateTime, formatInr, formatPhone, humanize, initials, kycProgress, shortId, vehicleLabel } from "@/lib/format";
+import { accessLabel, isOwner } from "@/lib/access";
 import { getSessionUser } from "@/lib/session";
 
-import { RideOtpControl, RoleControl } from "./user-actions";
+import { AdminAccessControl, RideOtpControl, RoleControl } from "./user-actions";
 
 export async function generateMetadata({ params }: PageProps<"/users/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -29,6 +30,10 @@ export async function generateMetadata({ params }: PageProps<"/users/[id]">): Pr
 export default async function UserPage({ params }: PageProps<"/users/[id]">) {
   const { id } = await params;
   const [u, me] = await Promise.all([adminApi.user(id), getSessionUser()]);
+  const canChangeAccess = isOwner(me);
+  // Admins: the city names for their access label and the Access dialog.
+  const cities = u.role === "ADMIN" ? await adminApi.cities().catch(() => []) : [];
+  const cityNames = Object.fromEntries(cities.map((c) => [c.id, c.name]));
   const driverKyc = u.driver ? kycProgress(u.driver.documents, u.identityStatus ?? "NOT_STARTED") : null;
   const name = displayName(u);
   const isSelf = !!me && me.phone === u.phone;
@@ -55,6 +60,7 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
               <span className="block truncate">{name}</span>
               <span className="mt-1 flex flex-wrap items-center gap-2 font-sans text-sm font-normal text-muted-foreground">
                 <Badge variant="outline">{humanize(u.role)}</Badge>
+                {u.role === "ADMIN" && <Badge variant="secondary">{accessLabel(u, cityNames)}</Badge>}
                 {isDeleted && (
                   <Badge variant="secondary" className="bg-muted text-muted-foreground">
                     <Trash2Icon /> Deleted
@@ -74,7 +80,16 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
         actions={
           isDeleted ? undefined : (
             <>
-              {isSelf ? <p className="text-sm text-muted-foreground">This is your account.</p> : <RoleControl userId={u.id} role={u.role} name={name} />}
+              {isSelf ? (
+                <p className="text-sm text-muted-foreground">This is your account.</p>
+              ) : (
+                canChangeAccess && (
+                  <>
+                    {u.role === "ADMIN" && <AdminAccessControl userId={u.id} name={name} access={u} cities={cities.map((c) => ({ id: c.id, name: c.name }))} />}
+                    <RoleControl userId={u.id} role={u.role} name={name} />
+                  </>
+                )
+              )}
               <PersonMenu
                 userId={u.id}
                 name={name}
@@ -82,6 +97,7 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
                 personName={u.name}
                 isBlocked={!!u.isBlocked}
                 isSelf={isSelf}
+                canDelete={canChangeAccess}
                 driver={
                   u.driver
                     ? {

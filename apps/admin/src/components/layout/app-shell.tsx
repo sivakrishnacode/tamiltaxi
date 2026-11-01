@@ -8,10 +8,11 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { Wordmark } from "@/components/common/wordmark";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { AdminAccess } from "@/lib/access";
 import { cn } from "@/lib/utils";
 
 import { CommandPalette } from "./command-palette";
-import { NAV_GROUPS, activePage, groupOf, hasTabs, hrefOf } from "./nav";
+import { activePage, groupOf, hasTabs, hrefOf, visibleNavGroups } from "./nav";
 import { PageTabs } from "./page-tabs";
 
 // Collapsed sidebar groups, per browser (a convenience: everything works without storage).
@@ -46,10 +47,12 @@ function writeCollapsed(labels: ReadonlySet<string>): void {
 
 function SidebarNav({
   pathname,
+  access,
   badges,
   tags,
   onNavigate,
 }: {
+  access: AdminAccess | null;
   pathname: string;
   badges?: Record<string, React.ReactNode>;
   tags?: Record<string, React.ReactNode>;
@@ -62,9 +65,10 @@ function SidebarNav({
 
   return (
     <nav aria-label="Main" className="flex flex-col gap-3">
-      {NAV_GROUPS.map((group) => {
+      {visibleNavGroups(access).map((group) => {
+        const isCurrentGroup = group.label === currentGroup.label;
         // The collection holding the open page always stays open.
-        const isOpen = group === currentGroup || !collapsed.has(group.label);
+        const isOpen = isCurrentGroup || !collapsed.has(group.label);
         const listId = `nav-${group.label.toLowerCase().replace(/\W+/g, "-")}`;
         return (
           <div key={group.label} className="flex flex-col gap-0.5">
@@ -72,7 +76,7 @@ function SidebarNav({
               type="button"
               aria-expanded={isOpen}
               aria-controls={listId}
-              disabled={group === currentGroup}
+              disabled={isCurrentGroup}
               onClick={() => {
                 const next = new Set(collapsed);
                 if (next.has(group.label)) next.delete(group.label);
@@ -84,14 +88,14 @@ function SidebarNav({
               <span className="flex-1 text-left">{group.label}</span>
               {/* Badges of a closed collection move to its header, so nothing urgent is hidden. */}
               {!isOpen && group.items.map((item) => <span key={item.label}>{badges?.[hrefOf(item)]}</span>)}
-              {group !== currentGroup && (
+              {!isCurrentGroup && (
                 <ChevronDownIcon className={cn("size-3.5 transition-transform", !isOpen && "-rotate-90")} aria-hidden />
               )}
             </button>
             {isOpen && (
               <ul id={listId} className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
-                  const isActive = item === current;
+                  const isActive = item.label === current.label;
                   const href = hrefOf(item);
                   const Icon = item.icon;
                   return (
@@ -124,12 +128,15 @@ function SidebarNav({
 
 /** Sidebar (desktop) / sheet (mobile) + top bar around every signed-in page. */
 export function AppShell({
+  access,
   userMenu,
   badges,
   tabBadges,
   tags,
   children,
 }: {
+  /** The signed-in admin's level and cities: support admins don't see owner-only pages. */
+  access: AdminAccess | null;
   userMenu: React.ReactNode;
   /**
    * Server-rendered counters next to sidebar items, keyed by the item's link (its first page, e.g. "/drivers" for
@@ -146,7 +153,8 @@ export function AppShell({
   const [isMenuOpen, setMenuOpen] = useState(false);
   const { item: section, isExact } = activePage(pathname);
   // Related pages show as tabs on each of them (not on detail pages like /drivers/abc).
-  const tabs = hasTabs(section) && isExact ? section.pages.map((p) => ({ href: p.href, label: p.label, badge: tabBadges?.[p.href] })) : null;
+  const visibleTabs = section.pages.filter((p) => visibleNavGroups(access).some((g) => g.items.some((i) => i.pages.some((v) => v.href === p.href))));
+  const tabs = hasTabs(section) && isExact && visibleTabs.length > 1 ? visibleTabs.map((p) => ({ href: p.href, label: p.label, badge: tabBadges?.[p.href] })) : null;
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
@@ -155,7 +163,7 @@ export function AppShell({
           <Wordmark className="text-[28px]" />
           <span className="mt-1 block text-xs font-medium tracking-wide text-muted-foreground uppercase">Admin</span>
         </Link>
-        <SidebarNav pathname={pathname} badges={badges} tags={tags} />
+        <SidebarNav pathname={pathname} access={access} badges={badges} tags={tags} />
         <p className="mt-auto px-3 pt-6 text-xs text-muted-foreground">Zero-commission rides &amp; parcels</p>
       </aside>
 
@@ -167,7 +175,7 @@ export function AppShell({
             </SheetTitle>
             <SheetDescription>Admin</SheetDescription>
           </SheetHeader>
-          <SidebarNav pathname={pathname} badges={badges} tags={tags} onNavigate={() => setMenuOpen(false)} />
+          <SidebarNav pathname={pathname} access={access} badges={badges} tags={tags} onNavigate={() => setMenuOpen(false)} />
         </SheetContent>
       </Sheet>
 
@@ -177,7 +185,7 @@ export function AppShell({
             <MenuIcon />
           </Button>
           <p className="font-heading text-lg font-semibold text-navy-900 lg:hidden">{section.label}</p>
-          <CommandPalette pathname={pathname} />
+          <CommandPalette pathname={pathname} access={access} />
           <div className="ml-auto">{userMenu}</div>
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">

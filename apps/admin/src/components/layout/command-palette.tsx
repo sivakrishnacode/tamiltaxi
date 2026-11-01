@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { canOpen, type AdminAccess } from "@/lib/access";
 import { paletteItems, type PaletteGroup, type PalettePage } from "@/lib/palette";
 import type { SearchResults } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,7 @@ function isTyping(target: EventTarget | null): boolean {
  * The top-bar search (Ctrl+K / ⌘K, or "/"): jump to any page, search the open list, or open a driver, rider or trip
  * straight from GET /admin/search (through /api/search). Arrow keys move, Enter opens, Esc closes.
  */
-export function CommandPalette({ pathname }: { pathname: string }) {
+export function CommandPalette({ pathname, access }: { pathname: string; access: AdminAccess | null }) {
   const router = useRouter();
   const [isOpen, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -48,7 +49,7 @@ export function CommandPalette({ pathname }: { pathname: string }) {
   const open = activePage(pathname);
   const current: PalettePage = { href: open.page.href, label: open.page.label, group: open.item.label, searchHint: open.isExact ? open.page.searchHint : undefined };
   const fallback: PalettePage = { href: DEFAULT_SEARCH.href, label: DEFAULT_SEARCH.label, group: "Drivers", searchHint: DEFAULT_SEARCH.searchHint };
-  const items = paletteItems({ q, current, fallbackSearch: fallback, pages: PAGES, results });
+  const items = paletteItems({ q, current, fallbackSearch: fallback, pages: PAGES.filter((p) => canOpen(access, p.href)), results });
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

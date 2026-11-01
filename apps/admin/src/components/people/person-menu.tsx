@@ -55,6 +55,7 @@ export function PersonMenu({
   isBlocked,
   driver,
   isSelf = false,
+  canDelete = true,
 }: {
   userId: string;
   /** Display name for titles ("Selvi R" or the phone). */
@@ -66,6 +67,8 @@ export function PersonMenu({
   driver?: DriverFields;
   /** The signed-in admin's own account: no block, no delete. */
   isSelf?: boolean;
+  /** Owner admins only (support admins can't delete accounts). */
+  canDelete?: boolean;
 }) {
   const [dialog, setDialog] = useState<"edit" | "message" | "offline" | "block" | "delete" | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -110,9 +113,11 @@ export function PersonMenu({
                   <BanIcon /> Block account
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem variant="destructive" onSelect={() => setDialog("delete")}>
-                <Trash2Icon /> Delete account
-              </DropdownMenuItem>
+              {canDelete && (
+                <DropdownMenuItem variant="destructive" onSelect={() => setDialog("delete")}>
+                  <Trash2Icon /> Delete account
+                </DropdownMenuItem>
+              )}
             </>
           )}
         </DropdownMenuContent>

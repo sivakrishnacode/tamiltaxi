@@ -142,6 +142,9 @@ export interface User {
   readonly email: string | null;
   readonly gender: Gender | null;
   readonly role: Role;
+  /** ADMIN: OWNER (everything) or SUPPORT; a support admin with [adminCityIds] is a city admin (older APIs: absent). */
+  readonly adminLevel?: "OWNER" | "SUPPORT";
+  readonly adminCityIds?: readonly string[];
   readonly preferWomenDriver: boolean;
   readonly autoShareTrips: boolean;
   /** One ride OTP for every ride the person takes themselves (made at their first booking; null before). */

@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, ParseBoolPipe, Patch, Post, Put, Query, Res, StreamableFile, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 
-import { Roles } from '../../core/auth/roles.decorator.js';
+import { OwnerOnly, Roles } from '../../core/auth/roles.decorator.js';
 import { FileStorageService } from '../../core/storage/file-storage.service.js';
 import type { Announcement, AuditLog, CancellationDue, Payment } from '../../generated/prisma/client.js';
 import { Role } from '../../generated/prisma/enums.js';
@@ -82,6 +82,7 @@ export class AdminOpsController {
   }
 
   @Post('hex-stats/rebuild')
+  @OwnerOnly()
   @HttpCode(200)
   rebuildHexStats(): Promise<{ pairs: number; trips: number }> {
     return this.hexStats.rebuild();
@@ -112,16 +113,19 @@ export class AdminOpsController {
   }
 
   @Post('announcements')
+  @OwnerOnly()
   createAnnouncement(@Body() body: CreateAnnouncementDto): Promise<Announcement> {
     return this.ops.createAnnouncement(body);
   }
 
   @Patch('announcements/:id')
+  @OwnerOnly()
   toggleAnnouncement(@Param('id') id: string, @Body('isActive', ParseBoolPipe) isActive: boolean): Promise<Announcement> {
     return this.ops.setAnnouncementActive(id, isActive);
   }
 
   @Delete('announcements/:id')
+  @OwnerOnly()
   @HttpCode(204)
   removeAnnouncement(@Param('id') id: string): Promise<void> {
     return this.ops.removeAnnouncement(id);
@@ -133,6 +137,7 @@ export class AdminOpsController {
   }
 
   @Put('settings')
+  @OwnerOnly()
   putSettings(@Body() body: Record<string, unknown>): Promise<Settings> {
     return this.settings.update(body);
   }
@@ -144,6 +149,7 @@ export class AdminOpsController {
   }
 
   @Get('export/trips.csv')
+  @OwnerOnly()
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="tamiltaxi-trips.csv"')
   exportTrips(): Promise<string> {
@@ -151,6 +157,7 @@ export class AdminOpsController {
   }
 
   @Get('export/drivers.csv')
+  @OwnerOnly()
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="tamiltaxi-drivers.csv"')
   exportDrivers(): Promise<string> {
@@ -158,6 +165,7 @@ export class AdminOpsController {
   }
 
   @Get('export/payments.csv')
+  @OwnerOnly()
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="tamiltaxi-payments.csv"')
   exportPayments(): Promise<string> {

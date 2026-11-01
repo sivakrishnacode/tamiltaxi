@@ -1,17 +1,22 @@
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { Role } from '../../generated/prisma/enums.js';
+import { AdminLevel, Role } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 import type { AuthUser, JwtPayload } from './auth-user.js';
 
-/** The account as it is now: its role and driver profile. */
+/** The account as it is now: its role, driver profile and admin level. */
 export interface Account {
   readonly role: Role;
   readonly driverId: string | null;
+  readonly adminLevel?: AdminLevel;
+  readonly adminCityIds?: readonly string[];
 }
 
-/** `user:access:<id>` = `<role>|<driverId>`: the account's role and driver profile, cached for [ACCESS_TTL_S]. */
+/**
+ * `user:access:<id>` = `<role>|<driverId>|<adminLevel>|<city,city>`: the account as it is now, cached for
+ * [ACCESS_TTL_S].
+ */
 export const accessKey = (userId: string): string => `user:access:${userId}`;
 /** Set while an admin has blocked the account (AdminUsersService), checked on every request. */
 export const blockedFlagKey = (userId: string): string => `user:blocked:${userId}`;
@@ -26,11 +31,12 @@ export const BLOCKED_MESSAGE = 'Your account is blocked. Contact support.';
  * PASSENGER). An explicit passenger-app token stays a passenger token even when the account also drives.
  * Legacy tokens follow the account's current role, so registration and admin demotion still apply immediately.
  */
-export function effectiveAccess(token: Pick<JwtPayload, 'role' | 'app'>, account: Account): Pick<AuthUser, 'role' | 'driverId'> {
+export function effectiveAccess(token: Pick<JwtPayload, 'role' | 'app'>, account: Account): Pick<AuthUser, 'role' | 'driverId' | 'adminLevel' | 'adminCityIds'> {
   if (token.app === 'passenger') return { role: Role.PASSENGER };
   const driverId = account.driverId ?? undefined;
   if (account.role !== Role.ADMIN) return { role: account.role, driverId: account.role === Role.PASSENGER ? undefined : driverId };
-  if (token.role === Role.ADMIN) return { role: Role.ADMIN, driverId };
+  // An entry cached before admin levels existed has none: those admins were all owners.
+  if (token.role === Role.ADMIN) return { role: Role.ADMIN, driverId, adminLevel: account.adminLevel ?? AdminLevel.OWNER, adminCityIds: account.adminCityIds ?? [] };
   if (token.role === Role.DRIVER && driverId) return { role: Role.DRIVER, driverId };
   return { role: Role.PASSENGER };
 }
@@ -61,17 +67,25 @@ export class UserAccessService {
   }
 
   private async load(userId: string): Promise<Account> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, isBlocked: true, deletedAt: true, driver: { select: { id: true } } } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, adminLevel: true, adminCityIds: true, isBlocked: true, deletedAt: true, driver: { select: { id: true } } },
+    });
     if (!user || user.deletedAt) throw new UnauthorizedException('Your account no longer exists. Please sign in again.');
     // Blocked in the database but the Redis flag is gone (e.g. Redis was flushed): still blocked, nothing cached.
     if (user.isBlocked) throw new ForbiddenException(BLOCKED_MESSAGE);
-    const account = { role: user.role, driverId: user.driver?.id ?? null };
-    await this.redis.set(accessKey(userId), `${account.role}|${account.driverId ?? ''}`, 'EX', ACCESS_TTL_S);
+    const account = { role: user.role, driverId: user.driver?.id ?? null, adminLevel: user.adminLevel, adminCityIds: user.adminCityIds };
+    await this.redis.set(accessKey(userId), `${account.role}|${account.driverId ?? ''}|${account.adminLevel}|${account.adminCityIds.join(',')}`, 'EX', ACCESS_TTL_S);
     return account;
   }
 
   private static decode(raw: string): Account {
-    const [role, driverId] = raw.split('|');
-    return { role: role as Role, driverId: driverId || null };
+    const [role, driverId, adminLevel, cities] = raw.split('|');
+    return {
+      role: role as Role,
+      driverId: driverId || null,
+      adminLevel: (adminLevel || undefined) as AdminLevel | undefined,
+      adminCityIds: cities ? cities.split(',') : [],
+    };
   }
 }

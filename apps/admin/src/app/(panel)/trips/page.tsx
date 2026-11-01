@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { ExportButton } from "@/components/common/export-button";
 import { ListFilters } from "@/components/common/list-filters";
+import { OwnerOnly } from "@/components/common/owner-only";
 import { EmptyState, PageHeader } from "@/components/common/page";
 import { Pager } from "@/components/common/pager";
 import { StatusBadge } from "@/components/common/status";
@@ -56,7 +57,11 @@ export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
       <PageHeader
         title="All trips"
         description={`${formatCount(data.total)} ${isFiltered ? "matching" : ""} rides and parcel deliveries.`}
-        actions={<ExportButton entity="trips" />}
+        actions={
+          <OwnerOnly>
+            <ExportButton entity="trips" />
+          </OwnerOnly>
+        }
       />
       <ListFilters
         searchPlaceholder="Trip id, pickup or drop"

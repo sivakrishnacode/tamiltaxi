@@ -15,6 +15,14 @@ enum Role {
   ADMIN
 }
 
+/// What an ADMIN may do in the panel. OWNER: everything. SUPPORT: day-to-day operations (trips, tickets, SOS, people,
+/// documents and approvals) but not pricing, cities and zones, settings, plans, announcements, campaigns, exports,
+/// account deletion or roles; with [User.adminCityIds] a support admin is a city admin who also sets up those cities.
+enum AdminLevel {
+  OWNER
+  SUPPORT
+}
+
 enum Gender {
   FEMALE
   MALE
@@ -256,6 +264,10 @@ model User {
   email              String?
   gender             Gender?
   role               Role                   @default(PASSENGER)
+  /// Only for ADMIN: OWNER or SUPPORT. ADMIN_PHONES numbers are always OWNER; admins made in the panel start as SUPPORT.
+  adminLevel         AdminLevel             @default(OWNER)
+  /// SUPPORT admins only: the cities (City.id) they set up: service area, zones, fares, rentals and city settings.
+  adminCityIds       String[]               @default([])
   preferWomenDriver  Boolean                @default(false)
   autoShareTrips     Boolean                @default(true)
   /// The rider's ride OTP: one code for every ride they take themselves (Rapido style, chosen for speed: riders learn

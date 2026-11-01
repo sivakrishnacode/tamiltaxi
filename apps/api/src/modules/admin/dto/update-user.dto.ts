@@ -1,6 +1,6 @@
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Length, ValidateIf } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Length, ValidateIf } from 'class-validator';
 
-import { Role } from '../../../generated/prisma/enums.js';
+import { AdminLevel, Role } from '../../../generated/prisma/enums.js';
 
 /** PATCH /admin/users/:id body. */
 export class UpdateUserDto {
@@ -15,9 +15,23 @@ export class UpdateUserDto {
   @IsEmail({}, { message: 'Enter a valid email' })
   email?: string | null;
 
+  /** Role, admin level and cities: owner admins only, never on their own account. */
   @IsOptional()
   @IsEnum(Role)
   role?: Role;
+
+  /** ADMIN only. A user made ADMIN without one starts as SUPPORT. */
+  @IsOptional()
+  @IsEnum(AdminLevel)
+  adminLevel?: AdminLevel;
+
+  /** SUPPORT admins: the cities (City.id) they set up; [] = none. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @Length(1, 60, { each: true })
+  adminCityIds?: string[];
 
   @IsOptional()
   @IsBoolean()

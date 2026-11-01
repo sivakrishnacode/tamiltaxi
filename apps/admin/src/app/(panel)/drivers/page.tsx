@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExportButton } from "@/components/common/export-button";
 import { LinkTabs } from "@/components/common/link-tabs";
 import { ListFilters } from "@/components/common/list-filters";
+import { OwnerOnly } from "@/components/common/owner-only";
 import { EmptyState, PageHeader } from "@/components/common/page";
 import { Pager } from "@/components/common/pager";
 import { KycProgress, OnlineDot, PlateBadge, StatusBadge } from "@/components/common/status";
@@ -68,7 +69,11 @@ export default async function DriversPage({ searchParams }: PageProps<"/drivers"
       <PageHeader
         title="All drivers"
         description={`${formatCount(data.total)} ${isFiltered ? "matching" : "registered"} drivers. Approve new ones in Approvals; open a driver to hold or reactivate them.`}
-        actions={<ExportButton entity="drivers" />}
+        actions={
+          <OwnerOnly>
+            <ExportButton entity="drivers" />
+          </OwnerOnly>
+        }
       />
       <LinkTabs
         active={query.status ?? "ALL"}
