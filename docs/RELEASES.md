@@ -109,7 +109,15 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Staging runs `96499af` (API and admin). Waiting to go out:
+Nothing yet: staging runs `6e7fdc4` (API and admin).
+
+### 1 Nov 2026 (second) · API and admin at `6e7fdc4`
+
+Release: `staging-2026-11-01.2` at `6e7fdc4`
+
+Migrations `document_expiry`, `admin_levels`, `driver_city`, `zone_rules`, `zone_nudges` and `zone_meeting_point`
+applied on start. The backups folder is mounted read-only into the API (`BACKUP_DIR=/backups`). No staging driver
+had a trip to take a home city from, so all 14 get one when they next go online.
 
 - `384065a` Admin **Missed rides** (Trips › Missed rides): riders who got no driver (none found, or they gave up while
   searching), by hour, vehicle and area, with the riders to call back; a **Missed today** tile on the Dashboard;
@@ -119,9 +127,7 @@ Staging runs `96499af` (API and admin). Waiting to go out:
   renewed one is verified. Admin: Documents › Expiring soon, "Change date", a dashboard count. Existing documents
   have no date until an admin adds one.
 - `ff6a30c` Admin **Server health** (System › Server health): CPU, memory, disk, database and Redis, Google Maps calls per
-  SKU against the free monthly calls, push sent and failed, the last backup. **On deploy:** add
-  `/opt/tamiltaxi/backups:/backups:ro` to the `api` volumes in `docker-compose.prod.yml` and `BACKUP_DIR=/backups` to
-  `.env`. Counting starts with this deploy.
+  SKU against the free monthly calls, push sent and failed, the last backup. Counting starts with this deploy.
 - `6b1b04f` **Admin levels** (migration `admin_levels`): owners, support admins and city admins (support with assigned cities,
   who set up only those cities). Every current admin stays an owner; people made admin in the panel start as support.
   Owners set it on the person's page under **Access**.
