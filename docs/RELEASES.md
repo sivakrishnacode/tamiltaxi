@@ -108,15 +108,21 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-API and admin changes committed since the last deploy (staging runs `824a1c1` / admin `74cc68b`):
+Nothing yet: staging runs `96499af` (API and admin).
+
+### 1 Nov 2026 · API and admin at `96499af`
+
+Release: `staging-2026-11-01` at `96499af`
+
+Migration `scooty_parcel` applied on start. Staging had no city Auto fare rows, so the government rates apply as built.
 
 - `7a6adce` Parcels in town like Porter: `SCOOTY_PARCEL` (Parcel on Scooty, up to 20 kg, scooters with Parcels on;
   migration `20261018060000_scooty_parcel`), no `TRUCK` in parcel quotes, "Book any" or the parcel map, and a truck
   parcel in town is refused. Admin: "Parcel on Scooty" label and map colour. The Play rider 0.1.0 hides the new
   Scooty quote (unknown tier) and stops showing Truck once this is deployed.
 - `bad701e` Autos charge the Tamil Nadu government fare (G.O. Ms. No. 366, 27 Oct 2026): Auto ₹50 for 1.8 km, then
-  ₹25 a km, no time charge; Auto Priority 1.2× that; Parcel on Auto the same with a ₹55 minimum. After deploying,
-  check admin City › Fares: a city's own Auto rows override these.
+  ₹25 a km, no time charge; Auto Priority 1.2× that; Parcel on Auto the same with a ₹55 minimum. A city's own Auto
+  rows (admin City › Fares) override these; staging has none.
 - `1840740` Autos' night fare: booked 10 pm–5 am IST, the whole fare × 1.5 instead of any peak (settings
   `autoNightMultiplier` / `autoNightStartHour` / `autoNightEndHour`, admin Settings › Pricing & surge; 1.0 = off);
   `night: true` on the fare, `autoNight` on `GET /fares/rate-card`; admin trip page says "Night fare".
