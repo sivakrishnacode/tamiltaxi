@@ -424,17 +424,23 @@ model DriverBlock {
 }
 
 model KycDocument {
-  id           String     @id @default(cuid())
-  driverId     String
-  type         KycDocType
-  status       KycStatus  @default(NOT_UPLOADED)
-  rejectReason String?
-  fileUrl      String?
-  updatedAt    DateTime   @updatedAt
-  driver       Driver     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  id                 String     @id @default(cuid())
+  driverId           String
+  type               KycDocType
+  status             KycStatus  @default(NOT_UPLOADED)
+  rejectReason       String?
+  fileUrl            String?
+  /// Valid until (the date on the RC or policy, entered by the admin when verifying). The expiry job reminds the
+  /// driver 30 and 7 days before and rejects the document the day after. A new upload clears it.
+  expiresOn          DateTime?  @db.Date
+  /// The last expiry reminder sent, in days before (30 or 7); null: none yet. Reset when the date changes.
+  expiryNotifiedDays Int?
+  updatedAt          DateTime   @updatedAt
+  driver             Driver     @relation(fields: [driverId], references: [id], onDelete: Cascade)
 
   @@unique([driverId, type])
   @@index([status, updatedAt])
+  @@index([status, expiresOn])
 }
 
 model Trip {

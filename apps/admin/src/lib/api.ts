@@ -261,10 +261,11 @@ export const adminApi = {
   /** Approves the ready ones (pending, every check done); the rest come back in `skipped`. */
   approveDrivers: (ids: string[]) =>
     apiFetch<{ approved: string[]; skipped: { id: string; reason: string }[] }>("/admin/drivers/approve", { method: "POST", body: { ids } }),
-  reviewDocument: (id: string, type: KycDocType, status: "VERIFIED" | "REJECTED", reason?: string) =>
+  /** VERIFIED takes the valid-until day ("2027-03-31"); verifying a verified document again changes its date. */
+  reviewDocument: (id: string, type: KycDocType, status: "VERIFIED" | "REJECTED", reason?: string, expiresOn?: string) =>
     apiFetch<KycDocument[]>(`/admin/drivers/${encodeURIComponent(id)}/documents/${type}`, {
       method: "POST",
-      body: { status, reason },
+      body: { status, reason, expiresOn },
     }),
 
   reviewPhoto: (id: string, isApproved: boolean, reason?: string) =>

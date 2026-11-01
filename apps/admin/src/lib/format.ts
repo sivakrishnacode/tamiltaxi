@@ -40,6 +40,25 @@ export function formatDate(value: string | Date | null | undefined): string {
   return dateFmt.format(toDate(value));
 }
 
+/** Today's date in India, "2026-11-01" (the min of a date input). */
+export function istDayKey(now: Date = new Date()): string {
+  return new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+}
+
+/**
+ * A document's valid-until date ("2027-03-31…"): the label and how close it is. "soon" = 30 days or fewer (it is on
+ * Documents › Expiring soon and the driver gets reminders); "expired" = past (the API rejects it within the hour).
+ */
+export function expiryInfo(expiresOn: string | null | undefined, now: Date = new Date()): { label: string; tone: "ok" | "soon" | "expired" } | null {
+  if (!expiresOn) return null;
+  const day = expiresOn.slice(0, 10);
+  const left = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${istDayKey(now)}T00:00:00Z`)) / 86_400_000);
+  const date = dateFmt.format(new Date(`${day}T12:00:00Z`));
+  if (left < 0) return { label: `Expired ${date}`, tone: "expired" };
+  if (left <= 30) return { label: `Valid until ${date} · ${left === 0 ? "last day" : left === 1 ? "1 day left" : `${left} days left`}`, tone: "soon" };
+  return { label: `Valid until ${date}`, tone: "ok" };
+}
+
 /** "25 Sep 2026, 8:42 pm". */
 export function formatDateTime(value: string | Date | null | undefined): string {
   if (!value) return "–";

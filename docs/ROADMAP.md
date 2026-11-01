@@ -179,6 +179,8 @@ Issue: #12 · Labels: plan, api, admin
 - [ ] SOS: a realtime admin channel instead of polling
 - [ ] Landmarks: a phone check of P-09 / D-16 with real landmarks
 - [ ] CI: APK build artifacts
+- [ ] Document expiry: let a driver upload the renewed RC or insurance before the old one expires (the app offers
+  Re-upload only once it is rejected); read the licence expiry from Didit
 
 ### Cab and 3-wheeler fares next to the government auto fare
 

@@ -186,6 +186,8 @@ export interface KycDocument {
   readonly status: KycStatus;
   readonly rejectReason: string | null;
   readonly fileUrl: string | null;
+  /** Valid until ("2027-03-31T00:00:00.000Z"), entered when verifying; null = no date (older APIs: absent). */
+  readonly expiresOn?: string | null;
   readonly updatedAt: string;
 }
 

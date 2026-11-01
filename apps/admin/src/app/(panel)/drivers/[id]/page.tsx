@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { ApprovalChecks, missingChecks } from "@/components/common/approval-checks";
 import { PhotoTile } from "@/components/common/photo-tile";
 import { EmptyState, Field, PageHeader } from "@/components/common/page";
-import { KycProgress, OnlineDot, PlateBadge, StatusBadge } from "@/components/common/status";
+import { ExpiryNote, KycProgress, OnlineDot, PlateBadge, StatusBadge } from "@/components/common/status";
 import { TripRouteCell } from "@/components/common/trip-bits";
 import { PersonMenu } from "@/components/people/person-menu";
 import { PersonRecord } from "@/components/people/person-record";
@@ -401,9 +401,10 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
                   {doc.status === "REJECTED" && doc.rejectReason && (
                     <p className="mt-1 text-xs text-error">Reason: {doc.rejectReason}</p>
                   )}
+                  {doc.status === "VERIFIED" && <ExpiryNote expiresOn={doc.expiresOn} className="mt-1" />}
                 </div>
               </div>
-              <DocumentActions driverId={d.id} type={doc.type} label={docLabel(doc.type)} status={doc.status} />
+              <DocumentActions driverId={d.id} type={doc.type} label={docLabel(doc.type)} status={doc.status} expiresOn={doc.expiresOn} />
             </li>
           ))}
         </ul>

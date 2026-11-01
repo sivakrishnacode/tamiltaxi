@@ -14,6 +14,7 @@ import type { Paged } from './admin.types.js';
 import type { ListQueryDto } from './dto/list-query.dto.js';
 import type { UpdateUserDto } from './dto/update-user.dto.js';
 import { REQUIRED_DOCS } from '../kyc/driver-approval.js';
+import { EXPIRING_WITHIN_DAYS, istToday } from '../kyc/document-expiry.js';
 import { driverSearch, flag, userSearch } from './list-filters.js';
 
 /** All accounts (passengers, drivers, admins): search, roles, block/unblock; plus the KYC review queue. */
@@ -89,11 +90,18 @@ export class AdminUsersService {
   async kycQueue(q: ListQueryDto): Promise<Paged<KycDocument>> {
     const page = q.page ?? 1;
     const pageSize = q.pageSize ?? 20;
-    const status = Object.values(KycStatus).includes(q.status as KycStatus) ? (q.status as KycStatus) : KycStatus.UNDER_REVIEW;
-    const where: Prisma.KycDocumentWhereInput = { status, type: { in: [...REQUIRED_DOCS] }, driver: driverSearch(q.q) };
+    // EXPIRING: verified documents valid for at most 30 more days, soonest first.
+    const isExpiring = q.status === 'EXPIRING';
+    const status = isExpiring ? KycStatus.VERIFIED : Object.values(KycStatus).includes(q.status as KycStatus) ? (q.status as KycStatus) : KycStatus.UNDER_REVIEW;
+    const where: Prisma.KycDocumentWhereInput = {
+      status,
+      type: { in: [...REQUIRED_DOCS] },
+      driver: driverSearch(q.q),
+      expiresOn: isExpiring ? { lte: new Date(istToday(new Date()).getTime() + EXPIRING_WITHIN_DAYS * 86_400_000) } : undefined,
+    };
     const [items, total] = await Promise.all([
       this.prisma.kycDocument.findMany({
-        where, skip: (page - 1) * pageSize, take: pageSize, orderBy: { updatedAt: 'asc' },
+        where, skip: (page - 1) * pageSize, take: pageSize, orderBy: isExpiring ? { expiresOn: 'asc' } : { updatedAt: 'asc' },
         include: { driver: { include: { user: { select: { id: true, name: true, phone: true, identityStatus: true } } } } },
       }),
       this.prisma.kycDocument.count({ where }),

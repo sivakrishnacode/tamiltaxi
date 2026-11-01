@@ -10,6 +10,8 @@ import { RedisService } from '../src/core/redis/redis.service.js';
 import { accessKey, blockedFlagKey } from '../src/core/auth/user-access.service.js';
 import { FileStorageService } from '../src/core/storage/file-storage.service.js';
 import { DiditClient } from '../src/modules/kyc/didit.client.js';
+import { DocumentExpiryService } from '../src/modules/kyc/document-expiry.service.js';
+import { NotifierService } from '../src/modules/notifications/notifier.service.js';
 import { TripEventsService } from '../src/modules/realtime/trip-events.service.js';
 
 const ADMIN_PHONE = '9000000001';
@@ -240,6 +242,58 @@ describe('Tamil Taxi features (e2e)', () => {
       expect(events).toEqual([{ status: 'REJECTED', isOnline: false }]);
       expect(await redis.get(`driver:cell:${d.driverId}`)).toBeNull();
       expect((await http.get('/v1/drivers/me').set(d.auth).expect(200)).body).toMatchObject({ status: 'REJECTED', isOnline: false });
+    });
+  });
+
+  describe('document expiry', () => {
+    /** "YYYY-MM-DD" of the IST day [days] from now. */
+    const istDay = (days: number) => new Date(Date.now() + 330 * 60_000 + days * 86_400_000).toISOString().slice(0, 10);
+    /** [hour]:00 IST today. */
+    const istAt = (hour: number) => new Date(`${istDay(0)}T${String(hour).padStart(2, '0')}:00:00+05:30`);
+
+    it('takes the date when verifying, reminds 30 and 7 days before, and rejects the document once expired', async () => {
+      const admin = await adminAuth();
+      const d = await approvedDriver();
+      const where = { driverId_type: { driverId: d.driverId, type: 'INSURANCE' as const } };
+      await prisma.kycDocument.update({ where, data: { status: 'UNDER_REVIEW', fileUrl: 'ins.jpg' } });
+      await prisma.kycDocument.update({ where: { driverId_type: { driverId: d.driverId, type: 'VEHICLE_RC' } }, data: { status: 'VERIFIED', fileUrl: 'rc.jpg' } });
+      const verify = (expiresOn?: string) => http.post(`/v1/admin/drivers/${d.driverId}/documents/INSURANCE`).set(admin).send({ status: 'VERIFIED', expiresOn });
+      expect((await verify(istDay(-1)).expect(400)).body.message).toBe('That date has passed: reject the document instead');
+      await verify('2026-02-30').expect(400);
+      await verify(istDay(20)).expect(201);
+      expect((await prisma.kycDocument.findUniqueOrThrow({ where })).expiresOn?.toISOString().slice(0, 10)).toBe(istDay(20));
+      // Admin › Documents › Expiring soon lists it.
+      const expiring = (await http.get(`/v1/admin/kyc?status=EXPIRING&q=${encodeURIComponent(d.plate)}`).set(admin).expect(200)).body;
+      expect(expiring.items.map((x: { type: string }) => x.type)).toEqual(['INSURANCE']);
+
+      const pushes = vi.spyOn(app.get(NotifierService), 'driverAccount');
+      const scan = app.get(DocumentExpiryService);
+      const mine = () => pushes.mock.calls.filter(([p]) => p.driverId === d.driverId).map(([p]) => p.title);
+      try {
+        await scan.scan(istAt(23)); // no reminders at night
+        expect(mine()).toEqual([]);
+        await scan.scan(istAt(10));
+        await scan.scan(istAt(11)); // once only
+        expect(mine()).toEqual(['Your insurance expires in 20 days']);
+        // A new date (5 days) restarts the reminders: the 7-day one goes out.
+        await verify(istDay(5)).expect(201);
+        await scan.scan(istAt(10));
+        expect(mine()).toEqual(['Your insurance expires in 20 days', 'Your insurance expires in 5 days']);
+      } finally {
+        pushes.mockRestore();
+      }
+
+      // Expired yesterday: rejected with the reason, the driver goes offline until the new policy is verified.
+      await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(200);
+      await prisma.kycDocument.update({ where, data: { expiresOn: new Date(`${istDay(-1)}T00:00:00Z`) } });
+      await scan.scan(istAt(2));
+      const doc = await prisma.kycDocument.findUniqueOrThrow({ where });
+      expect(doc.status).toBe('REJECTED');
+      expect(doc.rejectReason).toMatch(/^Expired on .+\. Please upload the renewed insurance$/);
+      expect((await http.get('/v1/drivers/me').set(d.auth).expect(200)).body).toMatchObject({ status: 'REJECTED', isOnline: false });
+      // The new upload starts without a date.
+      await http.post('/v1/drivers/me/documents/INSURANCE').set(d.auth).attach('file', JPEG, { filename: 'ins.jpg', contentType: 'image/jpeg' }).expect(201);
+      expect(await prisma.kycDocument.findUniqueOrThrow({ where })).toMatchObject({ status: 'UNDER_REVIEW', expiresOn: null, expiryNotifiedDays: null });
     });
   });
 

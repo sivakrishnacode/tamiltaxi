@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, Loader2Icon, PauseIcon, PlayIcon, XIcon } from "lucide-react";
+import { CalendarClockIcon, CheckIcon, Loader2Icon, PauseIcon, PlayIcon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -14,8 +14,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { istDayKey } from "@/lib/format";
 import type { DriverStatus, KycDocType, KycStatus } from "@/lib/types";
 
 import { reviewDocument, reviewPhoto, setDriverStatus, type ActionResult } from "../../actions";
@@ -175,49 +177,72 @@ export function DriverStatusActions({
   );
 }
 
-/** Verify / Reject (with reason) one KYC document → POST /admin/drivers/:id/documents/:type. */
+/**
+ * Verify (with the valid-until date) / Reject (with reason) one KYC document → POST /admin/drivers/:id/documents/:type.
+ * A verified document offers "Change date" instead of Verify.
+ */
 export function DocumentActions({
   driverId,
   type,
   label,
   status,
+  expiresOn,
 }: {
   driverId: string;
   type: KycDocType;
   label: string;
   status: KycStatus;
+  expiresOn?: string | null;
 }) {
   const [isPending, startTransition] = useTransition();
   const [action, setAction] = useState<"VERIFIED" | "REJECTED" | null>(null);
+  const [isVerifyOpen, setVerifyOpen] = useState(false);
   const [isRejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [date, setDate] = useState(expiresOn?.slice(0, 10) ?? "");
   const isReasonValid = reason.trim().length >= 3 && reason.trim().length <= 200;
+  const today = istDayKey();
+  const isDateValid = date === "" || date >= today;
   // Nothing to check until the driver uploads it.
   const isMissing = status === "NOT_UPLOADED";
+  const isVerified = status === "VERIFIED";
+
+  /** Opens the date dialog on the stored date (it may have changed since the last open). */
+  function openVerify() {
+    setDate(expiresOn?.slice(0, 10) ?? "");
+    setVerifyOpen(true);
+  }
 
   function review(next: "VERIFIED" | "REJECTED") {
     setAction(next);
     startTransition(async () => {
-      const ok = notify(await reviewDocument(driverId, type, next, next === "REJECTED" ? reason : undefined));
+      const ok = notify(await reviewDocument(driverId, type, next, next === "REJECTED" ? reason : undefined, next === "VERIFIED" ? date : undefined));
       if (ok && next === "REJECTED") {
         setRejectOpen(false);
         setReason("");
       }
+      if (ok && next === "VERIFIED") setVerifyOpen(false);
       setAction(null);
     });
   }
 
   return (
     <div className="flex shrink-0 gap-2">
-      <Button
-        size="sm"
-        variant="outline"
-        className="border-success/30 text-success-text hover:bg-success-tint hover:text-success-text"
-        disabled={isPending || isMissing || status === "VERIFIED"}
-        onClick={() => review("VERIFIED")}
-      >
-        {isPending && action === "VERIFIED" ? <Loader2Icon className="animate-spin" /> : <CheckIcon />} Verify
-      </Button>
+      {isVerified ? (
+        <Button size="sm" variant="outline" disabled={isPending} onClick={() => openVerify()}>
+          <CalendarClockIcon /> {expiresOn ? "Change date" : "Add date"}
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-success/30 text-success-text hover:bg-success-tint hover:text-success-text"
+          disabled={isPending || isMissing}
+          onClick={() => openVerify()}
+        >
+          <CheckIcon /> Verify
+        </Button>
+      )}
       <Button
         size="sm"
         variant="outline"
@@ -227,6 +252,43 @@ export function DocumentActions({
       >
         <XIcon /> Reject
       </Button>
+
+      <Dialog open={isVerifyOpen} onOpenChange={setVerifyOpen}>
+        <DialogContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (isDateValid) review("VERIFIED");
+            }}
+            className="grid gap-4"
+          >
+            <DialogHeader>
+              <DialogTitle>{isVerified ? `${label}: valid until` : `Verify ${label}?`}</DialogTitle>
+              <DialogDescription>
+                Enter the date printed on the {label.toLowerCase()}. The driver is reminded 30 and 7 days before; the day
+                after, the document is rejected and they have to upload the renewed one before going online again.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor={`expires-${type}`}>Valid until</Label>
+              <Input id={`expires-${type}`} type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} className="w-48" />
+              <p className={isDateValid ? "text-xs text-muted-foreground" : "text-xs text-error"}>
+                {isDateValid ? "Leave it empty if the document has no end date." : "That date has passed: reject the document instead."}
+              </p>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={!isDateValid || isPending}>
+                {isPending && action === "VERIFIED" ? <Loader2Icon className="animate-spin" /> : <CheckIcon />} {isVerified ? "Save date" : "Verify document"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isRejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent>

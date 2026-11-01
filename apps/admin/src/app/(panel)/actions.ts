@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 
 import { ApiError, adminApi, type AnnouncementInput, type CityInput, type FareInput, type ZoneInput } from "@/lib/api";
 import { campaignInputError, isReminderKey, type CampaignInput } from "@/lib/automations";
+import { formatDate } from "@/lib/format";
 import { promoInputError } from "@/lib/promos";
 import { validateSettings, type SettingsInput } from "@/lib/validation";
 import {
@@ -100,13 +101,15 @@ export async function reviewDocument(
   type: KycDocType,
   status: "VERIFIED" | "REJECTED",
   reason?: string,
+  expiresOn?: string,
 ): Promise<ActionResult> {
   if (!KYC_DOC_TYPES.includes(type)) return { ok: false, error: "Unknown document" };
   const trimmed = reason?.trim();
   if (status === "REJECTED" && (!trimmed || trimmed.length < 3)) return { ok: false, error: "Add a reason (at least 3 characters)" };
+  if (expiresOn && !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) return { ok: false, error: "Pick a valid date" };
   return plain(await run(
-    () => adminApi.reviewDocument(driverId, type, status, status === "REJECTED" ? trimmed : undefined),
-    status === "VERIFIED" ? "Document verified" : "Document rejected",
+    () => adminApi.reviewDocument(driverId, type, status, status === "REJECTED" ? trimmed : undefined, status === "VERIFIED" ? expiresOn || undefined : undefined),
+    status === "REJECTED" ? "Document rejected" : expiresOn ? `Verified, valid until ${formatDate(`${expiresOn}T12:00:00Z`)}` : "Document verified",
     [`/drivers/${driverId}`, "/drivers", "/drivers/approvals", "/kyc", "/"],
   ));
 }

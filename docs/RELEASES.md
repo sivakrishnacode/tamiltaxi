@@ -114,6 +114,10 @@ Staging runs `96499af` (API and admin). Waiting to go out:
 - Admin **Missed rides** (Trips › Missed rides): riders who got no driver (none found, or they gave up while
   searching), by hour, vehicle and area, with the riders to call back; a **Missed today** tile on the Dashboard;
   `GET /admin/missed`. The heatmap's unmet layer now counts the same trips (it used to count every cancellation).
+- Driver documents get a **valid-until date** when an admin verifies them (migration `document_expiry`): the driver
+  is reminded 30 and 7 days before; the day after, the document is rejected and the driver goes offline until the
+  renewed one is verified. Admin: Documents › Expiring soon, "Change date", a dashboard count. Existing documents
+  have no date until an admin adds one.
 
 ### 1 Nov 2026 · API and admin at `96499af`
 

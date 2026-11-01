@@ -238,7 +238,7 @@ export class DriversService {
           data: { ...vehicle, plate, ...user, ...(leavesApproval ? { status: DriverStatus.PENDING, isOnline: false } : {}) },
         });
         if (!resetsRc) return;
-        const rc = { status: KycStatus.NOT_UPLOADED, fileUrl: null, rejectReason: `Upload the RC of your new vehicle (${plate})` };
+        const rc = { status: KycStatus.NOT_UPLOADED, fileUrl: null, rejectReason: `Upload the RC of your new vehicle (${plate})`, expiresOn: null, expiryNotifiedDays: null };
         await tx.kycDocument.upsert({
           where: { driverId_type: { driverId, type: KycDocType.VEHICLE_RC } },
           create: { driverId, type: KycDocType.VEHICLE_RC, ...rc },
@@ -348,7 +348,8 @@ export class DriversService {
   async uploadDocument(params: { driverId: string; type: KycDocType; file?: UploadedBlob }): Promise<KycDocument> {
     if (!REQUIRED_DOCS.includes(params.type)) throw new BadRequestException('This document is checked in the identity step');
     const fileUrl = await this.files.save(params.file);
-    const data = { status: KycStatus.UNDER_REVIEW, fileUrl, rejectReason: null };
+    // A new file: its own valid-until date is entered when it is verified.
+    const data = { status: KycStatus.UNDER_REVIEW, fileUrl, rejectReason: null, expiresOn: null, expiryNotifiedDays: null };
     const doc = await this.prisma.kycDocument.upsert({
       where: { driverId_type: { driverId: params.driverId, type: params.type } },
       create: { driverId: params.driverId, type: params.type, ...data },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { displayName, formatAgo, formatDate, formatInr, formatPhone, humanize, kycProgress, shortId } from "@/lib/format";
+import { displayName, expiryInfo, formatAgo, formatDate, formatInr, formatPhone, humanize, istDayKey, kycProgress, shortId } from "@/lib/format";
 import type { KycDocument } from "@/lib/types";
 
 describe("formatInr", () => {
@@ -58,5 +58,24 @@ describe("other formatters", () => {
     expect(kycProgress(docs)).toEqual({ verified: 1, total: 2 });
     expect(kycProgress(docs, "APPROVED")).toEqual({ verified: 2, total: 3 });
     expect(kycProgress(docs, "IN_REVIEW")).toEqual({ verified: 1, total: 3 });
+  });
+});
+
+describe("expiryInfo", () => {
+  // 1 Nov 2026, 23:00 IST (still 1 Nov in India, 17:30 UTC).
+  const now = new Date("2026-11-01T17:30:00Z");
+
+  it("takes today in India", () => {
+    expect(istDayKey(now)).toBe("2026-11-01");
+    expect(istDayKey(new Date("2026-11-01T19:00:00Z"))).toBe("2026-11-02");
+  });
+
+  it("says how long a document stays valid, amber within 30 days, red once past", () => {
+    expect(expiryInfo(null, now)).toBeNull();
+    expect(expiryInfo("2027-03-31T00:00:00.000Z", now)).toEqual({ label: "Valid until 31 Mar 2027", tone: "ok" });
+    expect(expiryInfo("2026-12-01T00:00:00.000Z", now)).toEqual({ label: "Valid until 1 Dec 2026 · 30 days left", tone: "soon" });
+    expect(expiryInfo("2026-11-02T00:00:00.000Z", now)?.label).toBe("Valid until 2 Nov 2026 · 1 day left");
+    expect(expiryInfo("2026-11-01T00:00:00.000Z", now)?.label).toBe("Valid until 1 Nov 2026 · last day");
+    expect(expiryInfo("2026-10-31T00:00:00.000Z", now)).toEqual({ label: "Expired 31 Oct 2026", tone: "expired" });
   });
 });

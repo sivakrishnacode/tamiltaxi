@@ -1,6 +1,7 @@
 import {
   BadgeIndianRupeeIcon,
   BanIcon,
+  CalendarClockIcon,
   CameraIcon,
   CarIcon,
   CheckCircle2Icon,
@@ -111,7 +112,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default async function DashboardPage() {
-  const [stats, approvals, sos, flagged, blocked, cities, live, settings, demand, heat] = await Promise.all([
+  const [stats, approvals, sos, flagged, blocked, cities, live, settings, demand, heat, expiring] = await Promise.all([
     adminApi.stats(),
     // Optional extras: never let one count take the dashboard down.
     adminApi.approvals({ stage: "ready", pageSize: 5 }).catch(() => null),
@@ -123,6 +124,7 @@ export default async function DashboardPage() {
     adminApi.settings().catch(() => null),
     adminApi.demand().catch(() => null),
     adminApi.heatmap({ metric: "pickups", ...presetRange("30d") }).catch(() => null),
+    adminApi.kyc({ status: "EXPIRING", pageSize: 1 }).catch(() => null),
   ]);
   // Then, together: the uploads to review when nobody is ready (ready drivers come first), and the hotspot names.
   const [waitingList, hotspots] = await Promise.all([
@@ -144,6 +146,7 @@ export default async function DashboardPage() {
     { label: "Photos to review", count: counts?.photos ?? 0, href: "/drivers/approvals?stage=photos", icon: CameraIcon },
     { label: "Identity in Didit", count: counts?.identity ?? 0, href: "/drivers/approvals?stage=identity", icon: ScanFaceIcon },
     { label: "Trips to review", count: flagged?.total ?? 0, href: "/trips?review=true", icon: TriangleAlertIcon },
+    { label: "Documents expiring", count: expiring?.total ?? 0, href: "/kyc?status=EXPIRING", icon: CalendarClockIcon },
     { label: "Open tickets", count: stats.openTickets, href: "/support", icon: LifeBuoyIcon },
   ].filter((a) => a.count > 0);
   const showPlans = settings?.driverPlansEnabled ?? true;

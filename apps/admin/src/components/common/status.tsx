@@ -1,5 +1,7 @@
+import { CalendarClockIcon } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
-import { humanize } from "@/lib/format";
+import { expiryInfo, humanize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Tone = "success" | "warning" | "error" | "brand" | "neutral";
@@ -62,6 +64,23 @@ export function StatusBadge({ status, label, className }: { status: string; labe
     <Badge variant="secondary" className={cn("rounded-full font-medium", TONE_CLASS[tone], className)}>
       {label ?? humanize(status)}
     </Badge>
+  );
+}
+
+/** "Valid until 12 Dec 2026 · 5 days left" under a document: amber within 30 days, red once expired. */
+export function ExpiryNote({ expiresOn, className }: { expiresOn: string | null | undefined; className?: string }) {
+  const info = expiryInfo(expiresOn);
+  if (!info) return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-xs",
+        info.tone === "expired" ? "font-medium text-error" : info.tone === "soon" ? "font-medium text-warning-text" : "text-muted-foreground",
+        className,
+      )}
+    >
+      <CalendarClockIcon className="size-3 shrink-0" aria-hidden /> {info.label}
+    </span>
   );
 }
 

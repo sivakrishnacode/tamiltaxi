@@ -150,7 +150,7 @@ export function ApprovalList({ stage, items, waiting }: { stage: ApprovalStage; 
                           View <ExternalLinkIcon className="size-3" />
                         </a>
                       )}
-                      <DocumentActions driverId={d.id} type={doc.type} label={docLabel(doc.type)} status={doc.status} />
+                      <DocumentActions driverId={d.id} type={doc.type} label={docLabel(doc.type)} status={doc.status} expiresOn={doc.expiresOn} />
                     </div>
                   ))}
               {stage === "identity" && (

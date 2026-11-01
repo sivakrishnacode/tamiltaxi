@@ -10,6 +10,7 @@ import { NotifierService } from '../notifications/notifier.service.js';
 import { DriverApprovalService } from '../kyc/driver-approval.service.js';
 import { DiditClient } from '../kyc/didit.client.js';
 import { approvalChecklist, type ApprovalChecklist, REQUIRED_DOCS } from '../kyc/driver-approval.js';
+import { istToday, parseDay } from '../kyc/document-expiry.js';
 import { type CancelRateStats, DriverBlocksService } from '../trips/driver-blocks.service.js';
 import { DriverStatusSync } from './driver-status-sync.service.js';
 import { driverOrder, driverSearch, flag, passengerOrder, tripOrder, userSearch } from './list-filters.js';
@@ -115,14 +116,25 @@ export class AdminService {
   }
 
   /** Verify or reject one document; RC + insurance verified and identity approved → APPROVED, any rejected → REJECTED. */
-  async reviewDocument(params: { driverId: string; type: KycDocType; status: 'VERIFIED' | 'REJECTED'; reason?: string }): Promise<KycDocument[]> {
+  /**
+   * Verify (with the valid-until date, if any) or reject an uploaded document. Verifying a verified document again
+   * just changes its date; a new date restarts the expiry reminders.
+   */
+  async reviewDocument(params: { driverId: string; type: KycDocType; status: 'VERIFIED' | 'REJECTED'; reason?: string; expiresOn?: string }): Promise<KycDocument[]> {
     const doc = await this.prisma.kycDocument.findUnique({ where: { driverId_type: { driverId: params.driverId, type: params.type } } });
     if (!doc) throw new NotFoundException('Document not found');
     // A row exists from registration on; there is nothing to verify (or reject) until a file is uploaded.
     if (doc.status === 'NOT_UPLOADED' || !doc.fileUrl) throw new BadRequestException('The driver has not uploaded this document yet');
+    const expiresOn = params.status === 'VERIFIED' && params.expiresOn ? parseDay(params.expiresOn) : null;
+    if (expiresOn && expiresOn < istToday(new Date())) throw new BadRequestException('That date has passed: reject the document instead');
+    const isSameDate = (expiresOn?.getTime() ?? null) === (doc.expiresOn?.getTime() ?? null);
     await this.prisma.kycDocument.update({
       where: { driverId_type: { driverId: params.driverId, type: params.type } },
-      data: { status: params.status, rejectReason: params.status === 'REJECTED' ? (params.reason ?? 'Please upload a clearer image') : null },
+      data: {
+        status: params.status,
+        rejectReason: params.status === 'REJECTED' ? (params.reason ?? 'Please upload a clearer image') : null,
+        ...(params.status === 'VERIFIED' ? { expiresOn, expiryNotifiedDays: isSameDate ? doc.expiryNotifiedDays : null } : {}),
+      },
     });
     // Approval (and its push) happens in recompute once the identity check has passed too.
     await this.approval.recompute(params.driverId);
