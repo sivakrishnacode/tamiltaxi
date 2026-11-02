@@ -135,7 +135,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `d1aadde` (admin) and `56f879c` (API).
+Admin only (no API or database change).
+
+- Zones tab: every zone in the list can be reached: the list grows with the page (it used to scroll inside a box the
+  map's height with no visible scrollbar, hiding zones past the fourth) while the map stays in view beside it; Edit on
+  a zone far down brings the edit form into view.
 
 ### 2 Nov 2026 · admin at `d1aadde`
 

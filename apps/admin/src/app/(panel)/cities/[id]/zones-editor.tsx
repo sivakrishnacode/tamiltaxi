@@ -1,7 +1,7 @@
 "use client";
 
 import { HexagonIcon, Loader2Icon, PencilIcon, PlusIcon, SaveIcon, Trash2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/page";
@@ -167,6 +167,12 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   const [draft, setDraft] = useState<Draft | null>(null);
   const ed = useCellEditor([]);
   const [toDelete, setToDelete] = useState<Zone | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const editKey = draft ? (draft.id ?? "new") : null;
+  // Edit is often pressed far down the list: bring the form (at the top of the list) into view.
+  useEffect(() => {
+    if (editKey) formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [editKey]);
   const [isPending, startTransition] = useTransition();
 
   const outside = draft ? ed.cells.filter((c) => !service.has(c)) : [];
@@ -221,35 +227,38 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   }
 
   return (
-    // The map keeps its own height; the zone list beside it scrolls within the same height instead of stretching it.
+    // The map keeps its own height and stays in view (under the 64 px header) while the zone list beside it grows with
+    // the page, so every zone can be reached by scrolling.
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start 2xl:grid-cols-[minmax(0,1fr)_400px]">
-      <HexWorkbench
-        center={{ lat: city.centerLat, lng: city.centerLng }}
-        resolution={city.h3Resolution}
-        fitCells={city.serviceCells}
-        editor={draft ? ed : null}
-        editStyle={zoneStyle(draft?.kind ?? "SURGE", "live", true)}
-        editOutline={EDIT_OUTLINE}
-        targetLabel="zone"
-        groups={[
-          { key: "service", label: "Service area", layers: serviceLayer },
-          { key: "zones", label: "Zones", layers: zoneLayers },
-        ]}
-        warnCells={outside}
-        zoneLabels={labels}
-        status={
-          draft ? (
-            <span className="tabular-nums">
-              {draft.name || "New zone"}: <b className="text-navy-900">{formatCount(ed.cells.length)}</b> hexagons
-              {outside.length > 0 && <span className="text-warning-text"> · {formatCount(outside.length)} outside</span>}
-            </span>
-          ) : null
-        }
-      />
+      <div className="min-w-0 lg:sticky lg:top-20">
+        <HexWorkbench
+          center={{ lat: city.centerLat, lng: city.centerLng }}
+          resolution={city.h3Resolution}
+          fitCells={city.serviceCells}
+          editor={draft ? ed : null}
+          editStyle={zoneStyle(draft?.kind ?? "SURGE", "live", true)}
+          editOutline={EDIT_OUTLINE}
+          targetLabel="zone"
+          groups={[
+            { key: "service", label: "Service area", layers: serviceLayer },
+            { key: "zones", label: "Zones", layers: zoneLayers },
+          ]}
+          warnCells={outside}
+          zoneLabels={labels}
+          status={
+            draft ? (
+              <span className="tabular-nums">
+                {draft.name || "New zone"}: <b className="text-navy-900">{formatCount(ed.cells.length)}</b> hexagons
+                {outside.length > 0 && <span className="text-warning-text"> · {formatCount(outside.length)} outside</span>}
+              </span>
+            ) : null
+          }
+        />
+      </div>
 
-      <div className="grid content-start gap-4 lg:h-[calc(100vh-22rem)] lg:min-h-[600px] lg:overflow-y-auto lg:pr-1">
+      <div className="grid content-start gap-4">
         {draft ? (
-          <Card>
+          <Card ref={formRef} className="scroll-mt-20">
             <CardHeader>
               <CardTitle className="font-semibold">{draft.id ? "Edit zone" : "New zone"}</CardTitle>
               <CardDescription>
