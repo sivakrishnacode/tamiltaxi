@@ -80,8 +80,9 @@ Nothing yet.
 Release: `driver-v0.1.1+2` at `edacaa4`
 
 - **Track:** Production (India), the first production release (production access granted by 2 Nov 2026).
-  **Status:** bundle built 2 Nov 2026 (`dist/tamiltaxi-driver-0.1.1-2.aab`, signed with the upload key, all checks
-  passed), waiting to be uploaded; the owner names the release date.
+  **Status:** sent for review 2 Nov 2026 with managed publishing on: once Google approves it, it waits under "Changes
+  ready to publish" until the owner clicks Publish, on the same day as the rider app. Bundle
+  `dist/tamiltaxi-driver-0.1.1-2.aab` (upload key, all checks passed).
 - **Built from** `edacaa4`.
 - **Release notes:** "Tamil Taxi Driver is live in Coimbatore: take ride, parcel and house-shifting requests and keep
   100% of every fare. 0% commission, no subscription. New: a permissions check so requests always reach you, Scooty

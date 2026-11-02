@@ -44,7 +44,7 @@ The next driver upload. What goes in it is listed under **Tamil Taxi Driver › 
 
 - [x] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.1+2`
 - [x] Build the bundle: `cd apps/driver && ../../scripts/flutter.sh build appbundle` (upload key)
-- [ ] Upload it to Production (India) with the release notes in RELEASES.md (new
+- [x] Upload it to Production (India) with the release notes in RELEASES.md, in review 2 Nov 2026 (new
   `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission: our reason is in play-store/driver.md, "Other permissions")
 - [ ] Try D-03c on a Play install: every row asks, ticks once allowed, Continue opens only when all five are
 - [x] In RELEASES.md, turn "Next release" into the 0.1.1 entry with its `Release:` line
