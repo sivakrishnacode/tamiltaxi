@@ -137,9 +137,20 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 Admin only (no API or database change).
 
-- Zones tab: every zone in the list can be reached: the list grows with the page (it used to scroll inside a box the
-  map's height with no visible scrollbar, hiding zones past the fourth) while the map stays in view beside it; Edit on
-  a zone far down brings the edit form into view.
+- Zones tab: the zone list moves to the left of the map and scrolls on its own: the column is exactly the map's
+  height, the list has a thin scrollbar that stays visible and a fade while more zones are below, and the page and the
+  map stay put. While a zone is edited its form takes the column and scrolls on its own; the list comes back on save
+  or cancel.
+
+### 2 Nov 2026 (second) · admin at `106f5b3`
+
+Release: `staging-2026-11-02.2` at `106f5b3`
+
+Admin only (no API or database change).
+
+- `106f5b3` Zones tab: every zone in the list can be reached: the list grows with the page (it used to scroll inside a
+  box the map's height with no visible scrollbar, hiding zones past the fourth) while the map stays in view beside it;
+  Edit on a zone far down brings the edit form into view. Replaced by the next deploy: only the list scrolls now.
 
 ### 2 Nov 2026 · admin at `d1aadde`
 

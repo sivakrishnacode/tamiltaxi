@@ -1,7 +1,7 @@
 "use client";
 
 import { HexagonIcon, Loader2Icon, PencilIcon, PlusIcon, SaveIcon, Trash2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/page";
@@ -68,6 +68,9 @@ const zoneLayer = (z: Zone): HexLayerDef => {
   const state = zoneState(z);
   return { id: z.id, cells: z.cells, style: zoneStyle(z.kind, state), outline: zoneOutline(z.kind, state), zIndex: state === "live" ? 4 : 3 };
 };
+
+/** A thin scrollbar that stays visible (overlay scrollbars hide until scrolled, so a long list looked cut off). */
+const SCROLLBAR = "[scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]";
 
 /** The zone being edited: a navy edge on top of its own colour. */
 const EDIT_OUTLINE: OutlineStyle = { color: "#0F172A", weight: 3 };
@@ -162,17 +165,33 @@ function ZoneStatsLine({ stats }: { stats: AreaStats }) {
   );
 }
 
+/**
+ * Whether a scroll box has more below its fold, for the fade that says the list goes on. A ResizeObserver reports once
+ * on start and again when the box resizes; [key] re-attaches it when the list is redrawn.
+ */
+function useMoreBelow(key: string) {
+  const ref = useRef<HTMLUListElement>(null);
+  const [isMore, setMore] = useState(false);
+  const check = useCallback(() => {
+    const el = ref.current;
+    setMore(!!el && el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [check, key]);
+  return { ref, isMore, check };
+}
+
 export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonly<Record<string, AreaStats>> }) {
   const service = useMemo(() => new Set(city.serviceCells), [city.serviceCells]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const ed = useCellEditor([]);
   const [toDelete, setToDelete] = useState<Zone | null>(null);
-  const formRef = useRef<HTMLDivElement>(null);
-  const editKey = draft ? (draft.id ?? "new") : null;
-  // Edit is often pressed far down the list: bring the form (at the top of the list) into view.
-  useEffect(() => {
-    if (editKey) formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [editKey]);
+  const { ref: listRef, isMore, check: checkMore } = useMoreBelow(`${city.zones.length}-${!!draft}`);
   const [isPending, startTransition] = useTransition();
 
   const outside = draft ? ed.cells.filter((c) => !service.has(c)) : [];
@@ -227,171 +246,176 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   }
 
   return (
-    // The map keeps its own height and stays in view (under the 64 px header) while the zone list beside it grows with
-    // the page, so every zone can be reached by scrolling.
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start 2xl:grid-cols-[minmax(0,1fr)_400px]">
-      <div className="min-w-0 lg:sticky lg:top-20">
-        <HexWorkbench
-          center={{ lat: city.centerLat, lng: city.centerLng }}
-          resolution={city.h3Resolution}
-          fitCells={city.serviceCells}
-          editor={draft ? ed : null}
-          editStyle={zoneStyle(draft?.kind ?? "SURGE", "live", true)}
-          editOutline={EDIT_OUTLINE}
-          targetLabel="zone"
-          groups={[
-            { key: "service", label: "Service area", layers: serviceLayer },
-            { key: "zones", label: "Zones", layers: zoneLayers },
-          ]}
-          warnCells={outside}
-          zoneLabels={labels}
-          status={
-            draft ? (
-              <span className="tabular-nums">
-                {draft.name || "New zone"}: <b className="text-navy-900">{formatCount(ed.cells.length)}</b> hexagons
-                {outside.length > 0 && <span className="text-warning-text"> · {formatCount(outside.length)} outside</span>}
-              </span>
-            ) : null
-          }
-        />
-      </div>
+    // The zone list sits left of the map (after it on phones). Nothing on the page scrolls: the list column is exactly
+    // the map's height (its contents are laid over it, so they can't make the row taller), and only the zone list, or
+    // the edit form while editing, scrolls inside it.
+    <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start 2xl:grid-cols-[400px_minmax(0,1fr)]">
+      <HexWorkbench
+        center={{ lat: city.centerLat, lng: city.centerLng }}
+        resolution={city.h3Resolution}
+        fitCells={city.serviceCells}
+        editor={draft ? ed : null}
+        editStyle={zoneStyle(draft?.kind ?? "SURGE", "live", true)}
+        editOutline={EDIT_OUTLINE}
+        targetLabel="zone"
+        groups={[
+          { key: "service", label: "Service area", layers: serviceLayer },
+          { key: "zones", label: "Zones", layers: zoneLayers },
+        ]}
+        warnCells={outside}
+        zoneLabels={labels}
+        status={
+          draft ? (
+            <span className="tabular-nums">
+              {draft.name || "New zone"}: <b className="text-navy-900">{formatCount(ed.cells.length)}</b> hexagons
+              {outside.length > 0 && <span className="text-warning-text"> · {formatCount(outside.length)} outside</span>}
+            </span>
+          ) : null
+        }
+      />
 
-      <div className="grid content-start gap-4">
-        {draft ? (
-          <Card ref={formRef} className="scroll-mt-20">
-            <CardHeader>
-              <CardTitle className="font-semibold">{draft.id ? "Edit zone" : "New zone"}</CardTitle>
-              <CardDescription>
-                {formatCount(ed.cells.length)} hexagons · {cellsToKm2(ed.cells.length, city.h3Resolution).toFixed(1)} km²
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="zone-name">Name</Label>
-                <Input
-                  id="zone-name"
-                  value={draft.name}
-                  maxLength={60}
-                  placeholder="e.g. Gandhipuram bus stand"
-                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Kind</Label>
-                <Select
-                  value={draft.kind}
-                  onValueChange={(v) =>
-setDraft({ ...draft, kind: v as ZoneKind })
-                  }
-                >
-                  <SelectTrigger className="w-full" aria-label="Zone kind">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ZONE_KINDS.map((k) => (
-                      <SelectItem key={k} value={k}>
-                        <span aria-hidden className="size-2.5 shrink-0 rounded-sm" style={zoneSwatch(k)} />
-                        {humanize(k)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">{KIND_HINT[draft.kind]}</p>
-              </div>
-              {draft.kind === "SURGE" && (
+      <div className="lg:relative lg:order-first lg:self-stretch">
+        <div className="flex flex-col gap-4 lg:absolute lg:inset-0">
+          {draft ? (
+            <Card className={cn("lg:min-h-0 lg:overflow-y-auto", SCROLLBAR)}>
+              <CardHeader>
+                <CardTitle className="font-semibold">{draft.id ? "Edit zone" : "New zone"}</CardTitle>
+                <CardDescription>
+                  {formatCount(ed.cells.length)} hexagons · {cellsToKm2(ed.cells.length, city.h3Resolution).toFixed(1)} km²
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="zone-mult">Multiplier</Label>
+                  <Label htmlFor="zone-name">Name</Label>
                   <Input
-                    id="zone-mult"
-                    type="number"
-                    step="0.05"
-                    min="1"
-                    max="1.5"
-                    className="w-32"
-                    value={draft.surgeMultiplier}
-                    aria-invalid={!isMultiplierValid}
-                    onChange={(e) => setDraft({ ...draft, surgeMultiplier: e.target.value })}
+                    id="zone-name"
+                    value={draft.name}
+                    maxLength={60}
+                    placeholder="e.g. Gandhipuram bus stand"
+                    onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   />
                 </div>
-              )}
-              {draft.kind === "SURGE" && !isMultiplierValid && <p className="text-xs text-error">Multiplier must be 1.0–1.5</p>}
-              <ZoneRulesFields kind={draft.kind} value={draft.rules} onChange={(rules) => setDraft({ ...draft, rules })} />
-              {rulesProblem && <p className="text-xs text-error">{rulesProblem}</p>}
-              {outside.length > 0 && (
-                <div className="rounded-md bg-warning-tint px-2.5 py-2 text-xs text-warning-text">
-                  <p className="flex items-center gap-1 font-medium">
-                    <TriangleAlertIcon className="size-3.5" /> {formatCount(outside.length)} hexagons are outside the service area
-                  </p>
-                  <p>They have no effect until the service area covers them.</p>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    className="mt-1.5 bg-card"
-                    onClick={() => ed.commit(ed.cells.filter((c) => service.has(c)))}
+                <div className="grid gap-1.5">
+                  <Label>Kind</Label>
+                  <Select
+                    value={draft.kind}
+                    onValueChange={(v) =>
+  setDraft({ ...draft, kind: v as ZoneKind })
+                    }
                   >
-                    Remove outside hexagons
+                    <SelectTrigger className="w-full" aria-label="Zone kind">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ZONE_KINDS.map((k) => (
+                        <SelectItem key={k} value={k}>
+                          <span aria-hidden className="size-2.5 shrink-0 rounded-sm" style={zoneSwatch(k)} />
+                          {humanize(k)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{KIND_HINT[draft.kind]}</p>
+                </div>
+                {draft.kind === "SURGE" && (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="zone-mult">Multiplier</Label>
+                    <Input
+                      id="zone-mult"
+                      type="number"
+                      step="0.05"
+                      min="1"
+                      max="1.5"
+                      className="w-32"
+                      value={draft.surgeMultiplier}
+                      aria-invalid={!isMultiplierValid}
+                      onChange={(e) => setDraft({ ...draft, surgeMultiplier: e.target.value })}
+                    />
+                  </div>
+                )}
+                {draft.kind === "SURGE" && !isMultiplierValid && <p className="text-xs text-error">Multiplier must be 1.0–1.5</p>}
+                <ZoneRulesFields kind={draft.kind} value={draft.rules} onChange={(rules) => setDraft({ ...draft, rules })} />
+                {rulesProblem && <p className="text-xs text-error">{rulesProblem}</p>}
+                {outside.length > 0 && (
+                  <div className="rounded-md bg-warning-tint px-2.5 py-2 text-xs text-warning-text">
+                    <p className="flex items-center gap-1 font-medium">
+                      <TriangleAlertIcon className="size-3.5" /> {formatCount(outside.length)} hexagons are outside the service area
+                    </p>
+                    <p>They have no effect until the service area covers them.</p>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="mt-1.5 bg-card"
+                      onClick={() => ed.commit(ed.cells.filter((c) => service.has(c)))}
+                    >
+                      Remove outside hexagons
+                    </Button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button className="flex-1" disabled={!canSave || isPending} onClick={save}>
+                    {isPending ? <Loader2Icon className="animate-spin" /> : <SaveIcon />} {draft.id ? "Save zone" : "Create zone"}
+                  </Button>
+                  <Button variant="outline" onClick={stopEdit}>
+                    <XIcon /> Cancel
                   </Button>
                 </div>
-              )}
-              <div className="flex gap-2">
-                <Button className="flex-1" disabled={!canSave || isPending} onClick={save}>
-                  {isPending ? <Loader2Icon className="animate-spin" /> : <SaveIcon />} {draft.id ? "Save zone" : "Create zone"}
-                </Button>
-                <Button variant="outline" onClick={stopEdit}>
-                  <XIcon /> Cancel
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Button onClick={() => startEdit()}>
-            <PlusIcon /> New zone
-          </Button>
-        )}
-
-        <Card className="gap-0 pb-0">
-          <CardHeader className="border-b">
-            <CardTitle className="font-semibold">Zones</CardTitle>
-            <CardDescription>{city.zones.length} in {city.name}</CardDescription>
-          </CardHeader>
-          {city.zones.length === 0 ? (
-            <EmptyState icon={HexagonIcon} title="No zones" description="Create surge, demand, no-service or pickup-point zones." />
+              </CardContent>
+            </Card>
           ) : (
-            <ul className="divide-y">
-              {city.zones.map((z) => (
-                <li key={z.id} className={draft?.id === z.id ? "bg-coral-50/60 px-4 py-3" : "px-4 py-3"}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      aria-hidden
-                      className="size-3 shrink-0 rounded-sm"
-                      style={zoneSwatch(z.kind)}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-navy-900">{z.name}</span>
-                    <ZoneActiveSwitch key={`${z.id}-${z.isActive}`} cityId={city.id} zone={z} />
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 pl-5 text-xs text-muted-foreground">
-                    <Badge variant="outline">{humanize(z.kind)}</Badge>
-                    {z.kind === "SURGE" && <span>{z.surgeMultiplier.toFixed(2)}×</span>}
-                    <span>{formatCount(z.cells.length)} cells</span>
-                    {STATE_BADGE[zoneState(z)] && (
-                      <span className={cn("rounded-full px-1.5 py-px text-[10px] font-medium", STATE_BADGE[zoneState(z)]!.className)}>{STATE_BADGE[zoneState(z)]!.label}</span>
-                    )}
-                    <span className="ml-auto flex">
-                      <Button variant="ghost" size="icon-xs" aria-label={`Edit ${z.name}`} onClick={() => startEdit(z)}>
-                        <PencilIcon />
-                      </Button>
-                      <Button variant="ghost" size="icon-xs" aria-label={`Delete ${z.name}`} onClick={() => setToDelete(z)}>
-                        <Trash2Icon />
-                      </Button>
-                    </span>
-                  </div>
-                  <ZoneRulesLine cityId={city.id} zone={z} />
-                  {stats?.[z.id] && <ZoneStatsLine stats={stats[z.id]} />}
-                </li>
-              ))}
-            </ul>
+            <Button className="shrink-0" onClick={() => startEdit()}>
+              <PlusIcon /> New zone
+            </Button>
           )}
-        </Card>
+
+          {/* While a zone is being edited the form has the column to itself; the list comes back on save or cancel. */}
+          {!draft && (
+            <Card className="relative gap-0 pb-0 lg:min-h-0">
+              <CardHeader className="shrink-0 border-b">
+                <CardTitle className="font-semibold">Zones</CardTitle>
+                <CardDescription>{city.zones.length} in {city.name}</CardDescription>
+              </CardHeader>
+              {city.zones.length === 0 ? (
+                <EmptyState icon={HexagonIcon} title="No zones" description="Create surge, demand, no-service or pickup-point zones." />
+              ) : (
+                <ul ref={listRef} onScroll={checkMore} className={cn("divide-y lg:min-h-0 lg:overflow-y-auto", SCROLLBAR)}>
+                  {city.zones.map((z) => (
+                    <li key={z.id} className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="size-3 shrink-0 rounded-sm"
+                          style={zoneSwatch(z.kind)}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-navy-900">{z.name}</span>
+                        <ZoneActiveSwitch key={`${z.id}-${z.isActive}`} cityId={city.id} zone={z} />
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 pl-5 text-xs text-muted-foreground">
+                        <Badge variant="outline">{humanize(z.kind)}</Badge>
+                        {z.kind === "SURGE" && <span>{z.surgeMultiplier.toFixed(2)}×</span>}
+                        <span>{formatCount(z.cells.length)} cells</span>
+                        {STATE_BADGE[zoneState(z)] && (
+                          <span className={cn("rounded-full px-1.5 py-px text-[10px] font-medium", STATE_BADGE[zoneState(z)]!.className)}>{STATE_BADGE[zoneState(z)]!.label}</span>
+                        )}
+                        <span className="ml-auto flex">
+                          <Button variant="ghost" size="icon-xs" aria-label={`Edit ${z.name}`} onClick={() => startEdit(z)}>
+                            <PencilIcon />
+                          </Button>
+                          <Button variant="ghost" size="icon-xs" aria-label={`Delete ${z.name}`} onClick={() => setToDelete(z)}>
+                            <Trash2Icon />
+                          </Button>
+                        </span>
+                      </div>
+                      <ZoneRulesLine cityId={city.id} zone={z} />
+                      {stats?.[z.id] && <ZoneStatsLine stats={stats[z.id]} />}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {isMore && <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-card to-transparent" />}
+            </Card>
+          )}
+        </div>
       </div>
 
       <Dialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
