@@ -135,15 +135,21 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `d1aadde` (admin) and `56f879c` (API).
+
+### 2 Nov 2026 · admin at `d1aadde`
+
+Release: `staging-2026-11-02` at `d1aadde`
+
 Admin only (no API or database change).
 
-- Maps easier to read: each zone kind has its own colour (surge red, high demand violet, pickup point cyan, no service
-  dark slate) and every zone one solid edge; zones outside their hours fade and ended ones are only an edge; on the
-  Zones tab, the heatmap and the live map the service area is a slate edge instead of a coral or grey hexagon grid, so
-  roads and names show through; the Service area tab's coral is lighter with a solid edge. The zone colour picker is
+- `599e779` Maps easier to read: each zone kind has its own colour (surge red, high demand violet, pickup point cyan, no
+  service dark slate) and every zone one solid edge; zones outside their hours fade and ended ones are only an edge; on
+  the Zones tab, the heatmap and the live map the service area is a slate edge instead of a coral or grey hexagon grid,
+  so roads and names show through; the Service area tab's coral is lighter with a solid edge. The zone colour picker is
   gone (the kind decides the colour).
-- Heatmap legend: no more "1–0 … 0–0" bands when a range has little or no data ("None in this range" instead), and
-  each swatch matches the hexagons it stands for (one trip in total is the darkest colour, as on the map).
+- `d1aadde` Heatmap legend: no more "1–0 … 0–0" bands when a range has little or no data ("None in this range" instead),
+  and each swatch matches the hexagons it stands for (one trip in total is the darkest colour, as on the map).
 
 ### 1 Nov 2026 (fourth) · admin at `2fb594b`
 
