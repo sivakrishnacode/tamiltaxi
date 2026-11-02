@@ -135,11 +135,17 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `8b0f6c8` (admin) and `56f879c` (API).
+
+### 2 Nov 2026 (third) · admin at `8b0f6c8`
+
+Release: `staging-2026-11-02.3` at `8b0f6c8`
+
 Admin only (no API or database change).
 
-- Zones tab: the zone list moves to the left of the map and scrolls on its own: the column is exactly the map's
-  height, the list has a thin scrollbar that stays visible and a fade while more zones are below, and the page and the
-  map stay put. While a zone is edited its form takes the column and scrolls on its own; the list comes back on save
+- `8b0f6c8` Zones tab: the zone list moves to the left of the map and scrolls on its own: the column is exactly the
+  map's height, the list has a thin scrollbar that stays visible and a fade while more zones are below, and the page and
+  the map stay put. While a zone is edited its form takes the column and scrolls on its own; the list comes back on save
   or cancel.
 
 ### 2 Nov 2026 (second) · admin at `106f5b3`
