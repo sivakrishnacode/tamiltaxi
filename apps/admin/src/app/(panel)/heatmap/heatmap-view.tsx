@@ -333,6 +333,7 @@ export function HeatmapView({
               </div>
               <div className="absolute bottom-3 left-2 z-10 rounded-lg border bg-card/95 p-2.5 text-xs shadow-md">
                 <p className="mb-1.5 font-semibold text-navy-900">{METRIC_LABEL[metric]} per hexagon</p>
+                {legend.length === 0 && <p className="text-muted-foreground">None in this range</p>}
                 <ul className="space-y-1">
                   {legend
                     .slice()

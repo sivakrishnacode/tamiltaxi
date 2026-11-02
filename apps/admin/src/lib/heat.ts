@@ -24,11 +24,13 @@ export function heatColor(intensity: number): string {
 
 /** Legend rows: 5 equal intensity bands with their value ranges. */
 export function heatLegend(max: number, bands = 5): { color: string; from: number; to: number }[] {
-  return Array.from({ length: bands }, (_, i) => ({
-    color: heatColor((i + 0.5) / bands),
-    from: Math.floor((max * i) / bands) + (i === 0 ? 0 : 1),
-    to: Math.floor((max * (i + 1)) / bands),
-  }));
+  if (!(max > 0)) return []; // no data: no bands (not "1–0")
+  const n = Math.max(1, Math.min(bands, Math.floor(max))); // fewer bands than units would repeat or invert ranges
+  return Array.from({ length: n }, (_, i) => {
+    const to = Math.floor((max * (i + 1)) / n);
+    // A hexagon's colour is value ÷ max, so the swatch shows the band's top value: one trip in total is the darkest.
+    return { color: heatColor(to / max), from: Math.floor((max * i) / n) + (i === 0 ? 0 : 1), to };
+  });
 }
 
 export const METRIC_LABEL: Record<HeatmapMetric, string> = {

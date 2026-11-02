@@ -19,6 +19,13 @@ describe("heat colour scale", () => {
     expect(l[4].to).toBe(271);
     for (let i = 1; i < 5; i++) expect(l[i].from).toBe(l[i - 1].to + 1);
   });
+
+  it("never shows empty or upside-down bands for little or no data", () => {
+    expect(heatLegend(0)).toEqual([]);
+    const l = heatLegend(3);
+    expect(l.map((b) => [b.from, b.to])).toEqual([[0, 1], [2, 2], [3, 3]]);
+    expect(heatLegend(1)[0].color).toBe(heatColor(1)); // the only band matches the (darkest) hexagon
+  });
 });
 
 describe("heat filters", () => {

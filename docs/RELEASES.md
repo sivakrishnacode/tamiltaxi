@@ -142,6 +142,8 @@ Admin only (no API or database change).
   Zones tab, the heatmap and the live map the service area is a slate edge instead of a coral or grey hexagon grid, so
   roads and names show through; the Service area tab's coral is lighter with a solid edge. The zone colour picker is
   gone (the kind decides the colour).
+- Heatmap legend: no more "1–0 … 0–0" bands when a range has little or no data ("None in this range" instead), and
+  each swatch matches the hexagons it stands for (one trip in total is the darkest colour, as on the map).
 
 ### 1 Nov 2026 (fourth) · admin at `2fb594b`
 
