@@ -5,9 +5,10 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/page";
+import { SERVICE_AREA_EDGE, SERVICE_AREA_STYLE } from "@/components/map/colors";
 import { HexWorkbench } from "@/components/map/editor/hex-workbench";
 import { useCellEditor } from "@/components/map/editor/use-cell-editor";
-import type { HexLayerDef, HexStyle } from "@/components/map/google/hex-layer";
+import type { HexLayerDef, HexStyle, OutlineStyle } from "@/components/map/google/hex-layer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +29,7 @@ import { formatCount, humanize } from "@/lib/format";
 import { ZONE_KINDS, type AreaStats, type CityDetail, type Zone, type ZoneKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { cellsToKm2 } from "@/lib/validation";
-import { zoneLabel } from "@/lib/zone-label";
+import { ZONE_COLORS, zoneLabel, zoneSwatch } from "@/lib/zone-label";
 import { scheduleLabel, vehiclesLabel, zoneState } from "@/lib/zone-rules";
 
 import { createZone, deleteZone, updateZone } from "../../actions";
@@ -41,31 +42,41 @@ const KIND_HINT: Record<ZoneKind, string> = {
   PICKUP_POINT: "Airport / station style pickup point",
 };
 
-const DEFAULT_COLOR: Record<ZoneKind, string> = {
-  SURGE: "#D84315",
-  DEMAND: "#F59E0B",
-  NO_SERVICE: "#B91C1C",
-  PICKUP_POINT: "#2563EB",
+type ZoneState = ReturnType<typeof zoneState>;
+
+/**
+ * A zone's hexagons: a fill in its kind's colour with faint inner lines (the outline marks its edge). Zones that are
+ * not working right now (outside their hours, not started, ended, paused) fade back so the live ones stand out.
+ */
+export function zoneStyle(kind: ZoneKind, state: ZoneState, isSelected = false): HexStyle {
+  const color = ZONE_COLORS[kind];
+  if (isSelected) return { color, fillOpacity: 0.42, weight: 1, opacity: 0.9 };
+  if (state === "live") return { color, fillOpacity: kind === "NO_SERVICE" ? 0.38 : 0.3, weight: 0.5, opacity: 0.45 };
+  if (state === "off" || state === "upcoming") return { color, fillOpacity: 0.12, weight: 0 };
+  return { color, fillOpacity: 0, weight: 0 };
+}
+
+export function zoneOutline(kind: ZoneKind, state: ZoneState): OutlineStyle {
+  const color = ZONE_COLORS[kind];
+  if (state === "live") return { color, weight: 2.5 };
+  if (state === "off" || state === "upcoming") return { color, weight: 2, opacity: 0.7 };
+  return { color, weight: 1.5, opacity: 0.4 };
+}
+
+/** Live zones draw above the ones that are not working now. */
+const zoneLayer = (z: Zone): HexLayerDef => {
+  const state = zoneState(z);
+  return { id: z.id, cells: z.cells, style: zoneStyle(z.kind, state), outline: zoneOutline(z.kind, state), zIndex: state === "live" ? 4 : 3 };
 };
 
-export function zoneStyle(z: { kind: ZoneKind; color: string; isActive?: boolean }, isSelected = false): HexStyle {
-  if (z.kind === "NO_SERVICE") {
-    return { color: "#B91C1C", fillColor: "#B91C1C", fillOpacity: isSelected ? 0.45 : 0.32, weight: isSelected ? 2 : 1.5 };
-  }
-  return {
-    color: z.color,
-    fillOpacity: isSelected ? 0.45 : z.isActive === false ? 0.08 : 0.3,
-    weight: isSelected ? 2 : 1,
-    opacity: z.isActive === false ? 0.5 : 1,
-  };
-}
+/** The zone being edited: a navy edge on top of its own colour. */
+const EDIT_OUTLINE: OutlineStyle = { color: "#0F172A", weight: 3 };
 
 interface Draft {
   readonly id?: string;
   name: string;
   kind: ZoneKind;
   surgeMultiplier: string;
-  color: string;
   rules: RulesDraft;
 }
 
@@ -167,8 +178,8 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   function startEdit(z?: Zone) {
     setDraft(
       z
-        ? { id: z.id, name: z.name, kind: z.kind, surgeMultiplier: String(z.surgeMultiplier), color: z.color, rules: rulesDraftOf(z) }
-        : { name: "", kind: "SURGE", surgeMultiplier: "1.2", color: DEFAULT_COLOR.SURGE, rules: rulesDraftOf() },
+        ? { id: z.id, name: z.name, kind: z.kind, surgeMultiplier: String(z.surgeMultiplier), rules: rulesDraftOf(z) }
+        : { name: "", kind: "SURGE", surgeMultiplier: "1.2", rules: rulesDraftOf() },
     );
     ed.reset(z?.cells ?? []);
     ed.setTool("add");
@@ -181,11 +192,11 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   }
 
   const serviceLayer: HexLayerDef[] = useMemo(
-    () => [{ id: "service", cells: city.serviceCells, zIndex: 1, style: { color: "#D84315", fillColor: "#F4511E", fillOpacity: 0.1, weight: 0.6, opacity: 0.6 } }],
+    () => [{ id: "service", cells: city.serviceCells, zIndex: 1, style: SERVICE_AREA_STYLE, outline: SERVICE_AREA_EDGE }],
     [city.serviceCells],
   );
   const zoneLayers: HexLayerDef[] = useMemo(
-    () => city.zones.filter((z) => z.id !== draft?.id).map((z) => ({ id: z.id, cells: z.cells, style: zoneStyle(z), zIndex: 3 })),
+    () => city.zones.filter((z) => z.id !== draft?.id).map(zoneLayer),
     [city.zones, draft?.id],
   );
   const labels = useMemo(() => city.zones.flatMap((z) => zoneLabel(z) ?? []), [city.zones]);
@@ -196,7 +207,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
       name: draft.name,
       kind: draft.kind,
       cells: [...ed.cells],
-      color: draft.color,
+      color: ZONE_COLORS[draft.kind],
       surgeMultiplier: draft.kind === "SURGE" ? multiplier : 1,
       ...rulesPayload(draft.rules, draft.kind),
     };
@@ -217,7 +228,8 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
         resolution={city.h3Resolution}
         fitCells={city.serviceCells}
         editor={draft ? ed : null}
-        editStyle={draft ? zoneStyle({ kind: draft.kind, color: draft.color }, true) : zoneStyle({ kind: "SURGE", color: "#D84315" })}
+        editStyle={zoneStyle(draft?.kind ?? "SURGE", "live", true)}
+        editOutline={EDIT_OUTLINE}
         targetLabel="zone"
         groups={[
           { key: "service", label: "Service area", layers: serviceLayer },
@@ -260,11 +272,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                 <Select
                   value={draft.kind}
                   onValueChange={(v) =>
-                    setDraft({
-                      ...draft,
-                      kind: v as ZoneKind,
-                      color: draft.color === DEFAULT_COLOR[draft.kind] ? DEFAULT_COLOR[v as ZoneKind] : draft.color,
-                    })
+setDraft({ ...draft, kind: v as ZoneKind })
                   }
                 >
                   <SelectTrigger className="w-full" aria-label="Zone kind">
@@ -273,6 +281,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                   <SelectContent>
                     {ZONE_KINDS.map((k) => (
                       <SelectItem key={k} value={k}>
+                        <span aria-hidden className="size-2.5 shrink-0 rounded-sm" style={zoneSwatch(k)} />
                         {humanize(k)}
                       </SelectItem>
                     ))}
@@ -280,33 +289,22 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                 </Select>
                 <p className="text-xs text-muted-foreground">{KIND_HINT[draft.kind]}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {draft.kind === "SURGE" && (
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="zone-mult">Multiplier</Label>
-                    <Input
-                      id="zone-mult"
-                      type="number"
-                      step="0.05"
-                      min="1"
-                      max="1.5"
-                      value={draft.surgeMultiplier}
-                      aria-invalid={!isMultiplierValid}
-                      onChange={(e) => setDraft({ ...draft, surgeMultiplier: e.target.value })}
-                    />
-                  </div>
-                )}
+              {draft.kind === "SURGE" && (
                 <div className="grid gap-1.5">
-                  <Label htmlFor="zone-color">Colour</Label>
+                  <Label htmlFor="zone-mult">Multiplier</Label>
                   <Input
-                    id="zone-color"
-                    type="color"
-                    className="h-9 p-1"
-                    value={draft.color}
-                    onChange={(e) => setDraft({ ...draft, color: e.target.value.toUpperCase() })}
+                    id="zone-mult"
+                    type="number"
+                    step="0.05"
+                    min="1"
+                    max="1.5"
+                    className="w-32"
+                    value={draft.surgeMultiplier}
+                    aria-invalid={!isMultiplierValid}
+                    onChange={(e) => setDraft({ ...draft, surgeMultiplier: e.target.value })}
                   />
                 </div>
-              </div>
+              )}
               {draft.kind === "SURGE" && !isMultiplierValid && <p className="text-xs text-error">Multiplier must be 1.0–1.5</p>}
               <ZoneRulesFields kind={draft.kind} value={draft.rules} onChange={(rules) => setDraft({ ...draft, rules })} />
               {rulesProblem && <p className="text-xs text-error">{rulesProblem}</p>}
@@ -357,11 +355,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                     <span
                       aria-hidden
                       className="size-3 shrink-0 rounded-sm"
-                      style={
-                        z.kind === "NO_SERVICE"
-                          ? { background: "repeating-linear-gradient(45deg,#B91C1C 0 2px,#FEE2E2 2px 5px)" }
-                          : { background: z.color }
-                      }
+                      style={zoneSwatch(z.kind)}
                     />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-navy-900">{z.name}</span>
                     <ZoneActiveSwitch key={`${z.id}-${z.isActive}`} cityId={city.id} zone={z} />

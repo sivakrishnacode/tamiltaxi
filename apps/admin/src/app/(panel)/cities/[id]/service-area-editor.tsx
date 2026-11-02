@@ -12,11 +12,14 @@ import { formatCount } from "@/lib/format";
 import type { CityDetail } from "@/lib/types";
 import { cellsToKm2 } from "@/lib/validation";
 import { zoneLabel } from "@/lib/zone-label";
+import { zoneState } from "@/lib/zone-rules";
 
 import { saveServiceCells } from "../../actions";
-import { zoneStyle } from "./zones-editor";
+import { zoneOutline } from "./zones-editor";
 
-export const SERVICE_STYLE = { color: "#D84315", fillColor: "#F4511E", fillOpacity: 0.28, weight: 1 } as const;
+/** A light coral wash with faint hexagon lines, so the roads and names under it stay readable; the edge is solid. */
+export const SERVICE_STYLE = { color: "#D84315", fillColor: "#F4511E", fillOpacity: 0.14, weight: 0.6, opacity: 0.45 } as const;
+const SERVICE_OUTLINE = { color: "#C2410C", weight: 2.5 } as const;
 
 function sameCells(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((c, i) => c === b[i]);
@@ -32,7 +35,7 @@ export function ServiceAreaEditor({ city }: { city: CityDetail }) {
   const diff = ed.cells.length - baseline.length;
 
   const zoneLayers = useMemo(
-    () => city.zones.map((z) => ({ id: `z-${z.id}`, cells: z.cells, zIndex: 11, style: { ...zoneStyle(z), fillOpacity: 0 } })),
+    () => city.zones.map((z) => ({ id: `z-${z.id}`, cells: z.cells, zIndex: 11, style: { color: "#000000", fillOpacity: 0, weight: 0 }, outline: zoneOutline(z.kind, zoneState(z)) })),
     [city.zones],
   );
   const labels = useMemo(() => city.zones.flatMap((z) => zoneLabel(z) ?? []), [city.zones]);
@@ -45,6 +48,7 @@ export function ServiceAreaEditor({ city }: { city: CityDetail }) {
         fitCells={saved.length ? saved : ed.cells}
         editor={ed}
         editStyle={SERVICE_STYLE}
+        editOutline={SERVICE_OUTLINE}
         targetLabel="service area"
         groups={[{ key: "zones", label: "Zones (outlines)", layers: zoneLayers }]}
         zoneLabels={labels}

@@ -19,6 +19,7 @@ import { pageSizeParam, param, parsePage, parsePageSize, withQuery } from "@/lib
 import { DRIVER_STATUSES, DRIVER_VEHICLE_KINDS, type AreaStats, type CityDetail, type DriverStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { cellsToKm2 } from "@/lib/validation";
+import { zoneSwatch } from "@/lib/zone-label";
 
 import { CitySettings } from "./city-settings";
 import { FaresEditor } from "./fares-editor";
@@ -127,7 +128,7 @@ function Overview({ city, stats }: { city: CityDetail; stats: (AreaStats & { zon
                   <TableRow key={z.id} className={z.isActive ? undefined : "text-muted-foreground"}>
                     <TableCell className="pl-4">
                       <span className="flex items-center gap-2 font-medium text-navy-900">
-                        <span aria-hidden className="size-3 shrink-0 rounded-sm" style={{ background: z.color }} />
+                        <span aria-hidden className="size-3 shrink-0 rounded-sm" style={zoneSwatch(z.kind)} />
                         {z.name}
                         {!z.isActive && <Badge variant="secondary">Off</Badge>}
                       </span>

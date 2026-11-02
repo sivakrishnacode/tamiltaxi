@@ -3,7 +3,7 @@
 import { useMap } from "@vis.gl/react-google-maps";
 import { useEffect, useRef } from "react";
 
-import { hexBoundary } from "@/lib/hex";
+import { cellsOutline, hexBoundary } from "@/lib/hex";
 
 export interface HexStyle {
   readonly color: string;
@@ -13,10 +13,18 @@ export interface HexStyle {
   readonly opacity?: number;
 }
 
+/** One line around the whole cell set, so an area reads as one shape instead of a grid of hexagons. */
+export interface OutlineStyle {
+  readonly color: string;
+  readonly weight: number;
+  readonly opacity?: number;
+}
+
 export interface HexLayerDef {
   readonly id: string;
   readonly cells: readonly string[];
   readonly style: HexStyle;
+  readonly outline?: OutlineStyle;
   readonly zIndex?: number;
   readonly visible?: boolean;
 }
@@ -87,6 +95,42 @@ export function HexLayer({ cells, style, zIndex = 1, visible = true }: Omit<HexL
       const created = data.addGeoJson({ type: "FeatureCollection", features: added.map(cellFeature) });
       for (const f of created) features.current.set(String(f.getId()), f);
     }
+  }, [map, cells]);
+
+  return null;
+}
+
+/** The outer edge (and holes) of [cells] as one line, drawn above the cells' own fill. */
+export function HexOutline({ cells, color, weight, opacity = 1, zIndex = 1, visible = true }: OutlineStyle & { cells: readonly string[]; zIndex?: number; visible?: boolean }) {
+  const map = useMap();
+  const layer = useRef<google.maps.Data | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const data = new google.maps.Data();
+    layer.current = data;
+    return () => {
+      data.setMap(null);
+      layer.current = null;
+    };
+  }, [map]);
+
+  useEffect(() => {
+    layer.current?.setMap(visible && map ? map : null);
+  }, [map, visible]);
+
+  useEffect(() => {
+    layer.current?.setStyle({ clickable: false, fillOpacity: 0, strokeColor: color, strokeOpacity: opacity, strokeWeight: weight, zIndex });
+  }, [map, color, opacity, weight, zIndex]);
+
+  useEffect(() => {
+    const data = layer.current;
+    if (!data) return;
+    const old: google.maps.Data.Feature[] = [];
+    data.forEach((f) => old.push(f));
+    for (const f of old) data.remove(f);
+    const coordinates = cellsOutline(cells);
+    if (coordinates.length) data.addGeoJson({ type: "Feature", properties: {}, geometry: { type: "MultiPolygon", coordinates } });
   }, [map, cells]);
 
   return null;

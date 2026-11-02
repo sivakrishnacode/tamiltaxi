@@ -17,3 +17,7 @@ export const VEHICLE_COLORS: Record<VehicleKind, string> = {
   PICKUP: "#DB2777",
   TRUCK: "#64748B",
 };
+
+/** The service area under other data (zones, heat, drivers): a faint slate wash and one slate edge, no hexagon grid. */
+export const SERVICE_AREA_STYLE = { color: "#475569", fillColor: "#64748B", fillOpacity: 0.06, weight: 0 } as const;
+export const SERVICE_AREA_EDGE = { color: "#475569", weight: 2, opacity: 0.8 } as const;

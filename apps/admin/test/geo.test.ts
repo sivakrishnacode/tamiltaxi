@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { applyCells, cellAt, circleCells, historyInit, historyPush, historyRedo, historyUndo, viewportCells } from "@/lib/hex";
+import { applyCells, cellAt, cellsOutline, circleCells, historyInit, historyPush, historyRedo, historyUndo, viewportCells } from "@/lib/hex";
 import { cellsToKm2, previewFare, validateSettings } from "@/lib/validation";
 
 describe("fare preview (same maths as the API fare engine)", () => {
@@ -58,6 +58,16 @@ describe("h3 helpers", () => {
     expect(h.present).toEqual(["a"]);
     h = historyRedo(h);
     expect(h.present).toEqual(["a", "b"]);
+  });
+
+  it("outlines a cell set as one shape per connected group, with holes", () => {
+    const ring = circleCells(11.0183, 76.9725, 1.5, 8);
+    expect(cellsOutline(ring)).toHaveLength(1);
+    expect(cellsOutline([...ring, ...ring])).toHaveLength(1);
+    const centre = cellAt(11.0183, 76.9725, 8);
+    expect(cellsOutline(ring.filter((c) => c !== centre))[0]).toHaveLength(2); // outer edge + the hole
+    expect(cellsOutline([centre, cellAt(11.2, 77.2, 8)])).toHaveLength(2);
+    expect(cellsOutline([])).toEqual([]);
   });
 
   it("converts cells to km²", () => {

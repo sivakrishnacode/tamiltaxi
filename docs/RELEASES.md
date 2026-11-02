@@ -135,7 +135,13 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `2fb594b` (admin) and `56f879c` (API).
+Admin only (no API or database change).
+
+- Maps easier to read: each zone kind has its own colour (surge red, high demand violet, pickup point cyan, no service
+  dark slate) and every zone one solid edge; zones outside their hours fade and ended ones are only an edge; on the
+  Zones tab, the heatmap and the live map the service area is a slate edge instead of a coral or grey hexagon grid, so
+  roads and names show through; the Service area tab's coral is lighter with a solid edge. The zone colour picker is
+  gone (the kind decides the colour).
 
 ### 1 Nov 2026 (fourth) · admin at `2fb594b`
 

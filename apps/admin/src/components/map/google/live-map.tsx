@@ -6,10 +6,10 @@ import { useEffect, useRef } from "react";
 import { vehicleLabel } from "@/lib/format";
 import type { DemandCell, HeatmapMetric, LiveData, ServiceArea } from "@/lib/types";
 
-import { VEHICLE_COLORS } from "../colors";
+import { SERVICE_AREA_EDGE, SERVICE_AREA_STYLE, VEHICLE_COLORS } from "../colors";
 import { DemandLayer, type DemandHover } from "./demand-layer";
 import { HeatOverlay } from "./heat-overlay";
-import { HexLayer } from "./hex-layer";
+import { HexLayer, HexOutline } from "./hex-layer";
 import { TtMap } from "./tamiltaxi-map";
 
 function LiveLayers({ data, focus, compact }: { data: LiveData; focus: { lat: number; lng: number } | null; compact: boolean }) {
@@ -139,7 +139,8 @@ export function LiveMap({
     >
       {demand && <DemandLayer cells={demand} onHover={onDemandHover} />}
       {heat && <HeatOverlay metric={heat} opacity={0.45} />}
-      {area && <HexLayer cells={area.cells} style={{ color: "#D84315", fillColor: "#F4511E", fillOpacity: 0.08, weight: 0.5, opacity: 0.5 }} />}
+      {area && <HexLayer cells={area.cells} style={SERVICE_AREA_STYLE} />}
+      {area && <HexOutline cells={area.cells} {...SERVICE_AREA_EDGE} />}
       <LiveLayers data={data} focus={focus ? { lat: focus[0], lng: focus[1] } : null} compact={compact} />
     </TtMap>
   );

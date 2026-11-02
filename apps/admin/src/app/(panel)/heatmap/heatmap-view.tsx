@@ -6,9 +6,10 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Bar, BarChart, XAxis } from "recharts";
 import { toast } from "sonner";
 
+import { SERVICE_AREA_EDGE, SERVICE_AREA_STYLE } from "@/components/map/colors";
 import { DashedOutlines, FitCells, FlyTo } from "@/components/map/google/map-helpers";
 import { HeatLayer, type HeatHover } from "@/components/map/google/heat-layer";
-import { HexLayer } from "@/components/map/google/hex-layer";
+import { HexLayer, HexOutline } from "@/components/map/google/hex-layer";
 import { TtMap, type MapType } from "@/components/map/google/tamiltaxi-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ import { HEATMAP_METRICS, VEHICLE_KINDS, type Heatmap, type HeatmapMetric, type 
 import { useHeatmap } from "@/lib/use-heatmap";
 import { cn } from "@/lib/utils";
 import { cityView } from "@/lib/map-view";
+import { ZONE_COLORS } from "@/lib/zone-label";
 
 import { createZone, saveServiceCells } from "../actions";
 
@@ -366,7 +368,9 @@ export function HeatmapView({
             </>
           }
         >
-          {showService && <HexLayer cells={allService} style={{ color: "#334155", fillOpacity: 0, weight: 0.5, opacity: 0.35 }} zIndex={3} />}
+          {/* The service area as one slate edge and a faint wash (no hexagon grid), so the heat colours read on their own. */}
+          {showService && <HexLayer cells={allService} style={SERVICE_AREA_STYLE} zIndex={0} />}
+          {showService && <HexOutline cells={allService} {...SERVICE_AREA_EDGE} zIndex={3} />}
           <HeatLayer cells={heat.cells} interactive selected={selected} outside={metric === "unmet" ? outside : undefined} onHover={setHover} onClick={toggle} zIndex={1} />
           <DashedOutlines cells={outsideUnmet} />
           <FitCells cells={heat.cells.length ? heat.cells.map((c) => c.cell) : allService} />
@@ -571,7 +575,7 @@ function ZoneFromSelection({
                 kind,
                 cells: zoneCells,
                 surgeMultiplier: kind === "SURGE" ? m : 1,
-                color: kind === "SURGE" ? "#D84315" : "#F59E0B",
+                color: ZONE_COLORS[kind],
               });
               if (res.ok) {
                 toast.success(res.message);

@@ -1,4 +1,4 @@
-import { cellToBoundary, cellToChildren, cellToLatLng, cellToParent, getResolution, gridDisk, isValidCell, latLngToCell, polygonToCells } from "h3-js";
+import { cellsToMultiPolygon, cellToBoundary, cellToChildren, cellToLatLng, cellToParent, getResolution, gridDisk, isValidCell, latLngToCell, polygonToCells } from "h3-js";
 
 /** Average hexagon edge length by H3 resolution (km), same table as apps/api/src/modules/geo/h3.util.ts. */
 const EDGE_KM = [1281.256, 483.057, 182.513, 68.979, 26.072, 9.854, 3.725, 1.406, 0.531, 0.201, 0.076, 0.029];
@@ -8,6 +8,11 @@ export const MAX_VIEWPORT_CELLS = 5_000;
 /** Hexagon corners as [lat, lng] pairs (Leaflet order). */
 export function hexBoundary(cell: string): [number, number][] {
   return cellToBoundary(cell) as [number, number][];
+}
+
+/** The outer edges (and holes) of a set of cells as GeoJSON MultiPolygon coordinates ([lng, lat]). */
+export function cellsOutline(cells: readonly string[]): number[][][][] {
+  return cells.length ? cellsToMultiPolygon([...new Set(cells)], true) : [];
 }
 
 export function cellAt(lat: number, lng: number, resolution: number): string {

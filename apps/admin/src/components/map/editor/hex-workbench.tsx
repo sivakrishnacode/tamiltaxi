@@ -14,7 +14,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { HeatOverlay } from "@/components/map/google/heat-overlay";
-import { HexLayer, type HexLayerDef } from "@/components/map/google/hex-layer";
+import { HexLayer, HexOutline, type HexLayerDef, type OutlineStyle } from "@/components/map/google/hex-layer";
 import { PlaceSearch, type FoundPlace } from "@/components/map/google/place-search";
 import { TtMap, type MapType } from "@/components/map/google/tamiltaxi-map";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,7 @@ export function HexWorkbench({
   fitCells,
   editor,
   editStyle,
+  editOutline,
   targetLabel,
   groups,
   warnCells = [],
@@ -85,6 +86,8 @@ export function HexWorkbench({
   fitCells: readonly string[];
   editor: CellEditor | null;
   editStyle: HexLayerDef["style"];
+  /** A line around the cells being edited. */
+  editOutline?: OutlineStyle;
   /** "service area" or "zone": used in button labels. */
   targetLabel: string;
   groups: readonly LayerGroup[];
@@ -419,9 +422,14 @@ export function HexWorkbench({
       >
         {heat !== "off" && <HeatOverlay metric={heat} />}
         {groups.flatMap((g) =>
-          g.layers.map((l) => <HexLayer key={l.id} cells={l.cells} style={l.style} zIndex={l.zIndex ?? 2} visible={showGroups[g.key] && l.visible !== false} />),
+          g.layers.flatMap((l) => {
+            const isShown = showGroups[g.key] && l.visible !== false;
+            const layer = <HexLayer key={l.id} cells={l.cells} style={l.style} zIndex={l.zIndex ?? 2} visible={isShown} />;
+            return l.outline ? [layer, <HexOutline key={`${l.id}-edge`} cells={l.cells} {...l.outline} zIndex={l.zIndex ?? 2} visible={isShown} />] : [layer];
+          }),
         )}
         {editor && <HexLayer cells={editor.cells} style={editStyle} zIndex={10} />}
+        {editor && editOutline && <HexOutline cells={editor.cells} {...editOutline} zIndex={10} />}
         <HexLayer cells={warnCells} style={{ color: "#F59E0B", fillColor: "#FEF3C7", fillOpacity: 0.35, weight: 2 }} zIndex={12} />
         <HexLayer cells={pendingPreview} style={{ color: "#1E293B", fillColor: "#1E293B", fillOpacity: 0.15, weight: 1.5 }} zIndex={20} />
         {visible.labels && zoneLabels.length > 0 && <ZoneLabels labels={zoneLabels} />}
