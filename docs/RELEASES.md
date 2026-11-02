@@ -36,9 +36,9 @@ Nothing yet.
 
 Release: `passenger-v0.1.1+2` at `edacaa4`
 
-- **Track:** Production (India), the first production release. **Status:** bundle built 2 Nov 2026
-  (`dist/tamiltaxi-passenger-0.1.1-2.aab`, signed with the upload key, all checks passed), waiting to be uploaded;
-  the owner names the release date.
+- **Track:** Production (India), the first production release. **Status:** sent for review 2 Nov 2026 with managed
+  publishing on: once Google approves it, it waits under "Changes ready to publish" until the owner clicks Publish on
+  the launch day. Bundle `dist/tamiltaxi-passenger-0.1.1-2.aab` (upload key, all checks passed).
 - **Built from** `edacaa4`.
 - **Release notes:** "Tamil Taxi is live in Coimbatore: book bike, auto and cab rides, send parcels, and book house
   shifting. Autos charge the Tamil Nadu government fare. Drivers keep 100% of every fare: 0% commission."
@@ -79,7 +79,7 @@ Nothing yet.
 
 Release: `driver-v0.1.1+2` at `edacaa4`
 
-- **Track:** Production (India), the first production release (Play production access still to be granted).
+- **Track:** Production (India), the first production release (production access granted by 2 Nov 2026).
   **Status:** bundle built 2 Nov 2026 (`dist/tamiltaxi-driver-0.1.1-2.aab`, signed with the upload key, all checks
   passed), waiting to be uploaded; the owner names the release date.
 - **Built from** `edacaa4`.
