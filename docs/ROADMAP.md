@@ -24,10 +24,10 @@ Issue: #1 · Labels: rider, release
 The next rider upload. What goes in it is listed under **Tamil Taxi (rider) › Next release** in
 [RELEASES.md](RELEASES.md).
 
-- [ ] Raise `version:` in `apps/passenger/pubspec.yaml` to `0.1.1+2`
-- [ ] Build the bundle: `cd apps/passenger && ../../scripts/flutter.sh build appbundle` (upload key)
-- [ ] Upload it to Closed testing – Alpha with release notes
-- [ ] In RELEASES.md, turn "Next release" into the 0.1.1 entry with its `Release:` line
+- [x] Raise `version:` in `apps/passenger/pubspec.yaml` to `0.1.1+2`
+- [x] Build the bundle: `cd apps/passenger && ../../scripts/flutter.sh build appbundle` (upload key)
+- [ ] Upload it to Production (India) with the release notes in RELEASES.md
+- [x] In RELEASES.md, turn "Next release" into the 0.1.1 entry with its `Release:` line
 
 ---
 
@@ -42,12 +42,12 @@ Issue: #2 · Labels: driver, release
 The next driver upload. What goes in it is listed under **Tamil Taxi Driver › Next release** in
 [RELEASES.md](RELEASES.md).
 
-- [ ] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.1+2`
-- [ ] Build the bundle: `cd apps/driver && ../../scripts/flutter.sh build appbundle` (upload key)
-- [ ] Upload it to Closed testing – Alpha with release notes (new `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission:
-  our reason is in play-store/driver.md, "Other permissions")
+- [x] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.1+2`
+- [x] Build the bundle: `cd apps/driver && ../../scripts/flutter.sh build appbundle` (upload key)
+- [ ] Upload it to Production (India) once production access is granted, with the release notes in RELEASES.md (new
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission: our reason is in play-store/driver.md, "Other permissions")
 - [ ] Try D-03c on a Play install: every row asks, ticks once allowed, Continue opens only when all five are
-- [ ] In RELEASES.md, turn "Next release" into the 0.1.1 entry with its `Release:` line
+- [x] In RELEASES.md, turn "Next release" into the 0.1.1 entry with its `Release:` line
 
 ---
 

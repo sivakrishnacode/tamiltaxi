@@ -28,8 +28,20 @@ pre-releases on GitHub.
 
 ## Tamil Taxi (rider) · `com.tamiltaxi.passenger`
 
-### Next release: 0.1.1 (code 2)
+### Next release: 0.1.2 (code 3)
 
+Nothing yet.
+
+### 0.1.1 (code 2) · 2 Nov 2026
+
+Release: `passenger-v0.1.1+2` at `edacaa4`
+
+- **Track:** Production (India), the first production release. **Status:** bundle built 2 Nov 2026
+  (`dist/tamiltaxi-passenger-0.1.1-2.aab`, signed with the upload key, all checks passed), waiting to be uploaded;
+  the owner names the release date.
+- **Built from** `edacaa4`.
+- **Release notes:** "Tamil Taxi is live in Coimbatore: book bike, auto and cab rides, send parcels, and book house
+  shifting. Autos charge the Tamil Nadu government fare. Drivers keep 100% of every fare: 0% commission."
 - `0907cbe` In-app privacy text: sign-in codes come on WhatsApp; ride reminders.
 - `824a1c1` Sign-in screens ask for the WhatsApp number.
 - `7a6adce` Parcels in town like Porter: **Scooty** added (up to 20 kg; a 5–20 kg parcel picks it), **Truck** removed
@@ -59,8 +71,21 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ## Tamil Taxi Driver · `com.tamiltaxi.driver`
 
-### Next release: 0.1.1 (code 2)
+### Next release: 0.1.2 (code 3)
 
+Nothing yet.
+
+### 0.1.1 (code 2) · 2 Nov 2026
+
+Release: `driver-v0.1.1+2` at `edacaa4`
+
+- **Track:** Production (India), the first production release (Play production access still to be granted).
+  **Status:** bundle built 2 Nov 2026 (`dist/tamiltaxi-driver-0.1.1-2.aab`, signed with the upload key, all checks
+  passed), waiting to be uploaded; the owner names the release date.
+- **Built from** `edacaa4`.
+- **Release notes:** "Tamil Taxi Driver is live in Coimbatore: take ride, parcel and house-shifting requests and keep
+  100% of every fare. 0% commission, no subscription. New: a permissions check so requests always reach you, Scooty
+  parcels up to 20 kg, and auto rates at the Tamil Nadu government fare."
 - `09f6669` D-06 Personal details shows the service city (it was empty for new sign-ups).
 - `2b006a6` D-03c Permissions after the OTP and at start-up: precise location, notifications, display over other apps,
   full-screen alerts and no battery limits must all be allowed to continue. Adds the
