@@ -62,9 +62,12 @@ Issue: #3 · Labels: launch, release, rider, driver
 A personal developer account can apply for production access only after a closed test with at least 12 testers
 opted in for 14 days in a row.
 
-- [ ] Rider: 12+ testers opted in and kept for 14 days
+- [x] Rider: 12+ testers opted in and kept for 14 days
 - [ ] Driver: 12+ testers opted in and kept for 14 days
-- [ ] Apply for production access (Play Console › Dashboard) for each app
+- [x] Rider: production access granted (2 Nov 2026)
+- [ ] Driver: apply for production access (Play Console › Dashboard)
+- [x] Test data cleared from the server before launch: only admin accounts and config left (2 Nov 2026)
+- [ ] Remove the cleared test drivers' uploaded files from storage
 - [ ] Production release, India only; record it in RELEASES.md
 
 ### Domain tamiltaxi.co.in: website, app links and support email
