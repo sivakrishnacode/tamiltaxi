@@ -1143,11 +1143,12 @@ loaded, or if it can't be made, it falls back to a Google Maps link to the vehic
     `City.placeId` is the Geocoding result typed `locality` for "<name>, <state>, India", looked up when a city is made
     or renamed and at API start-up for cities without one (null when Google has no such locality: no outline).
     One-time setup in Google Cloud (the browser key's project): (1) Google Maps Platform › Map Styles › Create style ›
-    Import JSON: paste `TT_MAP_STYLES` from `apps/admin/src/components/map/google/style.ts` as a JSON array; open the
-    style and switch on the **Locality** feature layer; save and publish. (2) Map Management › Create map ID: type
-    JavaScript, **Vector**; attach the style. (3) Put the ID in `NEXT_PUBLIC_GOOGLE_MAP_ID` and rebuild the admin. The
-    map style replaces `TT_MAP_STYLES` in the browser, so later style changes are made in Google Cloud (the hiding of
-    neighbourhood names below zoom 14 needs a zoom rule there).
+    JSON tab: paste or upload `apps/admin/src/components/map/google/cloud-map-style.json` (`TT_MAP_STYLES` in the new
+    cloud-styling JSON format, with `"variant"` and `"styles"` ids; the old featureType array isn't accepted there; the
+    zoom-14 rule for neighbourhood names is a keyzoom), Apply; switch on the **Locality** feature layer; save and
+    publish. (2) Map Management › Create map ID: type JavaScript, **Vector**; attach the style. (3) Put the ID in
+    `NEXT_PUBLIC_GOOGLE_MAP_ID` and rebuild the admin. With a Map ID the browser uses the Cloud style, not
+    `TT_MAP_STYLES`: change both files together, then paste the JSON again in Google Cloud.
   - Zones tab layout (2 Nov 2026): the zone list on the left (360 px, 400 px on very wide screens), the map on the
     right; on phones the list comes after the map. The list column is exactly the map's height and only the list
     scrolls (thin scrollbar that stays visible, a fade at the bottom while more zones are below); the page doesn't.

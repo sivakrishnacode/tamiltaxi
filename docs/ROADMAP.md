@@ -127,11 +127,10 @@ Labels: admin, plan
 The boundary layer shipped on 3 Nov 2026 and shows once the admin is built with a Map ID ("City boundary" in
 `using.tech.md` 6b).
 
-- [ ] Owner: in Google Cloud (the admin browser key's project) import `TT_MAP_STYLES` as a map style with the Locality
-  layer on, create a JavaScript vector Map ID with that style, and send the ID
+- [ ] Owner: in Google Cloud (the admin browser key's project) paste `cloud-map-style.json` into a new map style (JSON
+  tab), switch its Locality layer on, create a JavaScript vector Map ID with that style, and send the ID
 - [ ] Set `NEXT_PUBLIC_GOOGLE_MAP_ID` (local `.env.local`, root `.env` `GOOGLE_MAP_ID`), rebuild and deploy the admin,
   and check every city has a `placeId` and its outline
-- [ ] Neighbourhood names hidden below zoom 14 again (a zoom rule in the map style)
 
 ### Website: Tamil version, the vision photo, download QR codes, admin logo
 
