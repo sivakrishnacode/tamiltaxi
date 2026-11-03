@@ -135,7 +135,10 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `78b18a3` (admin) and `24340fe` (API).
+Admin only (no API or database change).
+
+- Zones and Service area tabs: full screen keeps the side content: the zone list, or the zone form while editing, on
+  the left; the Save service area card and the help on the right. The map keeps its view, and Esc returns to the page.
 
 ### 3 Nov 2026 (fourth) · admin at `78b18a3`
 

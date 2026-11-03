@@ -1174,6 +1174,9 @@ loaded, or if it can't be made, it falls back to a Google Maps link to the vehic
   - Layers: Service area / Zones / zone labels / hex grid (outlines only, zoom ≥ 13, viewport only) / demand heat
     (pickups, drops, unmet, fares; last 30 days, drawn under the other layers). Fit to service area (outlier-trimmed
     bounds, so a stray hex doesn't zoom out the map), fullscreen, map height = viewport minus header (min 600 px).
+    Full screen takes the page's side content along (`HexWorkbench` `panel`): the zone list or the zone form on the
+    left of the Zones tab, the save card and help on the right of the Service area tab; the map stays mounted (same
+    view, no new map load) and Esc returns to the page as it was.
   - Zone labels: short pill (name, coloured dot, "1.2×" for surge) at the centre of each zone's largest cluster,
     shown from zoom 13 and skipped when they'd overlap a higher-priority label (live zones first, then ones outside
     their hours, ended or paused ones last; larger zones first within each); full name, kind and multiplier on hover.

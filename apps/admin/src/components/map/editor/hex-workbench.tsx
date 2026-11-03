@@ -83,6 +83,9 @@ export function HexWorkbench({
   zoneLabels = [],
   boundaries = [],
   status,
+  panel,
+  panelSide = "left",
+  onFullscreenChange,
 }: {
   center: { lat: number; lng: number };
   resolution: number;
@@ -101,6 +104,11 @@ export function HexWorkbench({
   boundaries?: readonly (string | null)[];
   /** Extra text on the right of the toolbar (counts). */
   status?: React.ReactNode;
+  /** The page's side content (zone list, save card): shown beside the map in full screen, where the page is hidden. */
+  panel?: React.ReactNode;
+  panelSide?: "left" | "right";
+  /** Lets the page hide its own copy of [panel] while full screen shows it. */
+  onFullscreenChange?: (isOn: boolean) => void;
 }) {
   const [brush, setBrush] = useState(0);
   const [visible, setVisible] = useState({ service: true, zones: true, labels: true, grid: false, boundary: true });
@@ -108,6 +116,7 @@ export function HexWorkbench({
   const [mapType, setMapType] = useState<MapType>("roadmap");
   const [heat, setHeat] = useState<HeatmapMetric | "off">("off");
   const [isFullscreen, setFullscreen] = useState(false);
+  useEffect(() => onFullscreenChange?.(isFullscreen), [isFullscreen, onFullscreenChange]);
   const [fitKey, setFitKey] = useState(0);
   const [zoom, setZoom] = useState(12);
   const [preview, setPreview] = useState<BrushPreview | null>(null);
@@ -418,83 +427,92 @@ export function HexWorkbench({
   );
 
   return (
-    <div className={cn("flex flex-col overflow-hidden rounded-xl border bg-card", isFullscreen && "fixed inset-0 z-50 rounded-none border-0")}>
-      {editor && (
-        <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-          <PaintToolbar
-            tool={editor.tool}
-            onTool={setTool}
-            brush={brush}
-            onBrush={setBrush}
-            canUndo={editor.canUndo}
-            canRedo={editor.canRedo}
-            onUndo={editor.undo}
-            onRedo={editor.redo}
-          />
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">{status}</div>
-        </div>
-      )}
-      <TtMap
-        center={center}
-        mapType={mapType}
-        className={cn("rounded-none", isFullscreen ? "flex-1" : "h-[calc(100vh-22rem)] min-h-[600px]")}
-        overlay={overlay}
-        boundaries={visible.boundary ? boundaries : undefined}
-      >
-        {heat !== "off" && <HeatOverlay metric={heat} />}
-        {groups.flatMap((g) =>
-          g.layers.flatMap((l) => {
-            const isShown = showGroups[g.key] && l.visible !== false;
-            const layer = <HexLayer key={l.id} cells={l.cells} style={l.style} zIndex={l.zIndex ?? 2} visible={isShown} />;
-            return l.outline ? [layer, <HexOutline key={`${l.id}-edge`} cells={l.cells} {...l.outline} zIndex={l.zIndex ?? 2} visible={isShown} />] : [layer];
-          }),
+    // Full screen covers the window with the map and the page's panel beside it. Keys keep the map mounted (no new map
+    // load, same view) when the panel comes and goes.
+    <div className={cn(isFullscreen && "fixed inset-0 z-50 flex bg-background", isFullscreen && panelSide === "right" && "flex-row-reverse")}>
+      {isFullscreen && panel ? (
+        <aside key="panel" className={cn("hidden w-[360px] shrink-0 flex-col gap-3 overflow-y-auto p-3 md:flex", panelSide === "right" ? "border-l" : "border-r")}>
+          {panel}
+        </aside>
+      ) : null}
+      <div key="map" className={cn("flex flex-col overflow-hidden rounded-xl border bg-card", isFullscreen && "h-full min-w-0 flex-1 rounded-none border-0")}>
+        {editor && (
+          <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+            <PaintToolbar
+              tool={editor.tool}
+              onTool={setTool}
+              brush={brush}
+              onBrush={setBrush}
+              canUndo={editor.canUndo}
+              canRedo={editor.canRedo}
+              onUndo={editor.undo}
+              onRedo={editor.redo}
+            />
+            <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">{status}</div>
+          </div>
         )}
-        {editor && <HexLayer cells={editor.cells} style={editStyle} zIndex={10} />}
-        {editor && editOutline && <HexOutline cells={editor.cells} {...editOutline} zIndex={10} />}
-        <HexLayer cells={warnCells} style={{ color: "#F59E0B", fillColor: "#FEF3C7", fillOpacity: 0.35, weight: 2 }} zIndex={12} />
-        <HexLayer cells={pendingPreview} style={{ color: "#1E293B", fillColor: "#1E293B", fillOpacity: 0.15, weight: 1.5 }} zIndex={20} />
-        {visible.labels && zoneLabels.length > 0 && <ZoneLabels labels={zoneLabels} />}
-        <EditorInteractions
-          resolution={resolution}
-          tool={tool}
-          brush={brush}
-          cells={cellSet}
-          onStrokeStart={() => editor?.paint.onStrokeStart()}
-          onCells={(c, m) => editor?.paint.onCells(c, m)}
-          onStrokeEnd={() => editor?.paint.onStrokeEnd()}
-          onPreview={setPreview}
-          polygon={polygon}
-          onPolygonPoint={(p) => {
-            setClosedPolygon(null);
-            setPolygon((pts) => [...pts, p]);
-          }}
-          closedPolygon={closedPolygon}
-          onPolygonClose={() => {
-            // A double-click adds the same point twice; drop near-duplicates before closing.
-            const clean = polygon.filter((p, i) => i === 0 || Math.hypot(p[0] - polygon[i - 1][0], p[1] - polygon[i - 1][1]) > 1e-6);
-            if (clean.length >= 3) setClosedPolygon(clean);
-            setPolygon([]);
-          }}
-          onPick={(lat, lng) => setCircleCentre({ lat, lng })}
-          circle={editor && tool === "circle" && circleTarget && isRadiusValid ? { ...circleTarget, radiusKm } : null}
-          place={place ? { lat: place.lat, lng: place.lng } : null}
-          focus={focus}
-          fitCells={fitCells}
-          fitKey={fitKey}
-          showGrid={visible.grid}
-          onZoom={setZoom}
-        />
-      </TtMap>
-      {editor && tool !== "pan" && (
-        <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
-          <CheckIcon className="mr-1 inline size-3" />
-          {tool === "add" || tool === "remove"
-            ? `Brush ${BRUSH_SIZES[brush].cells} hexagon${brush ? "s" : ""}: click or drag to ${tool === "add" ? "add" : "remove"}. Scroll to zoom; hold Space to pan.`
-            : tool === "polygon"
-              ? "Draw area: click points around a neighbourhood, then add it or remove it."
-              : "Circle: click the map (or search a place) to set the centre."}
-        </p>
-      )}
+        <TtMap
+          center={center}
+          mapType={mapType}
+          className={cn("rounded-none", isFullscreen ? "flex-1" : "h-[calc(100vh-22rem)] min-h-[600px]")}
+          overlay={overlay}
+          boundaries={visible.boundary ? boundaries : undefined}
+        >
+          {heat !== "off" && <HeatOverlay metric={heat} />}
+          {groups.flatMap((g) =>
+            g.layers.flatMap((l) => {
+              const isShown = showGroups[g.key] && l.visible !== false;
+              const layer = <HexLayer key={l.id} cells={l.cells} style={l.style} zIndex={l.zIndex ?? 2} visible={isShown} />;
+              return l.outline ? [layer, <HexOutline key={`${l.id}-edge`} cells={l.cells} {...l.outline} zIndex={l.zIndex ?? 2} visible={isShown} />] : [layer];
+            }),
+          )}
+          {editor && <HexLayer cells={editor.cells} style={editStyle} zIndex={10} />}
+          {editor && editOutline && <HexOutline cells={editor.cells} {...editOutline} zIndex={10} />}
+          <HexLayer cells={warnCells} style={{ color: "#F59E0B", fillColor: "#FEF3C7", fillOpacity: 0.35, weight: 2 }} zIndex={12} />
+          <HexLayer cells={pendingPreview} style={{ color: "#1E293B", fillColor: "#1E293B", fillOpacity: 0.15, weight: 1.5 }} zIndex={20} />
+          {visible.labels && zoneLabels.length > 0 && <ZoneLabels labels={zoneLabels} />}
+          <EditorInteractions
+            resolution={resolution}
+            tool={tool}
+            brush={brush}
+            cells={cellSet}
+            onStrokeStart={() => editor?.paint.onStrokeStart()}
+            onCells={(c, m) => editor?.paint.onCells(c, m)}
+            onStrokeEnd={() => editor?.paint.onStrokeEnd()}
+            onPreview={setPreview}
+            polygon={polygon}
+            onPolygonPoint={(p) => {
+              setClosedPolygon(null);
+              setPolygon((pts) => [...pts, p]);
+            }}
+            closedPolygon={closedPolygon}
+            onPolygonClose={() => {
+              // A double-click adds the same point twice; drop near-duplicates before closing.
+              const clean = polygon.filter((p, i) => i === 0 || Math.hypot(p[0] - polygon[i - 1][0], p[1] - polygon[i - 1][1]) > 1e-6);
+              if (clean.length >= 3) setClosedPolygon(clean);
+              setPolygon([]);
+            }}
+            onPick={(lat, lng) => setCircleCentre({ lat, lng })}
+            circle={editor && tool === "circle" && circleTarget && isRadiusValid ? { ...circleTarget, radiusKm } : null}
+            place={place ? { lat: place.lat, lng: place.lng } : null}
+            focus={focus}
+            fitCells={fitCells}
+            fitKey={fitKey}
+            showGrid={visible.grid}
+            onZoom={setZoom}
+          />
+        </TtMap>
+        {editor && tool !== "pan" && (
+          <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+            <CheckIcon className="mr-1 inline size-3" />
+            {tool === "add" || tool === "remove"
+              ? `Brush ${BRUSH_SIZES[brush].cells} hexagon${brush ? "s" : ""}: click or drag to ${tool === "add" ? "add" : "remove"}. Scroll to zoom; hold Space to pan.`
+              : tool === "polygon"
+                ? "Draw area: click points around a neighbourhood, then add it or remove it."
+                : "Circle: click the map (or search a place) to set the centre."}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
