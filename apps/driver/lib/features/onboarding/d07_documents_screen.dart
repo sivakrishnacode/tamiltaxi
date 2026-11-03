@@ -210,7 +210,7 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
     final detailsDone = showcase || signup.detailsSaved || (live && loggedIn);
     // 2. Identity check (not asked = nothing to do; live before D-06 it shows locked) and, once it is approved, the
     // profile photo. By hand (the server asks for it, Didit answered IDENTITY_MANUAL, or one is already uploaded):
-    // the licence, Aadhaar and selfie, each checked by an admin.
+    // the licence and Aadhaar, each checked by an admin, with the profile photo as the matching face.
     bool isIn(KycDocument d) =>
         d.status == KycStatus.verified || d.status == KycStatus.underReview;
     final idDocs = [
@@ -364,7 +364,7 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
                     if (!detailsDone)
                       const _LockedRow(title: 'Licence, Aadhaar and selfie')
                     else if (isManualId) ...[
-                      // The identity check by hand: an admin checks each of the three.
+                      // The identity check by hand: an admin checks the licence and Aadhaar (and the photo below).
                       for (final (i, doc) in idDocs.indexed) ...[
                         if (i > 0) const SizedBox(height: TtSpacing.m),
                         _DocRow(doc: doc, readOnly: false, live: live, onUpload: () => _upload(doc.type)),
@@ -441,7 +441,7 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         if (isShownDoc(d)) d,
     ];
     final identity = showcase ? null : ref.watch(identityProvider).value;
-    // Done by hand: the licence, Aadhaar and selfie are listed with the documents instead of the Didit card.
+    // Done by hand: the licence and Aadhaar are listed with the documents instead of the Didit card.
     final hasIdentity = (identity?.isEnabled ?? showcase) && !docs.any((d) => identityUploadDocs.contains(d.type));
     final verified = docs.where((d) => d.status == KycStatus.verified).length;
     final steps = docs.length + (hasIdentity ? 1 : 0);
@@ -735,7 +735,6 @@ class _PhotoTip extends StatelessWidget {
       KycDocType.vehicleRc => (Symbols.description_rounded, 'Registration certificate', 'TN 37 AB 4521'),
       KycDocType.insurance => (Symbols.shield_rounded, 'Policy page with dates', 'Valid till 12 Mar 2027'),
       KycDocType.policeVerification => (Symbols.local_police_rounded, 'From TN Police eServices', 'Verified by TN Police'),
-      KycDocType.selfie => (Symbols.face_rounded, 'Taken now with the front camera', 'Matched to your licence'),
     };
 
 class _DocRow extends StatelessWidget {

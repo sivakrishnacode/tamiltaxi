@@ -96,8 +96,7 @@ enum KycDocType {
   aadhaar('Aadhaar'),
   vehicleRc('Vehicle RC'),
   insurance('Vehicle insurance'),
-  policeVerification('Police verification certificate'),
-  selfie('Selfie');
+  policeVerification('Police verification certificate');
 
   const KycDocType(this.label);
   final String label;
@@ -106,8 +105,9 @@ enum KycDocType {
 /// Documents every driver uploads (an admin checks them). Police verification is retired.
 const driverUploadDocs = [KycDocType.vehicleRc, KycDocType.insurance];
 
-/// The identity check by hand (an admin checks each), when the server asks for it or Didit can't be used.
-const identityUploadDocs = [KycDocType.drivingLicence, KycDocType.aadhaar, KycDocType.selfie];
+/// The identity check by hand, when the server asks for it or Didit can't be used: an admin checks these and approves
+/// the profile photo as the matching face.
+const identityUploadDocs = [KycDocType.drivingLicence, KycDocType.aadhaar];
 
 /// Shown in the driver's document lists: RC and insurance, and the identity documents once uploaded.
 bool isShownDoc(KycDocument d) => driverUploadDocs.contains(d.type) || (identityUploadDocs.contains(d.type) && d.isUploaded);

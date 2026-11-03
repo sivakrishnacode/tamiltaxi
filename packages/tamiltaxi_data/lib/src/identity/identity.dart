@@ -33,7 +33,8 @@ class ScannedDocument {
   bool get isDrivingLicence => RegExp(r'driv|^dl$', caseSensitive: false).hasMatch(type);
 }
 
-/// How drivers' identities are checked: Didit's in-app check, or the licence, Aadhaar and selfie for an admin.
+/// How drivers' identities are checked: Didit's in-app check, or the licence and Aadhaar (with the profile photo) for an
+/// admin.
 enum IdentityMode { didit, manual }
 
 @immutable
