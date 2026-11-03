@@ -1137,7 +1137,7 @@ loaded, or if it can't be made, it falls back to a Google Maps link to the vehic
 - **Zones editor (`/cities/[id]`, Service area and Zones tabs; `src/components/map/editor/`):**
   - City boundary (3 Nov 2026): every admin map with cities (the city page's Service area and Zones tabs, Heatmap, Live
     map, the Dashboard's map, Travel speeds) outlines each city's limits by default with **Google's own boundary**, the
-    line Google Maps draws: a rose line, the inside a touch lighter (`CityBoundaries`, data-driven styling on the
+    line Google Maps draws: a rose line, no fill (a white wash inside hid the roads; `CityBoundaries`, data-driven styling on the
     `LOCALITY` feature layer, styled by `City.placeId`; under the hexagon layers). The editors' Layers menu has a
     "City boundary" switch. Needs `NEXT_PUBLIC_GOOGLE_MAP_ID`; without it the maps look as before and show no boundary.
     `City.placeId` is the Geocoding result typed `locality` for "<name>, <state>, India", looked up when a city is made

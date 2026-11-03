@@ -135,7 +135,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `52f4be2` (admin) and `24340fe` (API).
+Admin only (no API or database change).
+
+- City boundary: only the line now; the white tint inside the city washed the map out. The Cloud map style
+  (`cloud-map-style.json`, pasted again in Google Cloud) has a slightly darker land colour and stronger road edges, so
+  roads show on the vector map.
 
 ### 3 Nov 2026 (second) · admin at `52f4be2`
 

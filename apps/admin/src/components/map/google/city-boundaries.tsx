@@ -3,13 +3,12 @@
 import { useMap } from "@vis.gl/react-google-maps";
 import { useEffect } from "react";
 
-/** The city limits: a rose line (apart from the zone and service-area colours) with the inside a touch lighter. */
+/** The city limits: a rose line (apart from the zone and service-area colours), no fill: a wash hid the roads. */
 const CITY_BOUNDARY_STYLE: google.maps.FeatureStyleOptions = {
   strokeColor: "#DB2777",
   strokeOpacity: 0.9,
   strokeWeight: 2,
-  fillColor: "#FFFFFF",
-  fillOpacity: 0.3,
+  fillOpacity: 0,
 };
 
 /**
