@@ -18,7 +18,6 @@
     { "id": "infrastructure.transitStation", "label": { "visible": false } },
     { "id": "infrastructure.railwayTrack", "geometry": { "visible": false } },
     { "id": "political", "label": { "textFillColor": "#64748B", "textStrokeColor": "#FFFFFF" } },
-    { "id": "political.city", "label": { "textFillColor": "#334155" } },
-    { "id": "political.neighborhood", "label": { "visible": { "z0": true, "z1": false, "z14": true } } }
+    { "id": "political.city", "label": { "textFillColor": "#334155" } }
   ]
 }

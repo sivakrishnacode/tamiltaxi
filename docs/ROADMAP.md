@@ -131,6 +131,8 @@ The boundary layer shipped on 3 Nov 2026 and shows once the admin is built with 
   tab), switch its Locality layer on, create a JavaScript vector Map ID with that style, and send the ID
 - [ ] Set `NEXT_PUBLIC_GOOGLE_MAP_ID` (local `.env.local`, root `.env` `GOOGLE_MAP_ID`), rebuild and deploy the admin,
   and check every city has a `placeId` and its outline
+- [ ] Neighbourhood names hidden below zoom 14 again, as with the built-in style: the cloud style editor refuses
+  keyzooms on `visible`; try keyzooms on the label opacities (`textFillOpacity` / `textStrokeOpacity`)
 
 ### Website: Tamil version, the vision photo, download QR codes, admin logo
 

@@ -1144,8 +1144,8 @@ loaded, or if it can't be made, it falls back to a Google Maps link to the vehic
     or renamed and at API start-up for cities without one (null when Google has no such locality: no outline).
     One-time setup in Google Cloud (the browser key's project): (1) Google Maps Platform › Map Styles › Create style ›
     JSON tab: paste or upload `apps/admin/src/components/map/google/cloud-map-style.json` (`TT_MAP_STYLES` in the new
-    cloud-styling JSON format, with `"variant"` and `"styles"` ids; the old featureType array isn't accepted there; the
-    zoom-14 rule for neighbourhood names is a keyzoom), Apply; switch on the **Locality** feature layer; save and
+    cloud-styling JSON format, with `"variant"` and `"styles"` ids; the old featureType array isn't accepted there, and
+    `visible` takes no keyzooms, so neighbourhood names follow Google's default at every zoom), Apply; switch on the **Locality** feature layer; save and
     publish. (2) Map Management › Create map ID: type JavaScript, **Vector**; attach the style. (3) Put the ID in
     `NEXT_PUBLIC_GOOGLE_MAP_ID` and rebuild the admin. With a Map ID the browser uses the Cloud style, not
     `TT_MAP_STYLES`: change both files together, then paste the JSON again in Google Cloud.
