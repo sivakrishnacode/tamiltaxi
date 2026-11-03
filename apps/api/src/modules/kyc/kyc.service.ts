@@ -11,6 +11,7 @@ import { NotifierService } from '../notifications/notifier.service.js';
 import { DiditClient } from './didit.client.js';
 import { type DiditDecision, type ScannedDocument, selfieUrl, summarizeDecision, toIdentityStatus } from './didit.js';
 import { FileStorageService } from '../../core/storage/file-storage.service.js';
+import type { IdentityMode } from './driver-approval.js';
 import { DriverApprovalService } from './driver-approval.service.js';
 
 /** New Didit sessions a user may start per day (declines and abandoned attempts), to protect the free quota. */
@@ -22,8 +23,12 @@ const NO_LICENCE = 'Driving licence not scanned';
 
 /** The user's identity check as the apps show it. */
 export interface IdentityView {
-  /** false = Didit isn't set up on this server (dev): nothing to do. */
+  /** Didit's in-app check is offered (apps before 0.1.2 know only this: false = nothing to do). */
   readonly isEnabled: boolean;
+  /** Drivers: Didit, or the licence, Aadhaar and selfie uploaded for an admin. Riders: always DIDIT. */
+  readonly mode: IdentityMode;
+  /** Whether this user must pass the identity step (drivers; riders' check is optional). */
+  readonly isRequired: boolean;
   readonly status: IdentityStatus;
   readonly verifiedAt: Date | null;
   readonly fullName: string | null;
@@ -70,7 +75,8 @@ export class KycService {
     private readonly files: FileStorageService,
   ) {}
 
-  async view(userId: string): Promise<IdentityView> {
+  /** [appVersion]: the driver app's `x-app-version` header, kept on the driver (null: an older app). */
+  async view(userId: string, appVersion?: string): Promise<IdentityView> {
     let latest = await this.latest(userId);
     // Declines stored before reasons existed: read the decision once so the app can say what to fix.
     if (latest?.status === IdentityStatus.DECLINED && latest.reasons === null && this.didit.isEnabled) {
@@ -84,8 +90,13 @@ export class KycService {
     }
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { identityStatus: true, identityVerifiedAt: true, driver: { select: { id: true, selfieFile: true } } },
+      select: { identityStatus: true, identityVerifiedAt: true, driver: { select: { id: true, selfieFile: true, appVersion: true } } },
     });
+    if (user.driver && appVersion && user.driver.appVersion !== appVersion) {
+      await this.prisma.driver.update({ where: { id: user.driver.id }, data: { appVersion } });
+      user.driver.appVersion = appVersion;
+    }
+    const mode: IdentityMode = user.driver ? await this.approval.identityMode() : 'DIDIT';
     // Approved before selfies were kept (or the download failed): fetch it again, at most every 10 minutes.
     if (user.identityStatus === IdentityStatus.APPROVED && user.driver && !user.driver.selfieFile && this.didit.isEnabled) {
       const approvedRow = await this.prisma.identityVerification.findFirst({ where: { userId, status: IdentityStatus.APPROVED }, orderBy: { decidedAt: 'desc' } });
@@ -104,7 +115,9 @@ export class KycService {
         : null;
     const shown = approved ?? latest;
     return {
-      isEnabled: this.didit.isEnabled,
+      isEnabled: this.didit.isEnabled && mode === 'DIDIT',
+      mode,
+      isRequired: user.driver ? await this.approval.isIdentityRequired(user.driver) : false,
       status: user.identityStatus,
       verifiedAt: user.identityVerifiedAt,
       fullName: shown?.fullName ?? null,
@@ -115,10 +128,22 @@ export class KycService {
     };
   }
 
-  /** Creates (or reuses) a Didit session for the caller. Drivers check their licence; riders any ID. */
-  async start(user: AuthUser): Promise<StartedSession> {
+  /**
+   * Creates (or reuses) a Didit session for the caller. Drivers check their licence; riders any ID. A driver app that
+   * can upload the documents (it sends [appVersion]) hears `IDENTITY_MANUAL` when Didit can't be used, and switches to
+   * the check by hand, so Didit never stops a sign-up.
+   */
+  async start(user: AuthUser, appVersion?: string): Promise<StartedSession> {
     if (!this.didit.isEnabled) throw new ServiceUnavailableException('Identity checks are not set up yet');
     const purpose = user.role === Role.DRIVER ? IdentityPurpose.DRIVER : IdentityPurpose.RIDER;
+    const manual = new ServiceUnavailableException({
+      message: "The automatic check isn't available right now. Upload your licence, Aadhaar and a selfie instead",
+      code: 'IDENTITY_MANUAL',
+    });
+    // Switched to the check by hand: not an outage, so a 409 with the same code.
+    if (purpose === IdentityPurpose.DRIVER && (await this.approval.identityMode()) === 'MANUAL') {
+      throw new ConflictException({ message: 'Upload your licence, Aadhaar and a selfie: an admin checks them', code: 'IDENTITY_MANUAL' });
+    }
     const workflowId = purpose === IdentityPurpose.DRIVER ? this.env.didit.driverWorkflowId : this.env.didit.riderWorkflowId;
     if (!workflowId) throw new ServiceUnavailableException('Identity checks are not set up yet');
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: user.userId }, select: { name: true, identityStatus: true } });
@@ -131,12 +156,19 @@ export class KycService {
       throw new HttpException('Too many attempts today. Please try again tomorrow', HttpStatus.TOO_MANY_REQUESTS);
     }
     const [firstName, ...rest] = (me.name ?? '').trim().split(/\s+/).filter(Boolean);
-    const session = await this.didit.createSession({
-      workflowId,
-      userId: user.userId,
-      metadata: { purpose },
-      expected: { firstName, lastName: rest.join(' ') || undefined, documentTypes: DOC_TYPES[purpose] },
-    });
+    let session: Awaited<ReturnType<DiditClient['createSession']>>;
+    try {
+      session = await this.didit.createSession({
+        workflowId,
+        userId: user.userId,
+        metadata: { purpose },
+        expected: { firstName, lastName: rest.join(' ') || undefined, documentTypes: DOC_TYPES[purpose] },
+      });
+    } catch (e) {
+      // Out of credits, rate limited or down: a driver app that can upload goes on by hand.
+      if (purpose === IdentityPurpose.DRIVER && appVersion && e instanceof ServiceUnavailableException) throw manual;
+      throw e;
+    }
     const existing = await this.prisma.identityVerification.findUnique({ where: { sessionId: session.sessionId } });
     if (!existing) {
       await this.prisma.identityVerification.create({

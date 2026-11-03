@@ -1,7 +1,34 @@
 import { DriverStatus, IdentityStatus, KycDocType, KycStatus } from '../../generated/prisma/enums.js';
 
-/** Documents a driver still uploads for admin review. Identity (licence + selfie) is checked by Didit instead. */
+/** Documents every driver uploads for admin review. */
 export const REQUIRED_DOCS: readonly KycDocType[] = [KycDocType.VEHICLE_RC, KycDocType.INSURANCE];
+/** The identity check by hand (instead of Didit): an admin verifies each. */
+export const IDENTITY_DOCS: readonly KycDocType[] = [KycDocType.DRIVING_LICENCE, KycDocType.AADHAAR, KycDocType.SELFIE];
+/** Everything a driver can upload. */
+export const UPLOAD_DOCS: readonly KycDocType[] = [...REQUIRED_DOCS, ...IDENTITY_DOCS];
+
+/** How identities are checked: Didit's automatic check, or an admin looking at the licence, Aadhaar and selfie. */
+export type IdentityMode = 'DIDIT' | 'MANUAL';
+
+/**
+ * Who must pass the identity step. With Didit, every driver (an app that can't reach Didit falls back to the manual
+ * documents). By hand, only drivers whose app can upload them: it reports its version, older apps don't.
+ */
+export function isIdentityRequiredFor(mode: IdentityMode, appVersion: string | null): boolean {
+  return mode === 'DIDIT' || appVersion !== null;
+}
+
+/**
+ * The identity status the manual documents give: all three verified → APPROVED, any rejected → DECLINED, any waiting
+ * → IN_REVIEW; null while none is uploaded (the status is left as it is).
+ */
+export function manualIdentityStatus(docs: readonly { type: KycDocType; status: KycStatus }[]): IdentityStatus | null {
+  const states = IDENTITY_DOCS.map((t) => docs.find((d) => d.type === t)?.status ?? KycStatus.NOT_UPLOADED);
+  if (states.every((s) => s === KycStatus.VERIFIED)) return IdentityStatus.APPROVED;
+  if (states.includes(KycStatus.REJECTED)) return IdentityStatus.DECLINED;
+  if (states.includes(KycStatus.UNDER_REVIEW)) return IdentityStatus.IN_REVIEW;
+  return null;
+}
 
 /**
  * A driver's status from their documents and identity check. APPROVED needs every required document verified

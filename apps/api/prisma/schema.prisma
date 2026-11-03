@@ -81,6 +81,8 @@ enum KycDocType {
   VEHICLE_RC
   INSURANCE
   POLICE_VERIFICATION
+  /// A selfie for the identity check by hand (setting `manualIdentityCheck`, or when Didit can't be used).
+  SELFIE
 }
 
 enum KycStatus {
@@ -404,6 +406,9 @@ model Driver {
   photoUpdatedAt    DateTime?
   /// The live selfie from the approved Didit check: the reference a new profile photo is matched against.
   selfieFile        String?
+  /// The driver app's version (header `x-app-version`, sent since 0.1.2). Null: an older app, which can't upload the
+  /// licence, Aadhaar and selfie, so the identity check by hand isn't asked of it.
+  appVersion        String?
   /// A new photo whose face match was unclear, waiting for an admin (Didit unreachable, or a low score).
   pendingPhotoFile  String?
   /// Face-match score (0–100) of the last photo checked.

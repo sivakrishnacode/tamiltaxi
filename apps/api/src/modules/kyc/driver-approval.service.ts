@@ -2,11 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
-import { DriverStatus } from '../../generated/prisma/enums.js';
+import { DriverStatus, IdentityPurpose, IdentityStatus } from '../../generated/prisma/enums.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { DiditClient } from './didit.client.js';
-import { nextDriverStatus } from './driver-approval.js';
+import { type IdentityMode, isIdentityRequiredFor, manualIdentityStatus, nextDriverStatus } from './driver-approval.js';
 
 /** Told after [DriverApprovalService.recompute] changed a driver's status (the row is already written). */
 export type DriverStatusListener = (driverId: string, status: DriverStatus) => Promise<unknown>;
@@ -34,6 +34,36 @@ export class DriverApprovalService {
     this.listeners.push(listener);
   }
 
+  /** Didit when it is set up and the manual check isn't switched on; otherwise an admin checks the documents. */
+  async identityMode(): Promise<IdentityMode> {
+    return this.didit.isEnabled && !(await this.settings.get('manualIdentityCheck')) ? 'DIDIT' : 'MANUAL';
+  }
+
+  /** Whether [driver] must pass the identity step (and so have a profile photo before going online). */
+  async isIdentityRequired(driver: { appVersion: string | null }): Promise<boolean> {
+    return isIdentityRequiredFor(await this.identityMode(), driver.appVersion);
+  }
+
+  /**
+   * Mirrors the manual identity documents on the user's identity status (approved, declined, in review), so the
+   * approval, the queue and going online treat both checks alike. An identity Didit approved is left alone.
+   */
+  async syncManualIdentity(driverId: string): Promise<void> {
+    const driver = await this.prisma.driver.findUniqueOrThrow({
+      where: { id: driverId },
+      select: { userId: true, documents: { select: { type: true, status: true } }, user: { select: { identityStatus: true } } },
+    });
+    const status = manualIdentityStatus(driver.documents);
+    if (!status || status === driver.user.identityStatus) return;
+    const byDidit = await this.prisma.identityVerification.count({ where: { userId: driver.userId, status: IdentityStatus.APPROVED } });
+    if (byDidit > 0) return;
+    await this.prisma.user.update({
+      where: { id: driver.userId },
+      data: { identityStatus: status, identityVerifiedAt: status === IdentityStatus.APPROVED ? new Date() : null },
+    });
+    if (status !== IdentityStatus.IN_REVIEW) void this.notifier.identityChanged({ userId: driver.userId, purpose: IdentityPurpose.DRIVER, status });
+  }
+
   async recompute(driverId: string): Promise<DriverStatus> {
     const driver = await this.prisma.driver.findUniqueOrThrow({
       where: { id: driverId },
@@ -43,7 +73,7 @@ export class DriverApprovalService {
       current: driver.status,
       docs: driver.documents,
       identity: driver.user.identityStatus,
-      isIdentityRequired: this.didit.isEnabled,
+      isIdentityRequired: await this.isIdentityRequired(driver),
       isAutoApprove: await this.settings.get('driverAutoApprove'),
     });
     if (next === driver.status) return next;

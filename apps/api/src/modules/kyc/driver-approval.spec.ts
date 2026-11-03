@@ -1,5 +1,5 @@
 import { DriverStatus, IdentityStatus, KycDocType, KycStatus } from '../../generated/prisma/enums.js';
-import { approvalChecklist, nextDriverStatus } from './driver-approval.js';
+import { approvalChecklist, isIdentityRequiredFor, manualIdentityStatus, nextDriverStatus } from './driver-approval.js';
 
 const docs = (rc: KycStatus, ins: KycStatus) => [
   { type: KycDocType.VEHICLE_RC, status: rc },
@@ -59,5 +59,27 @@ describe('approvalChecklist', () => {
     expect(c.checks.map((x) => x.state)).toEqual(['DONE', 'TODO']);
     expect(approvalChecklist({ docs: docs(VERIFIED, VERIFIED), identity: IdentityStatus.DECLINED, isIdentityRequired: false }).isReady).toBe(true);
     expect(approvalChecklist({ docs: docs(VERIFIED, VERIFIED), identity: IdentityStatus.DECLINED, isIdentityRequired: true }).isRejected).toBe(true);
+  });
+});
+
+describe('identity check by hand', () => {
+  const doc = (type: KycDocType, status: KycStatus) => ({ type, status });
+  const trio = (status: KycStatus) => [doc(KycDocType.DRIVING_LICENCE, status), doc(KycDocType.AADHAAR, status), doc(KycDocType.SELFIE, status)];
+
+  it('approves once the licence, Aadhaar and selfie are all verified', () => {
+    expect(manualIdentityStatus(trio(KycStatus.VERIFIED))).toBe(IdentityStatus.APPROVED);
+    expect(manualIdentityStatus([...trio(KycStatus.VERIFIED).slice(0, 2), doc(KycDocType.SELFIE, KycStatus.UNDER_REVIEW)])).toBe(IdentityStatus.IN_REVIEW);
+  });
+
+  it('declines on any rejection and leaves the status alone before an upload', () => {
+    expect(manualIdentityStatus([doc(KycDocType.DRIVING_LICENCE, KycStatus.REJECTED), doc(KycDocType.AADHAAR, KycStatus.VERIFIED)])).toBe(IdentityStatus.DECLINED);
+    expect(manualIdentityStatus([doc(KycDocType.VEHICLE_RC, KycStatus.UNDER_REVIEW)])).toBeNull();
+    expect(manualIdentityStatus(trio(KycStatus.NOT_UPLOADED))).toBeNull();
+  });
+
+  it('asks every driver with Didit, and by hand only apps that can upload (they send their version)', () => {
+    expect(isIdentityRequiredFor('DIDIT', null)).toBe(true);
+    expect(isIdentityRequiredFor('MANUAL', '0.1.2')).toBe(true);
+    expect(isIdentityRequiredFor('MANUAL', null)).toBe(false);
   });
 });

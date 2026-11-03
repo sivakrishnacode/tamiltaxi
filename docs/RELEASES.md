@@ -73,7 +73,10 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ### Next release: 0.1.2 (code 3)
 
-Nothing yet.
+- Registration: when the identity check is by hand, or Didit can't be used right now, the driver uploads their
+  driving licence, Aadhaar and a selfie (front camera, no gallery) instead of Didit's check; an admin verifies each.
+- The app sends its version (`x-app-version`, `kDriverAppVersion`), so the server knows it can upload them.
+- A new profile photo shows "being checked" until an admin approves it.
 
 ### 0.1.1 (code 2) · 2 Nov 2026
 
@@ -135,7 +138,15 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `8b0a9b8` (admin) and `24340fe` (API).
+API and admin. Migration `20261103120000_manual_identity` (the SELFIE document type, `Driver.appVersion`).
+
+- Identity check by hand: drivers can upload their driving licence, Aadhaar and a selfie for an admin to verify in
+  Documents, instead of Didit. Settings › Driver approval › **Check identity by hand** switches it on; driver apps from
+  0.1.2 also switch to it by themselves when Didit can't be used (no credits, down), so Didit never stops a sign-up.
+  Drivers on older apps can't upload these: by hand they are approved on RC + insurance. A verified selfie is the
+  daily-selfie face and, if there is none, the profile photo.
+- Every profile photo now waits for an admin in Drivers › Approvals › Photos (no automatic face match).
+- The daily selfie lets the driver through when Didit is down or out of credits.
 
 ### 3 Nov 2026 (fifth) · admin at `8b0a9b8`
 

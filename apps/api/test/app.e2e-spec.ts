@@ -1,7 +1,7 @@
 // End-to-end: needs Postgres + Redis (`docker compose up -d postgres redis` and `npm run prisma:deploy -w @tamiltaxi/api`).
 import { createHmac } from 'node:crypto';
 
-import type { INestApplication } from '@nestjs/common';
+import { type INestApplication, ServiceUnavailableException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { cellToLatLng } from 'h3-js';
 import request from 'supertest';
@@ -53,7 +53,12 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
 const fakeDidit = {
   isEnabled: true,
   decisions: new Map<string, DiditDecision>(),
-  createSession: async (p: { userId: string }) => ({ sessionId: `sess-${p.userId}`, sessionToken: `tok-${p.userId}`, status: 'Not Started' }),
+  /** Set to make the next sessions fail like Didit out of credits. */
+  isOutOfCredits: false,
+  createSession: async (p: { userId: string }) => {
+    if (fakeDidit.isOutOfCredits) throw new ServiceUnavailableException('Verification is busy right now. Please try again later');
+    return { sessionId: `sess-${p.userId}`, sessionToken: `tok-${p.userId}`, status: 'Not Started' };
+  },
   decision: async (sessionId: string) => fakeDidit.decisions.get(sessionId) ?? { session_id: sessionId, status: 'In Progress' },
   image: async (url: string) => (url.startsWith('https://') ? { buffer: JPEG, mimetype: 'image/jpeg' } : null),
   /** Next face-match result for a profile photo. */
@@ -2265,9 +2270,9 @@ describe('Tamil Taxi API (e2e)', () => {
     const driverId = reg.body.driver.id as string;
     const userId = reg.body.driver.userId as string;
 
-    // Only RC and insurance are uploaded now (no licence / Aadhaar / police photos).
+    // RC and insurance, plus the licence, Aadhaar and selfie of the identity check by hand (no police photos).
     const docs = await http.get('/v1/drivers/me/documents').set(driver).expect(200);
-    expect(docs.body.map((d: { type: string }) => d.type).sort()).toEqual(['INSURANCE', 'VEHICLE_RC']);
+    expect(docs.body.map((d: { type: string }) => d.type).sort()).toEqual(['AADHAAR', 'DRIVING_LICENCE', 'INSURANCE', 'SELFIE', 'VEHICLE_RC']);
     await http.post('/v1/drivers/me/documents/POLICE_VERIFICATION').set(driver).attach('file', Buffer.from('x'), 'p.jpg').expect(400);
 
     // The app gets a token for the in-app SDK; the same unfinished session is reused.
@@ -2328,12 +2333,13 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(profile.selfieFile).toMatch(/\.jpg$/);
     expect(profile.photoFile).toBeNull();
 
-    // No face in the photo → retake. A clear match → riders see it at once.
-    fakeDidit.nextMatch = { score: null, faces: 0, isMatch: false };
-    await http.post('/v1/drivers/me/photo').set(driver).attach('file', JPEG, { filename: 'p.jpg', contentType: 'image/jpeg' }).expect(422);
-    fakeDidit.nextMatch = { score: 97, faces: 1, isMatch: true };
+    // Every profile photo waits for an admin, who approves it; then riders see it.
     const up = await http.post('/v1/drivers/me/photo').set(driver).attach('file', JPEG, { filename: 'p.jpg', contentType: 'image/jpeg' }).expect(200);
-    expect(up.body).toEqual({ status: 'APPROVED' });
+    expect(up.body).toEqual({ status: 'IN_REVIEW' });
+    const pending = (await http.get('/v1/drivers/me').set(driver).expect(200)).body;
+    expect(pending.pendingPhotoFile).toMatch(/\.jpg$/);
+    await http.post(`/v1/admin/drivers/${driverId}/photo`).set(admin).send({ isApproved: true }).expect(200);
+    expect((await http.get('/v1/drivers/me').set(driver).expect(200)).body.photoFile).toBe(pending.pendingPhotoFile);
 
     // The driver, admins and their riders see it; a stranger gets 404.
     const photo = await http.get(`/v1/drivers/${driverId}/photo`).set(driver).expect(200);
@@ -2342,16 +2348,102 @@ describe('Tamil Taxi API (e2e)', () => {
     await http.get(`/v1/drivers/${driverId}/photo`).set(admin).expect(200);
     const stranger = { Authorization: `Bearer ${await login()}` };
     await http.get(`/v1/drivers/${driverId}/photo`).set(stranger).expect(404);
+  });
 
-    // A low match waits for an admin, who approves it.
-    fakeDidit.nextMatch = { score: 41, faces: 1, isMatch: false };
-    const low = await http.post('/v1/drivers/me/photo').set(driver).attach('file', JPEG, { filename: 'p.jpg', contentType: 'image/jpeg' }).expect(200);
-    expect(low.body).toEqual({ status: 'IN_REVIEW' });
-    const pending = (await http.get('/v1/drivers/me').set(driver).expect(200)).body;
-    expect(pending.pendingPhotoFile).toMatch(/\.jpg$/);
-    await http.post(`/v1/admin/drivers/${driverId}/photo`).set(admin).send({ isApproved: true }).expect(200);
-    expect((await http.get('/v1/drivers/me').set(driver).expect(200)).body.photoFile).toBe(pending.pendingPhotoFile);
-    fakeDidit.nextMatch = { score: 97, faces: 1, isMatch: true };
+  it('checks the licence, Aadhaar and selfie by hand when Didit is out of credits or switched off', async () => {
+    const admin = await adminAuth();
+    const register = async (name: string) => {
+      const reg = await http
+        .post('/v1/drivers')
+        .set('Authorization', `Bearer ${await login()}`)
+        .send({ name, workType: 'RIDES', vehicleKind: 'BIKE', vehicleModel: 'TVS Jupiter', vehicleColor: 'Blue', plate: randomPlate(), upiId: 'kumar@okaxis' })
+        .expect(201);
+      return { auth: { Authorization: `Bearer ${reg.body.accessToken as string}` }, id: reg.body.driver.id as string };
+    };
+    const upload = (auth: Record<string, string>, type: string) =>
+      http.post(`/v1/drivers/me/documents/${type}`).set(auth).attach('file', JPEG, { filename: 'doc.jpg', contentType: 'image/jpeg' }).expect(201);
+    const verify = (id: string, type: string) => http.post(`/v1/admin/drivers/${id}/documents/${type}`).set(admin).send({ status: 'VERIFIED' }).expect(201);
+    const status = async (auth: Record<string, string>) => (await http.get('/v1/drivers/me').set(auth).expect(200)).body.status as string;
+    const newApp = { 'x-app-version': '0.1.2' };
+
+    // With Didit out of credits, a new app hears IDENTITY_MANUAL and goes on with the documents.
+    const kumar = await register('Kumar R');
+    fakeDidit.isOutOfCredits = true;
+    try {
+      const refused = await http.post('/v1/kyc/session').set(kumar.auth).set(newApp).expect(503);
+      expect(refused.body.code).toBe('IDENTITY_MANUAL');
+      // An older app keeps the old message.
+      const old = await http.post('/v1/kyc/session').set(kumar.auth).expect(503);
+      expect(old.body.code).toBeUndefined();
+    } finally {
+      fakeDidit.isOutOfCredits = false;
+    }
+    for (const type of ['VEHICLE_RC', 'INSURANCE']) {
+      await upload(kumar.auth, type);
+      await verify(kumar.id, type);
+    }
+    expect(await status(kumar.auth)).toBe('PENDING');
+    for (const type of ['DRIVING_LICENCE', 'AADHAAR', 'SELFIE']) await upload(kumar.auth, type);
+    expect((await http.get('/v1/kyc/me').set(kumar.auth).set(newApp).expect(200)).body.status).toBe('IN_REVIEW');
+    await verify(kumar.id, 'DRIVING_LICENCE');
+    await verify(kumar.id, 'AADHAAR');
+    expect(await status(kumar.auth)).toBe('PENDING');
+    await verify(kumar.id, 'SELFIE');
+    const kumarMe = (await http.get('/v1/drivers/me').set(kumar.auth).expect(200)).body;
+    expect(kumarMe.status).toBe('APPROVED');
+    // The verified selfie is the daily-selfie face and, as there was none, the profile photo.
+    expect(kumarMe.selfieFile).toMatch(/\.jpg$/);
+    expect(kumarMe.photoFile).toBe(kumarMe.selfieFile);
+    // A selfie must be a photo.
+    await http.post('/v1/drivers/me/documents/SELFIE').set(kumar.auth).attach('file', Buffer.from('%PDF'), { filename: 's.pdf', contentType: 'application/pdf' }).expect(400);
+
+    // Switched to the check by hand: new apps must do it, older apps (no version) are approved on RC + insurance.
+    await http.put('/v1/admin/settings').set(admin).send({ manualIdentityCheck: true }).expect(200);
+    try {
+      const anbu = await register('Anbu S');
+      const view = (await http.get('/v1/kyc/me').set(anbu.auth).set(newApp).expect(200)).body;
+      expect(view).toMatchObject({ isEnabled: false, mode: 'MANUAL', isRequired: true });
+      expect((await http.post('/v1/kyc/session').set(anbu.auth).set(newApp).expect(409)).body.code).toBe('IDENTITY_MANUAL');
+      for (const type of ['VEHICLE_RC', 'INSURANCE']) {
+        await upload(anbu.auth, type);
+        await verify(anbu.id, type);
+      }
+      expect(await status(anbu.auth)).toBe('PENDING');
+
+      const old = await register('Bala T');
+      expect((await http.get('/v1/kyc/me').set(old.auth).expect(200)).body).toMatchObject({ isEnabled: false, mode: 'MANUAL', isRequired: false });
+      for (const type of ['VEHICLE_RC', 'INSURANCE']) {
+        await upload(old.auth, type);
+        await verify(old.id, type);
+      }
+      expect(await status(old.auth)).toBe('APPROVED');
+    } finally {
+      await http.put('/v1/admin/settings').set(admin).send({ manualIdentityCheck: false }).expect(200);
+    }
+  });
+
+  it('passes the daily selfie when Didit is unavailable, so it never keeps a driver offline', async () => {
+    const reg = await http
+      .post('/v1/drivers')
+      .set('Authorization', `Bearer ${await login()}`)
+      .send({ name: 'Sekar P', workType: 'RIDES', vehicleKind: 'BIKE', vehicleModel: 'Hero Splendor', vehicleColor: 'Red', plate: randomPlate(), upiId: 'sekar@okaxis' })
+      .expect(201);
+    const driver = { Authorization: `Bearer ${reg.body.accessToken as string}` };
+    // A real stored file as the reference face (an uploaded RC photo), so only the face match fails.
+    await http.post('/v1/drivers/me/documents/VEHICLE_RC').set(driver).attach('file', JPEG, { filename: 'rc.jpg', contentType: 'image/jpeg' }).expect(201);
+    const rc = await prisma.kycDocument.findUniqueOrThrow({ where: { driverId_type: { driverId: reg.body.driver.id, type: 'VEHICLE_RC' } } });
+    await prisma.driver.update({ where: { id: reg.body.driver.id }, data: { selfieFile: rc.fileUrl } });
+    const faceMatch = fakeDidit.faceMatch;
+    fakeDidit.faceMatch = async () => {
+      throw new ServiceUnavailableException('Photo check is unavailable right now');
+    };
+    try {
+      const res = await http.post('/v1/drivers/me/selfie-check').set(driver).attach('file', JPEG, { filename: 's.jpg', contentType: 'image/jpeg' });
+      expect(res.status).toBeLessThan(300);
+      expect(res.body.passed).toBe(true);
+    } finally {
+      fakeDidit.faceMatch = faceMatch;
+    }
   });
 
   it('needs the verified photo before an approved driver can go online', async () => {

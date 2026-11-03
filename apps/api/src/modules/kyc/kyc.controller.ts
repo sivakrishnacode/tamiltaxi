@@ -17,15 +17,16 @@ export class KycController {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
+  /** `x-app-version`: sent by driver apps from 0.1.2 (they can upload the licence, Aadhaar and selfie by hand). */
   @Get('me')
-  me(@CurrentUser() user: AuthUser): Promise<IdentityView> {
-    return this.kyc.view(user.userId);
+  me(@CurrentUser() user: AuthUser, @Headers('x-app-version') appVersion?: string): Promise<IdentityView> {
+    return this.kyc.view(user.userId, appVersion?.slice(0, 20));
   }
 
   /** Returns a `sessionToken` for Didit's in-app SDK (`DiditSdk.startVerification`). */
   @Post('session')
-  start(@CurrentUser() user: AuthUser): Promise<StartedSession> {
-    return this.kyc.start(user);
+  start(@CurrentUser() user: AuthUser, @Headers('x-app-version') appVersion?: string): Promise<StartedSession> {
+    return this.kyc.start(user, appVersion?.slice(0, 20));
   }
 
   /** The app calls this when the SDK closes. */

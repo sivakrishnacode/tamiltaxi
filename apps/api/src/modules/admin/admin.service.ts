@@ -9,7 +9,8 @@ import type { ListQueryDto } from './dto/list-query.dto.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { DriverApprovalService } from '../kyc/driver-approval.service.js';
 import { DiditClient } from '../kyc/didit.client.js';
-import { approvalChecklist, type ApprovalChecklist, REQUIRED_DOCS } from '../kyc/driver-approval.js';
+import { approvalChecklist, type ApprovalChecklist, IDENTITY_DOCS, REQUIRED_DOCS } from '../kyc/driver-approval.js';
+import { SHOWN_DOCS } from './admin-approvals.service.js';
 import { istToday, parseDay } from '../kyc/document-expiry.js';
 import { type CancelRateStats, DriverBlocksService } from '../trips/driver-blocks.service.js';
 import { DriverStatusSync } from './driver-status-sync.service.js';
@@ -95,13 +96,14 @@ export class AdminService {
         blocks: { orderBy: { fromAt: 'desc' }, take: 20 },
         // Identity checks (Didit): newest first; the admin page shows the latest result and its reasons.
         user: { include: { identityChecks: { orderBy: { createdAt: 'desc' }, take: 5 } } },
-        documents: { where: { type: { in: [...REQUIRED_DOCS] } }, orderBy: { type: 'asc' } },
+        documents: { where: SHOWN_DOCS, orderBy: { type: 'asc' } },
         subscriptions: { orderBy: { endsAt: 'desc' }, include: { plan: true, payments: true } },
         trips: { orderBy: { createdAt: 'desc' }, take: 20 },
       },
     });
-    const checklist = approvalChecklist({ docs: driver.documents, identity: driver.user.identityStatus, isIdentityRequired: this.didit.isEnabled });
-    return { ...driver, cancelRate: await this.blocks.stats(id), checklist, identityRequired: this.didit.isEnabled };
+    const identityRequired = await this.approval.isIdentityRequired(driver);
+    const checklist = approvalChecklist({ docs: driver.documents, identity: driver.user.identityStatus, isIdentityRequired: identityRequired });
+    return { ...driver, cancelRate: await this.blocks.stats(id), checklist, identityRequired };
   }
 
   /**
@@ -138,6 +140,18 @@ export class AdminService {
         ...(params.status === 'VERIFIED' ? { expiresOn, expiryNotifiedDays: isSameDate ? doc.expiryNotifiedDays : null } : {}),
       },
     });
+    // The identity check by hand: the licence, Aadhaar and selfie decide the identity status. A verified selfie is the
+    // face the daily selfie is matched to, and the profile photo while the driver has none.
+    if (IDENTITY_DOCS.includes(params.type)) {
+      if (params.type === KycDocType.SELFIE && params.status === 'VERIFIED') {
+        const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: params.driverId }, select: { photoFile: true } });
+        await this.prisma.driver.update({
+          where: { id: params.driverId },
+          data: { selfieFile: doc.fileUrl, ...(driver.photoFile ? {} : { photoFile: doc.fileUrl, photoUpdatedAt: new Date() }) },
+        });
+      }
+      await this.approval.syncManualIdentity(params.driverId);
+    }
     // Approval (and its push) happens in recompute once the identity check has passed too.
     await this.approval.recompute(params.driverId);
     if (params.status === 'REJECTED') void this.notifier.kycReviewed({ driverId: params.driverId, type: params.type, status: 'REJECTED', reason: params.reason });
