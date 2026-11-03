@@ -139,10 +139,16 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `3dd117c` (API and admin).
+
+### 3 Nov 2026 (seventh) · API and admin at `3dd117c`
+
+Release: `staging-2026-11-03.7` at `3dd117c`
+
 API and admin (no database change).
 
-- Identity check by hand: the selfie is gone; it is the driving licence and Aadhaar, verified by an admin, with the
-  profile photo approved as the matching face (it is also the daily-selfie face).
+- `5bc697b` `4f7a44b` Identity check by hand: the selfie is gone; it is the driving licence and Aadhaar, verified by an
+  admin, with the profile photo approved as the matching face (it is also the daily-selfie face).
 - Documents to review: one **Review** dialog per driver shows each upload large, with the driver's photo and name
   beside the licence and Aadhaar, Verify (valid-until date where one is printed) or Reject with one-tap reasons, then
   the next one; new profile photos are reviewed there too. Fixes "Unknown document" when verifying a licence or
