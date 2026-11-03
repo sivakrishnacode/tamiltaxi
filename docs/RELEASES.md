@@ -135,10 +135,17 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `52f4be2` (admin) and `24340fe` (API).
+
+### 3 Nov 2026 (second) · admin at `52f4be2`
+
+Release: `staging-2026-11-03.2` at `52f4be2`
+
 Admin only (no API or database change).
 
-- City boundary switched on: the admin is built with the Map ID (`tamiltaxi-admin`, style `tamiltaxi-ui-map-layer` with
-  the Locality layer), so the maps take the grey look from that Google Cloud style and outline each city's limits.
+- `52f4be2` City boundary switched on: the admin is built with the Map ID (`tamiltaxi-admin`, style
+  `tamiltaxi-ui-map-layer` with the Locality layer), so the maps take the grey look from that Google Cloud style and
+  outline each city's limits.
 - Maps that fit themselves to a few hexagons (the Heatmap with little data) stop at zoom 14 instead of zooming to
   street level.
 
