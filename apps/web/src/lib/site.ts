@@ -15,7 +15,7 @@ export const site = {
   independence:
     "Tamil Taxi is an independent, open-source project. It is not run by or endorsed by the Government of Tamil Nadu.",
   /** Set to true once both apps are live on Google Play; until then the buttons say "Coming soon". */
-  onPlayStore: false,
+  onPlayStore: true,
   apps: {
     rider: { name: "Tamil Taxi", packageId: "com.tamiltaxi.passenger" },
     driver: { name: "Tamil Taxi Driver", packageId: "com.tamiltaxi.driver" },

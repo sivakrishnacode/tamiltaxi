@@ -36,9 +36,10 @@ pre-releases on GitHub.
 
 Release: `passenger-v0.1.1+2` at `edacaa4`
 
-- **Track:** Production (India), the first production release. **Status:** sent for review 2 Nov 2026 with managed
-  publishing on: once Google approves it, it waits under "Changes ready to publish" until the owner clicks Publish on
-  the launch day. Bundle `dist/tamiltaxi-passenger-0.1.1-2.aab` (upload key, all checks passed).
+- **Track:** Production (India), the first production release. **Status:** live on Google Play: sent for review
+  2 Nov 2026 with managed publishing on, published by the owner, public listing seen 3 Nov 2026
+  ([play.google.com](https://play.google.com/store/apps/details?id=com.tamiltaxi.passenger)). Bundle
+  `dist/tamiltaxi-passenger-0.1.1-2.aab` (upload key, all checks passed).
 - **Built from** `edacaa4`.
 - **Release notes:** "Tamil Taxi is live in Coimbatore: book bike, auto and cab rides, send parcels, and book house
   shifting. Autos charge the Tamil Nadu government fare. Drivers keep 100% of every fare: 0% commission."
@@ -86,8 +87,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 Release: `driver-v0.1.1+2` at `edacaa4`
 
 - **Track:** Production (India), the first production release (production access granted by 2 Nov 2026).
-  **Status:** sent for review 2 Nov 2026 with managed publishing on: once Google approves it, it waits under "Changes
-  ready to publish" until the owner clicks Publish, on the same day as the rider app. Bundle
+  **Status:** live on Google Play: sent for review 2 Nov 2026 with managed publishing on, published with the rider
+  app, public listing seen 3 Nov 2026
+  ([play.google.com](https://play.google.com/store/apps/details?id=com.tamiltaxi.driver)). Bundle
   `dist/tamiltaxi-driver-0.1.1-2.aab` (upload key, all checks passed).
 - **Built from** `edacaa4`.
 - **Release notes:** "Tamil Taxi Driver is live in Coimbatore: take ride, parcel and house-shifting requests and keep
@@ -130,6 +132,8 @@ so it has no versions: changes wait here until the next push.
   independent of the Government of Tamil Nadu.
 - `fc65e04` The Clean White logo, as in the apps: in a white header and on a white tile in the footer; new app icons,
   favicon and social preview image (the old "TamilTaxi" wordmark and kolam icons are gone).
+- Both apps are live on Google Play: the "Coming soon to Google Play" buttons now say "Get it on Google Play" and open
+  each app's listing (`site.onPlayStore`).
 
 ---
 

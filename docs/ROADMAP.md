@@ -68,7 +68,7 @@ opted in for 14 days in a row.
 - [x] Driver: production access granted (by 2 Nov 2026)
 - [x] Test data cleared from the server before launch: only admin accounts and config left (2 Nov 2026)
 - [ ] Remove the cleared test drivers' uploaded files from storage
-- [ ] Production release, India only; record it in RELEASES.md
+- [x] Production release, India only; record it in RELEASES.md (both apps live 3 Nov 2026)
 
 ### Domain tamiltaxi.co.in: website, app links and support email
 
