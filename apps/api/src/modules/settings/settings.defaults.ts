@@ -93,9 +93,10 @@ export const SETTING_DEFAULTS = {
    */
   dailySelfieCheckEnabled: true,
   /**
-   * Identity check by hand: drivers upload their driving licence, Aadhaar and a selfie and an admin verifies each,
-   * instead of Didit's automatic check. Also what the app falls back to when Didit can't be used (no credits, down).
-   * Drivers on apps older than 0.1.2 can't upload these, so with this on they are approved on RC + insurance.
+   * Identity check by hand: drivers upload their driving licence and Aadhaar, and an admin verifies them and approves
+   * the profile photo as the matching face, instead of Didit's automatic check. Also what the app falls back to when
+   * Didit can't be used (no credits, down). Apps older than 0.1.2 can't upload these: with this on they are approved
+   * on RC + insurance.
    */
   manualIdentityCheck: false,
   /** Free-trial length for new drivers. */

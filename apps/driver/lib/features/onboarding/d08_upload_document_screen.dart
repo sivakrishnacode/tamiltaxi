@@ -56,30 +56,19 @@ class _D08UploadDocumentScreenState extends ConsumerState<D08UploadDocumentScree
         KycDocType.drivingLicence => ('driving licence', 'The side with your photo, name and licence number.'),
         KycDocType.aadhaar => ('Aadhaar card', 'The front, with your name, photo and Aadhaar number.'),
         KycDocType.policeVerification => ('police certificate', 'The whole certificate page.'),
-        KycDocType.selfie => ('face', 'A selfie looking straight at the camera, so an admin can match it to your licence and Aadhaar.'),
       };
 
   IconData get _icon => switch (widget.type) {
         KycDocType.vehicleRc => Symbols.directions_car_rounded,
         KycDocType.insurance => Symbols.verified_user_rounded,
-        KycDocType.selfie => Symbols.face_rounded,
         _ => Symbols.badge_rounded,
       };
-
-  bool get _isSelfie => widget.type == KycDocType.selfie;
 
   /// Live API: camera or gallery, compressed on the phone (JPEG, longest side 1600 px, quality 80: a few
   /// hundred KB) so the upload is quick on mobile data.
   Future<void> _pick(ImageSource source) async {
     try {
-      // A selfie is taken live with the front camera.
-      final file = await ImagePicker().pickImage(
-        source: source,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 80,
-        preferredCameraDevice: _isSelfie ? CameraDevice.front : CameraDevice.rear,
-      );
+      final file = await ImagePicker().pickImage(source: source, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
       if (file == null || !mounted) return;
       final bytes = await file.readAsBytes();
       final ext = file.name.contains('.') ? file.name.split('.').last.toLowerCase() : '';
@@ -180,15 +169,9 @@ class _D08UploadDocumentScreenState extends ConsumerState<D08UploadDocumentScree
             const SizedBox(height: TtSpacing.xs),
             Text(what, style: t.body.copyWith(color: TtColors.navy700), textAlign: TextAlign.center),
             const SizedBox(height: TtSpacing.xl),
-            if (_isSelfie) ...const [
-              _Tip(icon: Symbols.light_mode_rounded, text: 'Good light on your face, not behind you'),
-              _Tip(icon: Symbols.face_rounded, text: 'Only you, your whole face in the photo'),
-              _Tip(icon: Symbols.visibility_rounded, text: 'No cap, mask or dark glasses'),
-            ] else ...const [
-              _Tip(icon: Symbols.light_mode_rounded, text: 'Good light, no glare or shadow on it'),
-              _Tip(icon: Symbols.crop_free_rounded, text: 'All 4 corners inside the photo'),
-              _Tip(icon: Symbols.text_fields_rounded, text: 'Sharp enough to read every number'),
-            ],
+            const _Tip(icon: Symbols.light_mode_rounded, text: 'Good light, no glare or shadow on it'),
+            const _Tip(icon: Symbols.crop_free_rounded, text: 'All 4 corners inside the photo'),
+            const _Tip(icon: Symbols.text_fields_rounded, text: 'Sharp enough to read every number'),
             if (widget.type == KycDocType.insurance)
               const _Tip(
                 icon: Symbols.picture_as_pdf_rounded,
@@ -212,9 +195,7 @@ class _D08UploadDocumentScreenState extends ConsumerState<D08UploadDocumentScree
             Text('Check it before you upload', style: t.h2),
             const SizedBox(height: TtSpacing.xs),
             Text(
-              _isSelfie
-                  ? 'Your whole face, sharp and in good light. If not, retake it.'
-                  : 'All 4 corners in, nothing blurry, and the name and numbers easy to read. If not, retake it.',
+              'All 4 corners in, nothing blurry, and the name and numbers easy to read. If not, retake it.',
               style: t.body.copyWith(color: TtColors.navy700),
             ),
           ],
@@ -224,19 +205,16 @@ class _D08UploadDocumentScreenState extends ConsumerState<D08UploadDocumentScree
         children: !_captured
             ? [
                 TtButton(
-                  label: _isSelfie ? 'Take selfie' : 'Take photo',
+                  label: 'Take photo',
                   icon: Symbols.photo_camera_rounded,
                   onPressed: () => _live ? _pick(ImageSource.camera) : _fake(),
                 ),
-                // A selfie must be taken now, not picked from the gallery.
-                if (!_isSelfie) ...[
-                  const SizedBox(height: TtSpacing.s),
-                  TtButton.secondary(
-                    label: 'Choose from gallery',
-                    icon: Symbols.photo_library_rounded,
-                    onPressed: () => _live ? _pick(ImageSource.gallery) : _fake(gallery: true),
-                  ),
-                ],
+                const SizedBox(height: TtSpacing.s),
+                TtButton.secondary(
+                  label: 'Choose from gallery',
+                  icon: Symbols.photo_library_rounded,
+                  onPressed: () => _live ? _pick(ImageSource.gallery) : _fake(gallery: true),
+                ),
               ]
             : [
                 TtButton(
@@ -312,7 +290,6 @@ class _CapturedCard extends StatelessWidget {
         KycDocType.vehicleRc => ('CERTIFICATE OF REGISTRATION', 'TAMIL NADU'),
         KycDocType.insurance => ('MOTOR INSURANCE POLICY', 'TWO-WHEELER'),
         KycDocType.policeVerification => ('POLICE CLEARANCE CERTIFICATE', 'TN POLICE'),
-        KycDocType.selfie => ('SELFIE', 'IDENTITY CHECK'),
       };
 
   String get _firstLabel => switch (type) {
@@ -321,7 +298,6 @@ class _CapturedCard extends StatelessWidget {
         KycDocType.vehicleRc => 'Reg No:',
         KycDocType.insurance => 'Policy No:',
         KycDocType.policeVerification => 'Cert No:',
-        KycDocType.selfie => 'Taken:',
       };
 
   @override

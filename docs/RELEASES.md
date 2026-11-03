@@ -74,7 +74,7 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 ### Next release: 0.1.2 (code 3)
 
 - Registration: when the identity check is by hand, or Didit can't be used right now, the driver uploads their
-  driving licence, Aadhaar and a selfie (front camera, no gallery) instead of Didit's check; an admin verifies each.
+  driving licence and Aadhaar instead of Didit's check, and the profile photo is the face an admin matches to them.
 - The app sends its version (`x-app-version`, `kDriverAppVersion`), so the server knows it can upload them.
 - A new profile photo shows "being checked" until an admin approves it, and it can be taken any time (it used to wait
   for the identity check, so a driver approved without one could never add the photo needed to go online).
@@ -139,7 +139,16 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `9fef08c` (API and admin).
+API and admin (no database change).
+
+- Identity check by hand: the selfie is gone; it is the driving licence and Aadhaar, verified by an admin, with the
+  profile photo approved as the matching face (it is also the daily-selfie face).
+- Documents to review: one **Review** dialog per driver shows each upload large, with the driver's photo and name
+  beside the licence and Aadhaar, Verify (valid-until date where one is printed) or Reject with one-tap reasons, then
+  the next one; new profile photos are reviewed there too. Fixes "Unknown document" when verifying a licence or
+  Aadhaar. The licence and Aadhaar are listed under Documents to review, not Identity in review.
+- Drivers get a push only for a rejection, or once everything is approved (no "Photo received", no push per verified
+  document).
 
 ### 3 Nov 2026 (sixth) · API and admin at `9fef08c`
 

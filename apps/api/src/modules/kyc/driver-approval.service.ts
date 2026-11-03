@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
-import { DriverStatus, IdentityPurpose, IdentityStatus } from '../../generated/prisma/enums.js';
+import { DriverStatus, IdentityStatus } from '../../generated/prisma/enums.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { DiditClient } from './didit.client.js';
@@ -45,15 +45,23 @@ export class DriverApprovalService {
   }
 
   /**
-   * Mirrors the manual identity documents on the user's identity status (approved, declined, in review), so the
-   * approval, the queue and going online treat both checks alike. An identity Didit approved is left alone.
+   * Mirrors the check by hand (licence, Aadhaar, approved profile photo) on the user's identity status (approved,
+   * declined, in review), so the approval, the queue and going online treat both checks alike. An identity Didit
+   * approved is left alone. No push here: a rejected document sends its own, and approval says "You're approved".
    */
   async syncManualIdentity(driverId: string): Promise<void> {
     const driver = await this.prisma.driver.findUniqueOrThrow({
       where: { id: driverId },
-      select: { userId: true, documents: { select: { type: true, status: true } }, user: { select: { identityStatus: true } } },
+      select: {
+        userId: true,
+        photoFile: true,
+        pendingPhotoFile: true,
+        documents: { select: { type: true, status: true } },
+        user: { select: { identityStatus: true } },
+      },
     });
-    const status = manualIdentityStatus(driver.documents);
+    const photo = driver.photoFile ? 'APPROVED' : driver.pendingPhotoFile ? 'PENDING' : 'NONE';
+    const status = manualIdentityStatus(driver.documents, photo);
     if (!status || status === driver.user.identityStatus) return;
     const byDidit = await this.prisma.identityVerification.count({ where: { userId: driver.userId, status: IdentityStatus.APPROVED } });
     if (byDidit > 0) return;
@@ -61,7 +69,6 @@ export class DriverApprovalService {
       where: { id: driver.userId },
       data: { identityStatus: status, identityVerifiedAt: status === IdentityStatus.APPROVED ? new Date() : null },
     });
-    if (status !== IdentityStatus.IN_REVIEW) void this.notifier.identityChanged({ userId: driver.userId, purpose: IdentityPurpose.DRIVER, status });
   }
 
   async recompute(driverId: string): Promise<DriverStatus> {

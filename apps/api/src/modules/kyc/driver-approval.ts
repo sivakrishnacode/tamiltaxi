@@ -2,8 +2,14 @@ import { DriverStatus, IdentityStatus, KycDocType, KycStatus } from '../../gener
 
 /** Documents every driver uploads for admin review. */
 export const REQUIRED_DOCS: readonly KycDocType[] = [KycDocType.VEHICLE_RC, KycDocType.INSURANCE];
-/** The identity check by hand (instead of Didit): an admin verifies each. */
-export const IDENTITY_DOCS: readonly KycDocType[] = [KycDocType.DRIVING_LICENCE, KycDocType.AADHAAR, KycDocType.SELFIE];
+/**
+ * The identity check by hand (instead of Didit): an admin verifies the licence and Aadhaar, and approves the profile
+ * photo as the face that matches them. (`SELFIE` stays in the enum, unused since 3 Nov 2026.)
+ */
+export const IDENTITY_DOCS: readonly KycDocType[] = [KycDocType.DRIVING_LICENCE, KycDocType.AADHAAR];
+
+/** The profile photo, as part of the identity check by hand: approved (`photoFile`), waiting, or none. */
+export type PhotoState = 'APPROVED' | 'PENDING' | 'NONE';
 /** Everything a driver can upload. */
 export const UPLOAD_DOCS: readonly KycDocType[] = [...REQUIRED_DOCS, ...IDENTITY_DOCS];
 
@@ -19,14 +25,16 @@ export function isIdentityRequiredFor(mode: IdentityMode, appVersion: string | n
 }
 
 /**
- * The identity status the manual documents give: all three verified → APPROVED, any rejected → DECLINED, any waiting
- * → IN_REVIEW; null while none is uploaded (the status is left as it is).
+ * The identity status the check by hand gives: the licence and Aadhaar verified and the profile photo approved →
+ * APPROVED; either document rejected → DECLINED; anything waiting (or the photo still to come) → IN_REVIEW; null while
+ * neither document is uploaded (the status is left as it is).
  */
-export function manualIdentityStatus(docs: readonly { type: KycDocType; status: KycStatus }[]): IdentityStatus | null {
+export function manualIdentityStatus(docs: readonly { type: KycDocType; status: KycStatus }[], photo: PhotoState): IdentityStatus | null {
   const states = IDENTITY_DOCS.map((t) => docs.find((d) => d.type === t)?.status ?? KycStatus.NOT_UPLOADED);
-  if (states.every((s) => s === KycStatus.VERIFIED)) return IdentityStatus.APPROVED;
+  if (states.every((s) => s === KycStatus.NOT_UPLOADED)) return null;
   if (states.includes(KycStatus.REJECTED)) return IdentityStatus.DECLINED;
-  if (states.includes(KycStatus.UNDER_REVIEW)) return IdentityStatus.IN_REVIEW;
+  if (states.every((s) => s === KycStatus.VERIFIED) && photo === 'APPROVED') return IdentityStatus.APPROVED;
+  if (states.includes(KycStatus.UNDER_REVIEW) || states.every((s) => s === KycStatus.VERIFIED)) return IdentityStatus.IN_REVIEW;
   return null;
 }
 

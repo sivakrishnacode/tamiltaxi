@@ -140,18 +140,8 @@ export class AdminService {
         ...(params.status === 'VERIFIED' ? { expiresOn, expiryNotifiedDays: isSameDate ? doc.expiryNotifiedDays : null } : {}),
       },
     });
-    // The identity check by hand: the licence, Aadhaar and selfie decide the identity status. A verified selfie is the
-    // face the daily selfie is matched to, and the profile photo while the driver has none.
-    if (IDENTITY_DOCS.includes(params.type)) {
-      if (params.type === KycDocType.SELFIE && params.status === 'VERIFIED') {
-        const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: params.driverId }, select: { photoFile: true } });
-        await this.prisma.driver.update({
-          where: { id: params.driverId },
-          data: { selfieFile: doc.fileUrl, ...(driver.photoFile ? {} : { photoFile: doc.fileUrl, photoUpdatedAt: new Date() }) },
-        });
-      }
-      await this.approval.syncManualIdentity(params.driverId);
-    }
+    // The identity check by hand: the licence and Aadhaar (with the approved profile photo) decide the identity status.
+    if (IDENTITY_DOCS.includes(params.type)) await this.approval.syncManualIdentity(params.driverId);
     // Approval (and its push) happens in recompute once the identity check has passed too.
     await this.approval.recompute(params.driverId);
     if (params.status === 'REJECTED') void this.notifier.kycReviewed({ driverId: params.driverId, type: params.type, status: 'REJECTED', reason: params.reason });

@@ -2270,9 +2270,9 @@ describe('Tamil Taxi API (e2e)', () => {
     const driverId = reg.body.driver.id as string;
     const userId = reg.body.driver.userId as string;
 
-    // RC and insurance, plus the licence, Aadhaar and selfie of the identity check by hand (no police photos).
+    // RC and insurance, plus the licence and Aadhaar of the identity check by hand (no police or selfie photos).
     const docs = await http.get('/v1/drivers/me/documents').set(driver).expect(200);
-    expect(docs.body.map((d: { type: string }) => d.type).sort()).toEqual(['AADHAAR', 'DRIVING_LICENCE', 'INSURANCE', 'SELFIE', 'VEHICLE_RC']);
+    expect(docs.body.map((d: { type: string }) => d.type).sort()).toEqual(['AADHAAR', 'DRIVING_LICENCE', 'INSURANCE', 'VEHICLE_RC']);
     await http.post('/v1/drivers/me/documents/POLICE_VERIFICATION').set(driver).attach('file', Buffer.from('x'), 'p.jpg').expect(400);
 
     // The app gets a token for the in-app SDK; the same unfinished session is reused.
@@ -2350,7 +2350,7 @@ describe('Tamil Taxi API (e2e)', () => {
     await http.get(`/v1/drivers/${driverId}/photo`).set(stranger).expect(404);
   });
 
-  it('checks the licence, Aadhaar and selfie by hand when Didit is out of credits or switched off', async () => {
+  it('checks the licence, Aadhaar and profile photo by hand when Didit is out of credits or switched off', async () => {
     const admin = await adminAuth();
     const register = async (name: string) => {
       const reg = await http
@@ -2378,24 +2378,41 @@ describe('Tamil Taxi API (e2e)', () => {
     } finally {
       fakeDidit.isOutOfCredits = false;
     }
-    for (const type of ['VEHICLE_RC', 'INSURANCE']) {
-      await upload(kumar.auth, type);
-      await verify(kumar.id, type);
+    // The driver hears only about a rejection, or that everything is approved.
+    const notifier = app.get(NotifierService);
+    const spies = (['kycReviewed', 'photoReviewed', 'photoSubmitted', 'identityChanged'] as const).map((m) => vi.spyOn(notifier, m));
+    const heard = () => spies.flatMap((spy, i) => spy.mock.calls.filter(([p]) => JSON.stringify(p).includes(kumar.id) || JSON.stringify(p).includes(kumarUser)).map(([p]) => ({ via: ['kyc', 'photo', 'photoSubmitted', 'identity'][i], ...(p as object) })));
+    const kumarUser = (await prisma.driver.findUniqueOrThrow({ where: { id: kumar.id } })).userId;
+    try {
+      for (const type of ['VEHICLE_RC', 'INSURANCE']) {
+        await upload(kumar.auth, type);
+        await verify(kumar.id, type);
+      }
+      expect(await status(kumar.auth)).toBe('PENDING');
+      for (const type of ['DRIVING_LICENCE', 'AADHAAR']) await upload(kumar.auth, type);
+      expect((await http.get('/v1/kyc/me').set(kumar.auth).set(newApp).expect(200)).body.status).toBe('IN_REVIEW');
+      // A rejection is told (once); the re-upload goes back to review.
+      await http.post(`/v1/admin/drivers/${kumar.id}/documents/AADHAAR`).set(admin).send({ status: 'REJECTED', reason: 'Blurry photo' }).expect(201);
+      expect(heard()).toEqual([expect.objectContaining({ via: 'kyc', status: 'REJECTED', type: 'AADHAAR' })]);
+      await upload(kumar.auth, 'AADHAAR');
+      await verify(kumar.id, 'DRIVING_LICENCE');
+      await verify(kumar.id, 'AADHAAR');
+      // The licence and Aadhaar are verified; the profile photo is the face that completes the check.
+      expect(await status(kumar.auth)).toBe('PENDING');
+      await http.post('/v1/drivers/me/photo').set(kumar.auth).attach('file', JPEG, { filename: 'p.jpg', contentType: 'image/jpeg' }).expect(200);
+      expect(await status(kumar.auth)).toBe('PENDING');
+      await http.post(`/v1/admin/drivers/${kumar.id}/photo`).set(admin).send({ isApproved: true }).expect(200);
+      const kumarMe = (await http.get('/v1/drivers/me').set(kumar.auth).expect(200)).body;
+      expect(kumarMe.status).toBe('APPROVED');
+      // The approved photo is the daily-selfie face (no Didit selfie).
+      expect(kumarMe.selfieFile).toBe(kumarMe.photoFile);
+      // Uploads, each verification and the photo approval said nothing; the approval itself did, once.
+      expect(heard().slice(1)).toEqual([expect.objectContaining({ via: 'kyc', status: 'APPROVED' })]);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
     }
-    expect(await status(kumar.auth)).toBe('PENDING');
-    for (const type of ['DRIVING_LICENCE', 'AADHAAR', 'SELFIE']) await upload(kumar.auth, type);
-    expect((await http.get('/v1/kyc/me').set(kumar.auth).set(newApp).expect(200)).body.status).toBe('IN_REVIEW');
-    await verify(kumar.id, 'DRIVING_LICENCE');
-    await verify(kumar.id, 'AADHAAR');
-    expect(await status(kumar.auth)).toBe('PENDING');
-    await verify(kumar.id, 'SELFIE');
-    const kumarMe = (await http.get('/v1/drivers/me').set(kumar.auth).expect(200)).body;
-    expect(kumarMe.status).toBe('APPROVED');
-    // The verified selfie is the daily-selfie face and, as there was none, the profile photo.
-    expect(kumarMe.selfieFile).toMatch(/\.jpg$/);
-    expect(kumarMe.photoFile).toBe(kumarMe.selfieFile);
-    // A selfie must be a photo.
-    await http.post('/v1/drivers/me/documents/SELFIE').set(kumar.auth).attach('file', Buffer.from('%PDF'), { filename: 's.pdf', contentType: 'application/pdf' }).expect(400);
+    // There is no selfie upload any more.
+    await http.post('/v1/drivers/me/documents/SELFIE').set(kumar.auth).attach('file', JPEG, { filename: 's.jpg', contentType: 'image/jpeg' }).expect(400);
 
     // Switched to the check by hand: new apps must do it, older apps (no version) are approved on RC + insurance.
     await http.put('/v1/admin/settings').set(admin).send({ manualIdentityCheck: true }).expect(200);

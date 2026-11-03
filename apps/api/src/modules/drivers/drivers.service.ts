@@ -199,8 +199,8 @@ export class DriversService {
   }
 
   /**
-   * The documents a driver uploads: RC and insurance, and the licence, Aadhaar and selfie of the identity check by hand
-   * (rows made on first read; apps before 0.1.2 show only RC and insurance). Police verification rows stay hidden.
+   * The documents a driver uploads: RC and insurance, and the licence and Aadhaar of the identity check by hand (rows
+   * made on first read; apps before 0.1.2 show only RC and insurance). Police verification and selfie rows stay hidden.
    */
   async documents(driverId: string): Promise<KycDocument[]> {
     await this.prisma.kycDocument.createMany({ data: UPLOAD_DOCS.map((type) => ({ driverId, type })), skipDuplicates: true });
@@ -356,12 +356,11 @@ export class DriversService {
   }
 
   /**
-   * Stores the photo / PDF and puts the document under review. `fileUrl` holds the stored file name. The licence,
-   * Aadhaar and selfie are the identity check by hand: each upload updates the identity status too.
+   * Stores the photo / PDF and puts the document under review. `fileUrl` holds the stored file name. The licence and
+   * Aadhaar are the identity check by hand (with the profile photo): each upload updates the identity status too.
    */
   async uploadDocument(params: { driverId: string; type: KycDocType; file?: UploadedBlob }): Promise<KycDocument> {
     if (!UPLOAD_DOCS.includes(params.type)) throw new BadRequestException('This document is not uploaded here');
-    if (params.type === KycDocType.SELFIE && !IMAGE_TYPES.includes(params.file?.mimetype ?? '')) throw new BadRequestException('Take a selfie (JPG, PNG or WebP)');
     const fileUrl = await this.files.save(params.file);
     // A new file: its own valid-until date is entered when it is verified.
     const data = { status: KycStatus.UNDER_REVIEW, fileUrl, rejectReason: null, expiresOn: null, expiryNotifiedDays: null };
@@ -425,23 +424,32 @@ export class DriversService {
     }
     const name = await this.files.save(params.file);
     await this.prisma.driver.update({ where: { id: params.driverId }, data: { pendingPhotoFile: name, photoMatchScore: null, photoRejectReason: null } });
-    void this.notifier.photoSubmitted(params.driverId);
+    // By hand the photo is the identity's face: waiting for it is part of the identity status.
+    await this.approval.syncManualIdentity(params.driverId);
+    await this.approval.recompute(params.driverId);
     return { status: 'IN_REVIEW' };
   }
 
-  /** Admin decision on a photo that waits for review. */
+  /**
+   * Admin decision on a photo that waits for review. An approved photo is also the face the daily selfie is matched to
+   * when the identity was checked by hand (no Didit selfie). The driver hears about a rejection, and about an approval
+   * only when it lets them go online (an approved driver's first photo); a driver it completes hears "You're approved".
+   */
   async reviewPhoto(params: { driverId: string; isApproved: boolean; reason?: string }): Promise<Driver> {
     const driver = await this.prisma.driver.findUniqueOrThrow({ where: { id: params.driverId } });
     if (!driver.pendingPhotoFile) throw new BadRequestException('No photo is waiting for review');
     const reason = params.reason?.trim() || 'Please take a clear photo of your face';
-    const updated = await this.prisma.driver.update({
+    await this.prisma.driver.update({
       where: { id: driver.id },
       data: params.isApproved
-        ? { photoFile: driver.pendingPhotoFile, photoUpdatedAt: new Date(), pendingPhotoFile: null, photoRejectReason: null }
+        ? { photoFile: driver.pendingPhotoFile, photoUpdatedAt: new Date(), pendingPhotoFile: null, photoRejectReason: null, ...(driver.selfieFile ? {} : { selfieFile: driver.pendingPhotoFile }) }
         : { pendingPhotoFile: null, photoRejectReason: reason },
     });
-    void this.notifier.photoReviewed({ driverId: driver.id, isApproved: params.isApproved, reason });
-    return updated;
+    await this.approval.syncManualIdentity(driver.id);
+    const status = await this.approval.recompute(driver.id);
+    const isFirstPhotoOfApproved = params.isApproved && !driver.photoFile && driver.status === DriverStatus.APPROVED && status === DriverStatus.APPROVED;
+    if (!params.isApproved || isFirstPhotoOfApproved) void this.notifier.photoReviewed({ driverId: driver.id, isApproved: params.isApproved, reason });
+    return this.prisma.driver.findUniqueOrThrow({ where: { id: driver.id } });
   }
 
   /**

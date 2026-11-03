@@ -790,21 +790,29 @@ Free tier: until 31 Oct 2026 **500 sessions a month**; **since 1 Nov 2026 Didit 
 ("You don't have enough credits") and the old apps say "Verification is busy right now". Sandbox sessions are free.
 Docs: https://docs.didit.me (API: `/v3/session/`, webhooks: HMAC `X-Signature-V2`).
 
-- **Identity check by hand (3 Nov 2026):** drivers can instead upload their **driving licence, Aadhaar and a selfie**
-  (`KycDocType` `DRIVING_LICENCE`, `AADHAAR`, `SELFIE`; migration `20261103120000_manual_identity`), each verified by
-  an admin in Documents (or the driver page). They mirror on `User.identityStatus` (all verified → APPROVED, any
-  rejected → DECLINED, any waiting → IN_REVIEW; `syncManualIdentity`, never over a Didit approval), so approval, the
-  Approvals queue and going online treat both checks alike. A verified selfie becomes `Driver.selfieFile` (the daily
-  selfie's face) and, if the driver has none, the profile photo. It is used when setting **`manualIdentityCheck`**
-  is on (Settings › Driver approval › Check identity by hand; `identityMode()` is MANUAL also without Didit keys), and
-  whenever Didit can't be used: `POST /v1/kyc/session` answers `IDENTITY_MANUAL` (409 when the check is by hand, 503
-  when Didit is out of credits or down) to a driver app that sends **`x-app-version`** (from 0.1.2, kept as
-  `Driver.appVersion`), and the app switches to the three uploads, so **Didit never stops a sign-up**. Apps before
-  0.1.2 can't upload them: by hand they aren't asked (`isIdentityRequiredFor`), and are approved on RC + insurance
-  like when Didit is off. `GET /v1/kyc/me` adds `mode` (DIDIT | MANUAL) and `isRequired`; `isEnabled` (old apps) is
-  true only in Didit mode. `GET /v1/drivers/me/documents` lists all five uploads (rows made on first read); the admin
-  lists show the identity three once uploaded.
-
+- **Identity check by hand (3 Nov 2026):** drivers can instead upload their **driving licence and Aadhaar**
+  (`KycDocType` `DRIVING_LICENCE`, `AADHAAR`), which an admin verifies, and the **profile photo**, which the admin
+  approves as the face matching them (`SELFIE` was added and dropped the same day: the enum value stays, unused;
+  migration `20261103120000_manual_identity`). They mirror on `User.identityStatus` (both verified and the photo
+  approved → APPROVED, either rejected → DECLINED, anything waiting → IN_REVIEW; `syncManualIdentity`, never over a
+  Didit approval), so approval, the Approvals queue and going online treat both checks alike. The approved photo is
+  also `Driver.selfieFile` (the daily selfie's face) when there is no Didit selfie. It is used when setting
+  **`manualIdentityCheck`** is on (Settings › Driver approval › Check identity by hand; `identityMode()` is MANUAL
+  also without Didit keys), and whenever Didit can't be used: `POST /v1/kyc/session` answers `IDENTITY_MANUAL` (409
+  when the check is by hand, 503 when Didit is out of credits or down) to a driver app that sends
+  **`x-app-version`** (from 0.1.2, kept as `Driver.appVersion`), and the app switches to the uploads, so **Didit
+  never stops a sign-up**. Apps before 0.1.2 can't upload them: by hand they aren't asked (`isIdentityRequiredFor`),
+  and are approved on RC + insurance like when Didit is off. `GET /v1/kyc/me` adds `mode` (DIDIT | MANUAL) and
+  `isRequired`; `isEnabled` (old apps) is true only in Didit mode. `GET /v1/drivers/me/documents` lists the four
+  uploads (rows made on first read); the admin lists show the licence and Aadhaar once uploaded, under Approvals ›
+  Documents to review ("Identity in review" is left for Didit).
+- **Admin review (3 Nov 2026):** one **Review** dialog per driver (`DocumentReviewer`; Approvals › Documents to review
+  and the driver page's KYC card): each upload large (PDFs inline), the driver's photo and account name beside the
+  licence and Aadhaar, Verify (valid-until date for RC, insurance and licence; none for Aadhaar), Reject with one-tap
+  reasons, then on to the next waiting item; the new profile photo is reviewed there too.
+- **Driver pushes:** only a rejection (document, photo, Didit decline) or "You're approved! 🎉" once everything
+  passes; no push per verified document, per upload ("Photo received" is gone) or per identity step. A photo
+  approval is told only when it lets an already-approved driver go online (their first photo).
 - **Who:** drivers **must** pass (driving licence **and** Aadhaar + selfie in one session; replaces the licence,
   Aadhaar and police-verification uploads, and the simulated sign-up selfie). Two ID scans per driver, so the free
   tier covers ~250 drivers a month. A driver session approved without a driving licence is moved to IN_REVIEW

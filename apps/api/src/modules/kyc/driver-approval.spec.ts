@@ -64,17 +64,20 @@ describe('approvalChecklist', () => {
 
 describe('identity check by hand', () => {
   const doc = (type: KycDocType, status: KycStatus) => ({ type, status });
-  const trio = (status: KycStatus) => [doc(KycDocType.DRIVING_LICENCE, status), doc(KycDocType.AADHAAR, status), doc(KycDocType.SELFIE, status)];
+  const both = (status: KycStatus) => [doc(KycDocType.DRIVING_LICENCE, status), doc(KycDocType.AADHAAR, status)];
 
-  it('approves once the licence, Aadhaar and selfie are all verified', () => {
-    expect(manualIdentityStatus(trio(KycStatus.VERIFIED))).toBe(IdentityStatus.APPROVED);
-    expect(manualIdentityStatus([...trio(KycStatus.VERIFIED).slice(0, 2), doc(KycDocType.SELFIE, KycStatus.UNDER_REVIEW)])).toBe(IdentityStatus.IN_REVIEW);
+  it('approves once the licence and Aadhaar are verified and the profile photo is approved', () => {
+    expect(manualIdentityStatus(both(KycStatus.VERIFIED), 'APPROVED')).toBe(IdentityStatus.APPROVED);
+    // Waiting on the photo, or on a document.
+    expect(manualIdentityStatus(both(KycStatus.VERIFIED), 'PENDING')).toBe(IdentityStatus.IN_REVIEW);
+    expect(manualIdentityStatus(both(KycStatus.VERIFIED), 'NONE')).toBe(IdentityStatus.IN_REVIEW);
+    expect(manualIdentityStatus([doc(KycDocType.DRIVING_LICENCE, KycStatus.VERIFIED), doc(KycDocType.AADHAAR, KycStatus.UNDER_REVIEW)], 'APPROVED')).toBe(IdentityStatus.IN_REVIEW);
   });
 
-  it('declines on any rejection and leaves the status alone before an upload', () => {
-    expect(manualIdentityStatus([doc(KycDocType.DRIVING_LICENCE, KycStatus.REJECTED), doc(KycDocType.AADHAAR, KycStatus.VERIFIED)])).toBe(IdentityStatus.DECLINED);
-    expect(manualIdentityStatus([doc(KycDocType.VEHICLE_RC, KycStatus.UNDER_REVIEW)])).toBeNull();
-    expect(manualIdentityStatus(trio(KycStatus.NOT_UPLOADED))).toBeNull();
+  it('declines on a rejected document and leaves the status alone before an upload', () => {
+    expect(manualIdentityStatus([doc(KycDocType.DRIVING_LICENCE, KycStatus.REJECTED), doc(KycDocType.AADHAAR, KycStatus.VERIFIED)], 'APPROVED')).toBe(IdentityStatus.DECLINED);
+    expect(manualIdentityStatus([doc(KycDocType.VEHICLE_RC, KycStatus.UNDER_REVIEW)], 'APPROVED')).toBeNull();
+    expect(manualIdentityStatus(both(KycStatus.NOT_UPLOADED), 'APPROVED')).toBeNull();
   });
 
   it('asks every driver with Didit, and by hand only apps that can upload (they send their version)', () => {

@@ -4,7 +4,7 @@ import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js'
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DriverStatus, IdentityStatus, KycStatus } from '../../generated/prisma/enums.js';
-import { approvalChecklist, type ApprovalChecklist, IDENTITY_DOCS, type IdentityMode, isIdentityRequiredFor, REQUIRED_DOCS } from '../kyc/driver-approval.js';
+import { approvalChecklist, type ApprovalChecklist, IDENTITY_DOCS, type IdentityMode, isIdentityRequiredFor, REQUIRED_DOCS, UPLOAD_DOCS } from '../kyc/driver-approval.js';
 import { DriverApprovalService } from '../kyc/driver-approval.service.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { SettingsService } from '../settings/settings.service.js';
@@ -73,7 +73,8 @@ export class AdminApprovalsService {
     const ready: Prisma.DriverWhereInput = {
       AND: [...REQUIRED_DOCS.map((type) => ({ documents: { some: { type, status: KycStatus.VERIFIED } } })), identityDone],
     };
-    const documents: Prisma.DriverWhereInput = { documents: { some: { type: { in: [...REQUIRED_DOCS] }, status: KycStatus.UNDER_REVIEW } } };
+    // Any upload waiting, the licence and Aadhaar of the check by hand too ("identity" is left for Didit's reviews).
+    const documents: Prisma.DriverWhereInput = { documents: { some: { type: { in: [...UPLOAD_DOCS] }, status: KycStatus.UNDER_REVIEW } } };
     const identity: Prisma.DriverWhereInput | null = { user: { identityStatus: IdentityStatus.IN_REVIEW } };
     switch (stage) {
       case 'ready':

@@ -25,7 +25,7 @@ const NO_LICENCE = 'Driving licence not scanned';
 export interface IdentityView {
   /** Didit's in-app check is offered (apps before 0.1.2 know only this: false = nothing to do). */
   readonly isEnabled: boolean;
-  /** Drivers: Didit, or the licence, Aadhaar and selfie uploaded for an admin. Riders: always DIDIT. */
+  /** Drivers: Didit, or the licence and Aadhaar uploaded for an admin (with the profile photo). Riders: always DIDIT. */
   readonly mode: IdentityMode;
   /** Whether this user must pass the identity step (drivers; riders' check is optional). */
   readonly isRequired: boolean;
@@ -137,12 +137,12 @@ export class KycService {
     if (!this.didit.isEnabled) throw new ServiceUnavailableException('Identity checks are not set up yet');
     const purpose = user.role === Role.DRIVER ? IdentityPurpose.DRIVER : IdentityPurpose.RIDER;
     const manual = new ServiceUnavailableException({
-      message: "The automatic check isn't available right now. Upload your licence, Aadhaar and a selfie instead",
+      message: "The automatic check isn't available right now. Upload your licence and Aadhaar instead",
       code: 'IDENTITY_MANUAL',
     });
     // Switched to the check by hand: not an outage, so a 409 with the same code.
     if (purpose === IdentityPurpose.DRIVER && (await this.approval.identityMode()) === 'MANUAL') {
-      throw new ConflictException({ message: 'Upload your licence, Aadhaar and a selfie: an admin checks them', code: 'IDENTITY_MANUAL' });
+      throw new ConflictException({ message: 'Upload your licence and Aadhaar: an admin checks them with your photo', code: 'IDENTITY_MANUAL' });
     }
     const workflowId = purpose === IdentityPurpose.DRIVER ? this.env.didit.driverWorkflowId : this.env.didit.riderWorkflowId;
     if (!workflowId) throw new ServiceUnavailableException('Identity checks are not set up yet');
