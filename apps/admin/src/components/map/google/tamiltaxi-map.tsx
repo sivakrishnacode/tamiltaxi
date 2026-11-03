@@ -7,7 +7,8 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import { CityBoundaries } from "./city-boundaries";
-import { GOOGLE_MAP_ID, GOOGLE_MAPS_KEY, NEIGHBOURHOOD_MIN_ZOOM, TT_MAP_STYLES, TT_MAP_STYLES_ZOOMED_OUT } from "./style";
+import { usePlacesShown } from "./places-pref";
+import { GOOGLE_MAP_ID, GOOGLE_MAP_ID_NO_PLACES, GOOGLE_MAPS_KEY, NEIGHBOURHOOD_MIN_ZOOM, TT_MAP_STYLES, TT_MAP_STYLES_ZOOMED_OUT } from "./style";
 
 export type MapType = "roadmap" | "hybrid";
 
@@ -108,6 +109,9 @@ export function TtMap({
   boundaries?: readonly (string | null)[];
 }) {
   const placeIds = (boundaries ?? []).filter((id): id is string => !!id);
+  // A map ID can't change on a live map: the "Places" switch picks the other ID and the map is made again.
+  const [isPlacesShown] = usePlacesShown();
+  const mapId = !isPlacesShown && GOOGLE_MAP_ID_NO_PLACES ? GOOGLE_MAP_ID_NO_PLACES : GOOGLE_MAP_ID;
   return (
     <div className={cn("relative overflow-hidden rounded-xl bg-[#EEF0F3]", className)}>
       {/* English labels. Note: Google still adds local-script names on India tiles for every language/region
@@ -115,12 +119,13 @@ export function TtMap({
       <APIProvider apiKey={GOOGLE_MAPS_KEY} language="en" region="IN">
         {GOOGLE_MAPS_KEY && (
           <Map
+            key={mapId}
             className="h-full w-full"
             defaultCenter={center}
             defaultZoom={zoom}
             mapTypeId={mapType}
             // A map ID brings its own style from Google Cloud (and ignores `styles`).
-            {...(GOOGLE_MAP_ID ? { mapId: GOOGLE_MAP_ID } : { styles: TT_MAP_STYLES_ZOOMED_OUT })}
+            {...(mapId ? { mapId } : { styles: TT_MAP_STYLES_ZOOMED_OUT })}
             gestureHandling="greedy"
             clickableIcons={false}
             disableDefaultUI

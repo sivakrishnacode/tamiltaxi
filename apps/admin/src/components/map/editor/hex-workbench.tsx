@@ -15,7 +15,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { HeatOverlay } from "@/components/map/google/heat-overlay";
 import { HexLayer, HexOutline, type HexLayerDef, type OutlineStyle } from "@/components/map/google/hex-layer";
-import { GOOGLE_MAP_ID } from "@/components/map/google/style";
+import { usePlacesShown } from "@/components/map/google/places-pref";
+import { GOOGLE_MAP_ID, GOOGLE_MAP_ID_NO_PLACES } from "@/components/map/google/style";
 import { PlaceSearch, type FoundPlace } from "@/components/map/google/place-search";
 import { TtMap, type MapType } from "@/components/map/google/tamiltaxi-map";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ export function HexWorkbench({
 }) {
   const [brush, setBrush] = useState(0);
   const [visible, setVisible] = useState({ service: true, zones: true, labels: true, grid: false, boundary: true });
+  const [isPlacesShown, setPlacesShown] = usePlacesShown();
   const [mapType, setMapType] = useState<MapType>("roadmap");
   const [heat, setHeat] = useState<HeatmapMetric | "off">("off");
   const [isFullscreen, setFullscreen] = useState(false);
@@ -258,6 +260,11 @@ export function HexWorkbench({
                   onSelect={(e) => e.preventDefault()}
                 >
                   City boundary
+                </DropdownMenuCheckboxItem>
+              )}
+              {GOOGLE_MAP_ID_NO_PLACES && (
+                <DropdownMenuCheckboxItem checked={isPlacesShown} onCheckedChange={(v) => setPlacesShown(!!v)} onSelect={(e) => e.preventDefault()}>
+                  Places (shops, hospitals…)
                 </DropdownMenuCheckboxItem>
               )}
               <DropdownMenuSeparator />

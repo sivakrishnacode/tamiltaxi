@@ -34,3 +34,6 @@ export const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?
  * TT_MAP_STYLES as before and show no boundary.
  */
 export const GOOGLE_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID ?? "";
+
+/** A second Map ID whose style hides Google's places (shops, hospitals…): the "Places" switch. Empty = no switch. */
+export const GOOGLE_MAP_ID_NO_PLACES = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID_NO_PLACES ?? "";

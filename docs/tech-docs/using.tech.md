@@ -240,6 +240,7 @@ Never commit real `.env` files.
 | `SHARE_BASE_URL` | API | `http://localhost:3001` | public origin of the admin app, where live trip links point (`<SHARE_BASE_URL>/track/<token>`); staging: `https://admin.65-0-233-253.sslip.io` |
 | `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` | admin (build time, client bundle) | empty | browser key for the **Maps JavaScript API** (must be enabled on the key). Local dev: `apps/admin/.env.local` (git-ignored, template `apps/admin/.env.example`). Docker: root `.env` `GOOGLE_MAPS_BROWSER_KEY` → build arg. Currently the `rido-app-services` key; restrict to HTTP referrers later (`tamiltaxi-admin-web`) |
 | `NEXT_PUBLIC_GOOGLE_MAP_ID` | admin (build time, client bundle) | empty | **Map ID** (JavaScript, vector) in the browser key's Google Cloud project. Set: the admin maps take their look from the map style attached to it (our `TT_MAP_STYLES`, imported there) and draw each city's **boundary** (its Locality layer); empty: the built-in style, no boundaries. Local: `apps/admin/.env.local`; Docker: root `.env` `GOOGLE_MAP_ID` → build arg. Setup: "City boundary" in 6b |
+| `NEXT_PUBLIC_GOOGLE_MAP_ID_NO_PLACES` | admin (build time, client bundle) | empty | a second Map ID, same as `NEXT_PUBLIC_GOOGLE_MAP_ID` but its style hides Google's places (`cloud-map-style-no-places.json`, Locality layer on too): the maps' **Places** switch (Layers menu, Heatmap). Empty: no switch. Docker: root `.env` `GOOGLE_MAP_ID_NO_PLACES` |
 
 ---
 
@@ -1152,7 +1153,11 @@ loaded, or if it can't be made, it falls back to a Google Maps link to the vehic
     `tamiltaxi-ui-map-layer`, Map ID `tamiltaxi-admin` (the ID itself is in `apps/admin/.env.local` and the server's
     `.env`, both git-ignored). The owner then chose Google's own look, like Google Maps (coloured roads, water, parks
     and places, not clickable): the style is just `{ "variant": "light" }`; `TT_MAP_STYLES` is only the look without a
-    Map ID. The boundary is a line only (a white wash inside hid the roads). Without WebGL a browser falls back to
+    Map ID. The boundary is a line only (a white wash inside hid the roads). **Places switch:** a Map ID's style is
+    fixed once the map is made, so hiding shops, hospitals and temples uses a second Map ID whose style is
+    `cloud-map-style-no-places.json` (place labels and icons off; park areas stay): the Layers menu's "Places" item and
+    the Heatmap's "Places on/off" button swap the ID and make the map again (it fits its view again). The choice is
+    kept per browser (`localStorage` `tt-map-places`, `places-pref.ts`) and applies to every admin map. Without WebGL a browser falls back to
     raster tiles: no boundary.
     Automatic fits (`FitCells`) stop at zoom 14 (vector maps would otherwise zoom one busy hexagon to street level).
   - Zones tab layout (2 Nov 2026): the zone list on the left (360 px, 400 px on very wide screens), the map on the

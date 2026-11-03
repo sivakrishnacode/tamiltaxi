@@ -132,6 +132,9 @@ The boundary layer shipped on 3 Nov 2026 and shows once the admin is built with 
   style `tamiltaxi-ui-map-layer`, Map ID `tamiltaxi-admin`)
 - [x] Set `NEXT_PUBLIC_GOOGLE_MAP_ID` (local `.env.local`, root `.env` `GOOGLE_MAP_ID`), rebuild and deploy the admin,
   and check every city has a `placeId` and its outline (3 Nov 2026)
+- [ ] Owner: a second style (copy of `tamiltaxi-ui-map-layer`, JSON `cloud-map-style-no-places.json`, Locality on) and
+  a second JavaScript vector Map ID with it, for the Places switch; then set `NEXT_PUBLIC_GOOGLE_MAP_ID_NO_PLACES`
+  and deploy the admin
 - [ ] Neighbourhood names hidden below zoom 14 again, as with the built-in style: the cloud style editor refuses
   keyzooms on `visible`; try keyzooms on the label opacities (`textFillOpacity` / `textStrokeOpacity`)
 

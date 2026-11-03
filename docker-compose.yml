@@ -100,6 +100,7 @@ services:
       args:
         NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${GOOGLE_MAPS_BROWSER_KEY:-}
         NEXT_PUBLIC_GOOGLE_MAP_ID: ${GOOGLE_MAP_ID:-}
+        NEXT_PUBLIC_GOOGLE_MAP_ID_NO_PLACES: ${GOOGLE_MAP_ID_NO_PLACES:-}
     image: tamiltaxi-admin:local
     restart: unless-stopped
     depends_on:

@@ -135,7 +135,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `e3a2cfe` (admin) and `24340fe` (API).
+Admin only (no API or database change).
+
+- Maps: a **Places** switch (the editors' Layers menu, a button on the Heatmap) hides Google's places such as shops,
+  hospitals and temples; the browser remembers the choice for every map. It appears once the second Map ID is set
+  (`NEXT_PUBLIC_GOOGLE_MAP_ID_NO_PLACES`).
 
 ### 3 Nov 2026 (third) · admin at `e3a2cfe`
 

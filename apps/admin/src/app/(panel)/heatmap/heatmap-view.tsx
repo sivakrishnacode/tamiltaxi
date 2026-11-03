@@ -1,12 +1,14 @@
 "use client";
 
-import { FlameIcon, HexagonIcon, Loader2Icon, MapPlusIcon, MousePointerClickIcon, XIcon } from "lucide-react";
+import { FlameIcon, HexagonIcon, Loader2Icon, MapPinIcon, MapPlusIcon, MousePointerClickIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Bar, BarChart, XAxis } from "recharts";
 import { toast } from "sonner";
 
 import { SERVICE_AREA_EDGE, SERVICE_AREA_STYLE } from "@/components/map/colors";
+import { usePlacesShown } from "@/components/map/google/places-pref";
+import { GOOGLE_MAP_ID_NO_PLACES } from "@/components/map/google/style";
 import { DashedOutlines, FitCells, FlyTo } from "@/components/map/google/map-helpers";
 import { HeatLayer, type HeatHover } from "@/components/map/google/heat-layer";
 import { HexLayer, HexOutline } from "@/components/map/google/hex-layer";
@@ -138,6 +140,7 @@ export function HeatmapView({
   const [resolution, setResolution] = useState(8);
   const [mapType, setMapType] = useState<MapType>("roadmap");
   const [showService, setShowService] = useState(true);
+  const [isPlacesShown, setPlacesShown] = usePlacesShown();
   const [hover, setHover] = useState<HeatHover | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [focus, setFocus] = useState<{ lat: number; lng: number; key: number } | null>(null);
@@ -332,6 +335,11 @@ export function HeatmapView({
                 <Button size="sm" variant="outline" className="bg-card shadow-md" aria-pressed={showService} onClick={() => setShowService((s) => !s)}>
                   <HexagonIcon /> Service area {showService ? "on" : "off"}
                 </Button>
+                {GOOGLE_MAP_ID_NO_PLACES && (
+                  <Button size="sm" variant="outline" className="bg-card shadow-md" aria-pressed={isPlacesShown} onClick={() => setPlacesShown(!isPlacesShown)}>
+                    <MapPinIcon /> Places {isPlacesShown ? "on" : "off"}
+                  </Button>
+                )}
               </div>
               <div className="absolute bottom-3 left-2 z-10 rounded-lg border bg-card/95 p-2.5 text-xs shadow-md">
                 <p className="mb-1.5 font-semibold text-navy-900">{METRIC_LABEL[metric]} per hexagon</p>
