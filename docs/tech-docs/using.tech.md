@@ -2448,6 +2448,11 @@ places, Locality layer available). `GOOGLE_MAP_ID_NO_PLACES` added to `/opt/tami
 `docker-compose.yml` copied there. Backup `/opt/tamiltaxi/backups/20261103-78b18a3`; rollback image
 `tamiltaxi-admin:rollback-20261103-78b18a3`. Admin healthy at `78b18a3`.
 
+**Deployed 3 Nov 2026 (fifth):** admin only at `8b0a9b8` (`78b18a3..8b0a9b8`): full screen on the Zones and Service
+area tabs keeps the zone list / form and the save card (checked first in a local build against the staging API).
+Backup `/opt/tamiltaxi/backups/20261103-8b0a9b8`; rollback image `tamiltaxi-admin:rollback-20261103-8b0a9b8`. Admin
+healthy at `8b0a9b8`.
+
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
 [staging-kyc-delete-policy.json](staging-kyc-delete-policy.json). The `rido` AWS profile cannot administer IAM.

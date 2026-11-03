@@ -135,10 +135,17 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `8b0a9b8` (admin) and `24340fe` (API).
+
+### 3 Nov 2026 (fifth) · admin at `8b0a9b8`
+
+Release: `staging-2026-11-03.5` at `8b0a9b8`
+
 Admin only (no API or database change).
 
-- Zones and Service area tabs: full screen keeps the side content: the zone list, or the zone form while editing, on
-  the left; the Save service area card and the help on the right. The map keeps its view, and Esc returns to the page.
+- `8b0a9b8` Zones and Service area tabs: full screen keeps the side content: the zone list, or the zone form while
+  editing, on the left; the Save service area card and the help on the right. The map keeps its view, and Esc returns to
+  the page.
 
 ### 3 Nov 2026 (fourth) · admin at `78b18a3`
 
