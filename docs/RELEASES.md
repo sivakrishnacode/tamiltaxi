@@ -138,13 +138,20 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-API and admin. Migration `20261103120000_manual_identity` (the SELFIE document type, `Driver.appVersion`).
+Nothing yet: staging runs `9fef08c` (API and admin).
 
-- Identity check by hand: drivers can upload their driving licence, Aadhaar and a selfie for an admin to verify in
-  Documents, instead of Didit. Settings › Driver approval › **Check identity by hand** switches it on; driver apps from
-  0.1.2 also switch to it by themselves when Didit can't be used (no credits, down), so Didit never stops a sign-up.
-  Drivers on older apps can't upload these: by hand they are approved on RC + insurance. A verified selfie is the
-  daily-selfie face and, if there is none, the profile photo.
+### 3 Nov 2026 (sixth) · API and admin at `9fef08c`
+
+Release: `staging-2026-11-03.6` at `9fef08c`
+
+API and admin. Migration `20261103120000_manual_identity` (the SELFIE document type, `Driver.appVersion`) applied on
+start.
+
+- `e4989a9` `652faf8` Identity check by hand: drivers can upload their driving licence, Aadhaar and a selfie for an
+  admin to verify in Documents, instead of Didit. Settings › Driver approval › **Check identity by hand** switches it
+  on; driver apps from 0.1.2 also switch to it by themselves when Didit can't be used (no credits, down), so Didit never
+  stops a sign-up. Drivers on older apps can't upload these: by hand they are approved on RC + insurance. A verified
+  selfie is the daily-selfie face and, if there is none, the profile photo.
 - Every profile photo now waits for an admin in Drivers › Approvals › Photos (no automatic face match).
 - The daily selfie lets the driver through when Didit is down or out of credits.
 
