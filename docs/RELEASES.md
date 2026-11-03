@@ -137,9 +137,9 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 Admin only (no API or database change).
 
-- City boundary: only the line now; the white tint inside the city washed the map out. The Cloud map style
-  (`cloud-map-style.json`, pasted again in Google Cloud) has a slightly darker land colour and stronger road edges, so
-  roads show on the vector map.
+- City boundary: only the line now; the white tint inside the city washed the map out. The admin maps take Google's
+  own default look, like Google Maps (coloured roads, water, parks and places), at the owner's request: the Cloud map
+  style is just `{ "variant": "light" }` (`cloud-map-style.json`).
 
 ### 3 Nov 2026 (second) · admin at `52f4be2`
 

@@ -1,21 +1,3 @@
 {
-  "variant": "light",
-  "backgroundColor": "#E8EBEF",
-  "styles": [
-    {"id": "natural.land", "geometry": {"fillColor": "#E8EBEF"}},
-    {"id": "natural.land.landCover", "geometry": {"fillColor": "#E8EBEF"}},
-    {"id": "infrastructure.urbanArea", "geometry": {"fillColor": "#E8EBEF"}},
-    {"id": "natural.water", "geometry": {"fillColor": "#CFE0EE"}, "label": {"textFillColor": "#64748B"}},
-    {"id": "infrastructure.roadNetwork.road", "geometry": {"fillColor": "#FFFFFF", "strokeColor": "#C9D1DC"}, "label": {"textFillColor": "#475569", "textStrokeColor": "#FFFFFF"}},
-    {"id": "infrastructure.roadNetwork.road.highway", "geometry": {"fillColor": "#FFFFFF", "strokeColor": "#AEB8C6"}},
-    {"id": "infrastructure.roadNetwork.road.arterial", "geometry": {"fillColor": "#FFFFFF", "strokeColor": "#BCC5D1"}},
-    {"id": "infrastructure.roadNetwork.road.local", "label": {"visible": false}},
-    {"id": "infrastructure.roadNetwork.roadShield", "label": {"visible": false}},
-    {"id": "pointOfInterest", "geometry": {"visible": false}, "label": {"visible": false}},
-    {"id": "pointOfInterest.recreation.park", "geometry": {"visible": true, "fillColor": "#D7E7D1"}},
-    {"id": "infrastructure.transitStation", "label": {"visible": false}},
-    {"id": "infrastructure.railwayTrack", "geometry": {"visible": false}},
-    {"id": "political", "label": {"textFillColor": "#64748B", "textStrokeColor": "#FFFFFF"}},
-    {"id": "political.city", "label": {"textFillColor": "#334155"}}
-  ]
+  "variant": "light"
 }
