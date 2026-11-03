@@ -69,7 +69,7 @@ class _D26AccountScreenState extends ConsumerState<D26AccountScreen> {
     // same source (mock: every upload verified). It used to count every KYC record and skip the identity step.
     final kyc = ref.watch(isLiveApiProvider) ? ref.watch(kycProvider).value : Seed.kycAllVerified;
     final identity = ref.watch(identityProvider).value;
-    final uploads = kyc?.where((d) => driverUploadDocs.contains(d.type)).toList();
+    final uploads = kyc?.where(isShownDoc).toList();
     final steps = (uploads?.length ?? 0) + (identity?.isEnabled == true ? 1 : 0);
     final verified = (uploads?.where((d) => d.status == KycStatus.verified).length ?? 0) +
         (identity?.isApproved == true ? 1 : 0);

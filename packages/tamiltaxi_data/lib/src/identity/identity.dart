@@ -33,22 +33,29 @@ class ScannedDocument {
   bool get isDrivingLicence => RegExp(r'driv|^dl$', caseSensitive: false).hasMatch(type);
 }
 
+/// How drivers' identities are checked: Didit's in-app check, or the licence, Aadhaar and selfie for an admin.
+enum IdentityMode { didit, manual }
+
 @immutable
 class IdentityCheck {
   const IdentityCheck({
     required this.isEnabled,
     required this.status,
+    this.mode = IdentityMode.didit,
+    bool? isRequired,
     this.fullName,
     this.documentType,
     this.documentLast4,
     this.documents = const [],
     this.reasons = const [],
     this.verifiedAt,
-  });
+  }) : isRequired = isRequired ?? isEnabled;
 
   factory IdentityCheck.fromJson(Map<String, dynamic> j) => IdentityCheck(
         isEnabled: j['isEnabled'] as bool? ?? false,
         status: IdentityStatus.fromApi(j['status']),
+        mode: j['mode'] == 'MANUAL' ? IdentityMode.manual : IdentityMode.didit,
+        isRequired: j['isRequired'] as bool?,
         fullName: j['fullName'] as String?,
         documentType: j['documentType'] as String?,
         documentLast4: j['documentLast4'] as String?,
@@ -60,9 +67,31 @@ class IdentityCheck {
         verifiedAt: DateTime.tryParse('${j['verifiedAt']}')?.toLocal(),
       );
 
-  /// false = the server has no Didit keys (dev): nothing to do, drivers aren't asked.
+  /// Didit's in-app check is offered.
   final bool isEnabled;
   final IdentityStatus status;
+
+  /// Drivers: Didit, or the documents by hand (the server's setting, or Didit can't be used right now).
+  final IdentityMode mode;
+
+  /// The driver must pass the identity step (servers before 0.1.2 only sent [isEnabled]).
+  final bool isRequired;
+
+  bool get isManual => mode == IdentityMode.manual;
+
+  /// The same check, done by hand (after Didit answered `IDENTITY_MANUAL`).
+  IdentityCheck asManual() => IdentityCheck(
+        isEnabled: isEnabled,
+        status: status,
+        mode: IdentityMode.manual,
+        isRequired: true,
+        fullName: fullName,
+        documentType: documentType,
+        documentLast4: documentLast4,
+        documents: documents,
+        reasons: reasons,
+        verifiedAt: verifiedAt,
+      );
 
   /// As read from the ID.
   final String? fullName;
@@ -200,6 +229,11 @@ class IdentityController extends AsyncNotifier<IdentityCheck> {
       return outcome == IdentitySdkOutcome.failed ? error : null;
     } on ApiException catch (e) {
       await refresh();
+      // Didit can't be used (no credits, down, or switched off): go on with the documents by hand.
+      if (e.code == 'IDENTITY_MANUAL') {
+        final check = state.value;
+        if (check != null && ref.mounted) state = AsyncData(check.asManual());
+      }
       return e.message;
     } catch (e) {
       return e is ApiException

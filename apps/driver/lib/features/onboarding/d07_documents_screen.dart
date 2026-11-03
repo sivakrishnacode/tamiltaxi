@@ -208,13 +208,24 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
 
     // 1. Vehicle and personal details: live, the driver exists once D-06 has saved; mock, once D-06 committed.
     final detailsDone = showcase || signup.detailsSaved || (live && loggedIn);
-    // 2. Identity check (Didit off in dev counts as nothing to do; live before D-06 it shows locked) and, once it
-    // is approved, the profile photo.
-    final hasIdentity = identity?.isEnabled ?? live;
+    // 2. Identity check (not asked = nothing to do; live before D-06 it shows locked) and, once it is approved, the
+    // profile photo. By hand (the server asks for it, Didit answered IDENTITY_MANUAL, or one is already uploaded):
+    // the licence, Aadhaar and selfie, each checked by an admin.
+    bool isIn(KycDocument d) =>
+        d.status == KycStatus.verified || d.status == KycStatus.underReview;
+    final idDocs = [
+      for (final type in identityUploadDocs)
+        allDocs.where((d) => d.type == type).firstOrNull ?? KycDocument(type: type, status: KycStatus.notUploaded),
+    ];
+    final hasIdentity = identity?.isRequired ?? live;
+    final isManualId = hasIdentity && ((identity?.isManual ?? false) || idDocs.any((d) => d.isUploaded));
     final identityApproved = identity?.isApproved ?? false;
-    final identityDone = !hasIdentity || (identity?.isSubmitted ?? false);
-    final identityError =
-        hasIdentity && identity?.status == IdentityStatus.declined;
+    final identityDone = !hasIdentity ||
+        identityApproved ||
+        (isManualId ? idDocs.every(isIn) : (identity?.isSubmitted ?? false));
+    final idErrors = isManualId ? idDocs.where((d) => d.status == KycStatus.rejected).length : 0;
+    final identityError = hasIdentity &&
+        (isManualId ? idErrors > 0 : identity?.status == IdentityStatus.declined);
     final needsPhoto = live && hasIdentity;
     final photoDone =
         !needsPhoto ||
@@ -228,21 +239,25 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         profile.photoPath == null &&
         !profile.hasPendingPhoto;
     // 3. Documents.
-    bool isIn(KycDocument d) =>
-        d.status == KycStatus.verified || d.status == KycStatus.underReview;
     final docsDone = docs.where(isIn).length;
     final docErrors = docs.where((d) => d.status == KycStatus.rejected).length;
 
-    final steps =
-        1 + (hasIdentity ? 1 : 0) + (needsPhoto ? 1 : 0) + docs.length;
+    // By hand the identity is three steps (one per document), with Didit one.
+    final idSteps = !hasIdentity ? 0 : (isManualId ? idDocs.length : 1);
+    final idDone = !hasIdentity
+        ? 0
+        : isManualId
+        ? (identityApproved ? idDocs.length : idDocs.where(isIn).length)
+        : (identityDone ? 1 : 0);
+    final steps = 1 + idSteps + (needsPhoto ? 1 : 0) + docs.length;
     // Steps after the details only count once they are open.
     final done = detailsDone
         ? 1 +
-              (hasIdentity && identityDone ? 1 : 0) +
+              idDone +
               (needsPhoto && photoDone && identityApproved ? 1 : 0) +
               docsDone
         : 0;
-    final errors = docErrors + (identityError ? 1 : 0) + (photoError ? 1 : 0);
+    final errors = docErrors + (isManualId ? idErrors : (identityError ? 1 : 0)) + (photoError ? 1 : 0);
     final allIn =
         detailsDone && identityDone && photoDone && docsDone == docs.length;
     if (allIn && errors == 0 && !showcase) {
@@ -264,12 +279,13 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         : allIn
         ? ('Under review', TtColors.warning, TtColors.navy900)
         : ('${steps - done} to do', TtColors.navy900, Colors.white);
-    final firstRejected = docs
+    final firstRejected = [...docs, if (isManualId) ...idDocs]
         .where((d) => d.status == KycStatus.rejected)
         .firstOrNull;
     final firstMissing = docs
         .where((d) => d.status == KycStatus.notUploaded)
         .firstOrNull;
+    final firstMissingId = idDocs.where((d) => d.status == KycStatus.notUploaded).firstOrNull;
     final (String next, VoidCallback? onNext) = !detailsDone
         ? ('Add your vehicle and details', () => context.push(Routes.workType))
         : firstRejected != null
@@ -277,7 +293,9 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
             'Re-upload your ${firstRejected.type.label}',
             () => _upload(firstRejected.type),
           )
-        : hasIdentity && !identityDone
+        : hasIdentity && !identityDone && isManualId && firstMissingId != null
+        ? ('Upload your ${firstMissingId.type.label.toLowerCase()}', () => _upload(firstMissingId.type))
+        : hasIdentity && !identityDone && !isManualId
         ? (
             'Verify your licence and Aadhaar',
             () async {
@@ -343,7 +361,16 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
                   ),
                   const SizedBox(height: TtSpacing.m),
                   if (hasIdentity) ...[
-                    if (detailsDone) IdentityCheckCard(showcase: showcase) else const _LockedRow(title: 'Licence, Aadhaar and selfie'),
+                    if (!detailsDone)
+                      const _LockedRow(title: 'Licence, Aadhaar and selfie')
+                    else if (isManualId) ...[
+                      // The identity check by hand: an admin checks each of the three.
+                      for (final (i, doc) in idDocs.indexed) ...[
+                        if (i > 0) const SizedBox(height: TtSpacing.m),
+                        _DocRow(doc: doc, readOnly: false, live: live, onUpload: () => _upload(doc.type)),
+                      ],
+                    ] else
+                      IdentityCheckCard(showcase: showcase),
                     const SizedBox(height: TtSpacing.m),
                     if (needsPhoto && detailsDone) ...[
                       const ProfilePhotoCard(),
@@ -411,10 +438,11 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         : (ref.watch(kycProvider).value ?? const <KycDocument>[]);
     final docs = [
       for (final d in allDocs)
-        if (driverUploadDocs.contains(d.type)) d,
+        if (isShownDoc(d)) d,
     ];
     final identity = showcase ? null : ref.watch(identityProvider).value;
-    final hasIdentity = identity?.isEnabled ?? showcase;
+    // Done by hand: the licence, Aadhaar and selfie are listed with the documents instead of the Didit card.
+    final hasIdentity = (identity?.isEnabled ?? showcase) && !docs.any((d) => identityUploadDocs.contains(d.type));
     final verified = docs.where((d) => d.status == KycStatus.verified).length;
     final steps = docs.length + (hasIdentity ? 1 : 0);
     final stepsVerified = verified + (identity?.isApproved == true ? 1 : 0);
@@ -706,6 +734,7 @@ class _PhotoTip extends StatelessWidget {
       KycDocType.vehicleRc => (Symbols.description_rounded, 'Registration certificate', 'TN 37 AB 4521'),
       KycDocType.insurance => (Symbols.shield_rounded, 'Policy page with dates', 'Valid till 12 Mar 2027'),
       KycDocType.policeVerification => (Symbols.local_police_rounded, 'From TN Police eServices', 'Verified by TN Police'),
+      KycDocType.selfie => (Symbols.face_rounded, 'Taken now with the front camera', 'Matched to your licence'),
     };
 
 class _DocRow extends StatelessWidget {

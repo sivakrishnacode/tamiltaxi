@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 
+import 'app_version.dart';
 import 'app.dart';
 import 'overlay/driver_overlay_app.dart';
 import 'overlay/offer_alerts.dart';
@@ -30,7 +31,7 @@ Future<void> main() async {
   // (no Google key in the app). A 401 sends the driver back to log in (see TtDriverApp).
   TtClock.useRealDate();
   final session = await ApiSession.load();
-  final api = ApiClient(baseUrl: kApiBaseUrl, session: session);
+  final api = ApiClient(baseUrl: kApiBaseUrl, session: session, appVersion: kDriverAppVersion);
   RoadRouter.backend = backendRouter(api);
   // Push notifications (FCM): requests reach the driver with the app in the background or closed.
   final push = await TtPush.create(api, app: PushApp.driver);

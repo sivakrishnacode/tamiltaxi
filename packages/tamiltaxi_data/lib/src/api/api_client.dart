@@ -104,9 +104,12 @@ class ApiSession {
 /// Network failures become [OfflineException] (screens already show the offline state for it); API errors become
 /// [ApiException] with the API's message. A 401 clears the session and fires [onUnauthorized].
 class ApiClient {
-  ApiClient({required this.baseUrl, required this.session, http.Client? client}) : _http = client ?? http.Client();
+  ApiClient({required this.baseUrl, required this.session, this.appVersion, http.Client? client}) : _http = client ?? http.Client();
 
   final String baseUrl;
+
+  /// Sent as `x-app-version` (driver app from 0.1.2): the server then knows the app can upload the identity documents.
+  final String? appVersion;
   final ApiSession session;
   final http.Client _http;
   final _unauthorized = StreamController<void>.broadcast();
@@ -150,6 +153,7 @@ class ApiClient {
         if (json) 'content-type': 'application/json',
         'accept': 'application/json',
         if (session.isLoggedIn) 'authorization': 'Bearer ${session.token}',
+        'x-app-version': ?appVersion,
       };
 
   Future<dynamic> _send(String method, String path, {Map<String, Object?>? query, Object? body, required bool canRetry}) {

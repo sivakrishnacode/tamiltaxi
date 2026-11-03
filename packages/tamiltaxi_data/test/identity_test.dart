@@ -4,13 +4,18 @@ import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 
 class _FakeRepo implements IdentityRepository {
   int syncs = 0;
+  ApiException? sessionError;
   IdentityCheck next = const IdentityCheck(isEnabled: true, status: IdentityStatus.approved, documentLast4: '2345');
 
   @override
   Future<IdentityCheck> status() async => const IdentityCheck(isEnabled: true, status: IdentityStatus.notStarted);
 
   @override
-  Future<String> startSession() async => 'tok';
+  Future<String> startSession() async {
+    final e = sessionError;
+    if (e != null) throw e;
+    return 'tok';
+  }
 
   @override
   Future<IdentityCheck> sync() async {
@@ -67,5 +72,24 @@ void main() {
     addTearDown(container.dispose);
     await container.read(identityProvider.future);
     expect(await container.read(identityProvider.notifier).verify(), 'Allow camera access');
+  });
+
+  test('reads the mode and whether the check is required', () {
+    final manual = IdentityCheck.fromJson({'isEnabled': false, 'mode': 'MANUAL', 'isRequired': true, 'status': 'NOT_STARTED'});
+    expect((manual.isManual, manual.isRequired), (true, true));
+    // An older server sends only isEnabled.
+    final old = IdentityCheck.fromJson({'isEnabled': true, 'status': 'NOT_STARTED'});
+    expect((old.isManual, old.isRequired), (false, true));
+  });
+
+  test('Didit unavailable (IDENTITY_MANUAL) switches to the documents by hand', () async {
+    final repo = _FakeRepo()
+      ..sessionError = const ApiException(503, "The automatic check isn't available right now", code: 'IDENTITY_MANUAL');
+    final container = ProviderContainer(overrides: [identityRepositoryProvider.overrideWithValue(repo)]);
+    addTearDown(container.dispose);
+    await container.read(identityProvider.future);
+    expect(await container.read(identityProvider.notifier).verify(), "The automatic check isn't available right now");
+    expect(container.read(identityProvider).value?.isManual, true);
+    expect(repo.syncs, 0);
   });
 }
