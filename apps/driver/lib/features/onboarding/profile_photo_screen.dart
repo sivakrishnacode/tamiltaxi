@@ -12,8 +12,8 @@ import '../../state/live_helpers.dart';
 import 'widgets/signup_widgets.dart';
 
 /// Profile photo riders see (Account › Documents). Tips → front camera → a preview of the rider's driver card
-/// ("How riders will see you") with Retake / Use this photo. Nothing is sent until the driver confirms; the API
-/// then matches it to the verified selfie from the identity check.
+/// ("How riders will see you") with Retake / Use this photo. Nothing is sent until the driver confirms; an admin
+/// then approves it (Drivers › Approvals › Photos) and the current photo stays until then.
 class ProfilePhotoScreen extends ConsumerStatefulWidget {
   const ProfilePhotoScreen({super.key});
 

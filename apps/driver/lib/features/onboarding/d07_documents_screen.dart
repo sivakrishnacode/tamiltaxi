@@ -227,9 +227,9 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
     final identityError = hasIdentity &&
         (isManualId ? idErrors > 0 : identity?.status == IdentityStatus.declined);
     final needsPhoto = live && hasIdentity;
+    // The photo can be taken any time (an admin approves each), not only after the identity check.
     final photoDone =
         !needsPhoto ||
-        !identityApproved ||
         profile?.photoPath != null ||
         (profile?.hasPendingPhoto ?? false);
     final photoError =
@@ -254,7 +254,7 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
     final done = detailsDone
         ? 1 +
               idDone +
-              (needsPhoto && photoDone && identityApproved ? 1 : 0) +
+              (needsPhoto && photoDone ? 1 : 0) +
               docsDone
         : 0;
     final errors = docErrors + (isManualId ? idErrors : (identityError ? 1 : 0)) + (photoError ? 1 : 0);
@@ -467,10 +467,11 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
                   if (hasIdentity) ...[
                     IdentityCheckCard(showcase: showcase),
                     const SizedBox(height: TtSpacing.l),
-                    if (!showcase) ...[
-                      const ProfilePhotoCard(),
-                      const SizedBox(height: TtSpacing.l),
-                    ],
+                  ],
+                  // Shown whenever the identity step applies (by hand too); hidden when it isn't asked.
+                  if (!showcase) ...[
+                    const ProfilePhotoCard(),
+                    const SizedBox(height: TtSpacing.l),
                   ],
                   for (final doc in docs) ...[
                     _DocRow(

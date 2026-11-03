@@ -8,8 +8,8 @@ import '../../../router/routes.dart';
 import '../../../state/driver_account.dart';
 import 'signup_widgets.dart';
 
-/// D-07 profile photo riders see. Available once the identity check is approved (the photo is matched to the
-/// verified selfie). Shows the photo, "being checked", or the admin's reason, with Take / Retake.
+/// D-07 profile photo riders see, for every driver who has the identity step (going online needs it). Each new photo
+/// waits for an admin. Shows the photo, "being checked", or the admin's reason, with Take / Retake.
 class ProfilePhotoCard extends ConsumerWidget {
   const ProfilePhotoCard({super.key});
 
@@ -18,13 +18,10 @@ class ProfilePhotoCard extends ConsumerWidget {
     final t = context.type;
     final profile = ref.watch(driverProfileProvider).value;
     final identity = ref.watch(identityProvider).value;
-    if (profile == null || identity == null || !identity.isEnabled) return const SizedBox.shrink();
-    final isLocked = !identity.isApproved;
+    if (profile == null || identity == null || !identity.isRequired) return const SizedBox.shrink();
     final hasPhoto = profile.photoPath != null;
     final rejected = profile.photoRejectReason != null && !hasPhoto && !profile.hasPendingPhoto;
-    final subtitle = isLocked
-        ? 'Available after your licence, Aadhaar and selfie are verified'
-        : profile.hasPendingPhoto
+    final subtitle = profile.hasPendingPhoto
             ? "We're checking your new photo"
             : rejected
                 ? profile.photoRejectReason!
@@ -34,20 +31,20 @@ class ProfilePhotoCard extends ConsumerWidget {
     final Widget trailing = profile.hasPendingPhoto
         ? const IconPill(label: 'In review', icon: Symbols.schedule_rounded, bg: TtColors.warningTint, fg: TtColors.warningText)
         : Material(
-            color: isLocked ? TtColors.inputBg : TtColors.coral600,
+            color: TtColors.coral600,
             shape: const StadiumBorder(),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              onTap: isLocked ? null : () => context.push(Routes.profilePhoto),
+              onTap: () => context.push(Routes.profilePhoto),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Symbols.photo_camera_rounded, color: isLocked ? TtColors.navy500 : Colors.white, size: 20),
+                    const Icon(Symbols.photo_camera_rounded, color: Colors.white, size: 20),
                     const SizedBox(width: 6),
                     Text(hasPhoto || rejected ? 'Retake' : 'Take photo',
-                        style: t.button.copyWith(color: isLocked ? TtColors.navy500 : Colors.white)),
+                        style: t.button.copyWith(color: Colors.white)),
                   ]),
                 ),
               ),
