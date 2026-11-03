@@ -1,5 +1,7 @@
 /// Light Google map style matching the Tamil Taxi design: land #EEF0F3, white roads, water #D5E5F1,
-/// parks #DDEBD8, muted labels, no POI / transit clutter.
+/// parks #DDEBD8, muted labels, no POI / transit clutter. Built-up areas and buildings (`landscape.man_made`) are not
+/// drawn: on Android they came out dark grey at mid zoom (about 12–15, where Google draws towns as areas), though
+/// styled #EAECF0, so a route across Coimbatore showed dark patches (3 Nov 2026).
 const ttGoogleMapStyle = '''
 [
   {"elementType": "geometry", "stylers": [{"color": "#eef0f3"}]},
@@ -9,7 +11,7 @@ const ttGoogleMapStyle = '''
   {"featureType": "administrative", "elementType": "geometry", "stylers": [{"visibility": "off"}]},
   {"featureType": "administrative.land_parcel", "stylers": [{"visibility": "off"}]},
   {"featureType": "administrative.neighborhood", "elementType": "labels.text.fill", "stylers": [{"color": "#94a3b8"}]},
-  {"featureType": "landscape.man_made", "elementType": "geometry", "stylers": [{"color": "#eaecf0"}]},
+  {"featureType": "landscape.man_made", "elementType": "geometry", "stylers": [{"visibility": "off"}]},
   {"featureType": "poi", "stylers": [{"visibility": "off"}]},
   {"featureType": "poi.park", "stylers": [{"visibility": "on"}]},
   {"featureType": "poi.park", "elementType": "geometry", "stylers": [{"color": "#ddebd8"}]},
