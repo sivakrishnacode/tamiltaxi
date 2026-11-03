@@ -119,7 +119,7 @@ export function SpeedsView({
   minTrips: number;
   filters: { hour?: number; sort: HexStatsSort; used: boolean };
   /** Active cities, for the map's first view before a hex is picked. */
-  cities: readonly { centerLat: number; centerLng: number }[];
+  cities: readonly { centerLat: number; centerLng: number; placeId: string | null }[];
 }) {
   const [selected, setSelected] = useState<HexStatRow | null>(stats.top[0] ?? null);
   const [mapMode, setMapMode] = useState<"pair" | "areas">("pair");
@@ -417,7 +417,7 @@ export function SpeedsView({
               </button>
             ))}
           </nav>
-          <TtMap center={selected ? cellCentre(selected.fromCell) : cityView(cities).center} zoom={selected ? 12 : cityView(cities).zoom} className="h-[420px] border">
+          <TtMap center={selected ? cellCentre(selected.fromCell) : cityView(cities).center} zoom={selected ? 12 : cityView(cities).zoom} className="h-[420px] border" boundaries={cities.map((c) => c.placeId)}>
             {mapMode === "pair" && selected && (
               <>
                 <HexLayer cells={[selected.fromCell]} style={{ color: "#D84315", fillColor: "#F4511E", fillOpacity: 0.3, weight: 2 }} zIndex={2} />

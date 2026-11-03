@@ -15,7 +15,7 @@ export default async function LivePage() {
       <LiveView
         initial={live}
         initialDemand={demand}
-        cities={cities.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name, centerLat: c.centerLat, centerLng: c.centerLng }))}
+        cities={cities.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name, centerLat: c.centerLat, centerLng: c.centerLng, placeId: c.placeId }))}
       />
     </>
   );

@@ -264,6 +264,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
         ]}
         warnCells={outside}
         zoneLabels={labels}
+        boundaries={[city.placeId]}
         status={
           draft ? (
             <span className="tabular-nums">

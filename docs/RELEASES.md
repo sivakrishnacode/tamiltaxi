@@ -135,7 +135,13 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `8b0f6c8` (admin) and `56f879c` (API).
+API and admin. Migration `20261102120000_city_place_id` (adds `City.placeId`).
+
+- City boundary: the admin maps (city page, Heatmap, Live map, Dashboard, Travel speeds) outline each city's limits
+  by default with Google's own boundary, like Google Maps, with a "City boundary" switch in the editors' Layers menu.
+  The API looks up each city's Google place ID (when a city is made or renamed, and at start-up for the others). The
+  outline appears once the admin is built with a Map ID (`NEXT_PUBLIC_GOOGLE_MAP_ID`); until then the maps look as
+  before.
 
 ### 2 Nov 2026 (third) · admin at `8b0f6c8`
 

@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { HeatOverlay } from "@/components/map/google/heat-overlay";
 import { HexLayer, HexOutline, type HexLayerDef, type OutlineStyle } from "@/components/map/google/hex-layer";
+import { GOOGLE_MAP_ID } from "@/components/map/google/style";
 import { PlaceSearch, type FoundPlace } from "@/components/map/google/place-search";
 import { TtMap, type MapType } from "@/components/map/google/tamiltaxi-map";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function HexWorkbench({
   groups,
   warnCells = [],
   zoneLabels = [],
+  boundaries = [],
   status,
 }: {
   center: { lat: number; lng: number };
@@ -94,11 +96,13 @@ export function HexWorkbench({
   /** Cells to outline in amber (e.g. zone cells outside the service area). */
   warnCells?: readonly string[];
   zoneLabels?: readonly ZoneLabel[];
+  /** Google place IDs of the cities to outline (their limits; shown by default, a Layers switch hides them). */
+  boundaries?: readonly (string | null)[];
   /** Extra text on the right of the toolbar (counts). */
   status?: React.ReactNode;
 }) {
   const [brush, setBrush] = useState(0);
-  const [visible, setVisible] = useState({ service: true, zones: true, labels: true, grid: false });
+  const [visible, setVisible] = useState({ service: true, zones: true, labels: true, grid: false, boundary: true });
   const [mapType, setMapType] = useState<MapType>("roadmap");
   const [heat, setHeat] = useState<HeatmapMetric | "off">("off");
   const [isFullscreen, setFullscreen] = useState(false);
@@ -245,6 +249,15 @@ export function HexWorkbench({
                   onSelect={(e) => e.preventDefault()}
                 >
                   Labels (zones)
+                </DropdownMenuCheckboxItem>
+              )}
+              {GOOGLE_MAP_ID && boundaries.some(Boolean) && (
+                <DropdownMenuCheckboxItem
+                  checked={visible.boundary}
+                  onCheckedChange={(v) => setVisible((s) => ({ ...s, boundary: !!v }))}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  City boundary
                 </DropdownMenuCheckboxItem>
               )}
               <DropdownMenuSeparator />
@@ -419,6 +432,7 @@ export function HexWorkbench({
         mapType={mapType}
         className={cn("rounded-none", isFullscreen ? "flex-1" : "h-[calc(100vh-22rem)] min-h-[600px]")}
         overlay={overlay}
+        boundaries={visible.boundary ? boundaries : undefined}
       >
         {heat !== "off" && <HeatOverlay metric={heat} />}
         {groups.flatMap((g) =>

@@ -99,6 +99,7 @@ services:
       dockerfile: apps/admin/Dockerfile
       args:
         NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${GOOGLE_MAPS_BROWSER_KEY:-}
+        NEXT_PUBLIC_GOOGLE_MAP_ID: ${GOOGLE_MAP_ID:-}
     image: tamiltaxi-admin:local
     restart: unless-stopped
     depends_on:

@@ -16,6 +16,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Baked into the client bundle at build time: Google Maps JavaScript API browser key (restrict by HTTP referrer).
 ARG NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY=
 ENV NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY}
+ARG NEXT_PUBLIC_GOOGLE_MAP_ID=
+ENV NEXT_PUBLIC_GOOGLE_MAP_ID=${NEXT_PUBLIC_GOOGLE_MAP_ID}
 COPY apps/admin apps/admin
 WORKDIR /repo/apps/admin
 RUN npx next build

@@ -258,7 +258,7 @@ export default async function DashboardPage() {
             </CardAction>
           </CardHeader>
           <div className="h-64">
-            <MiniLiveMap data={live} center={mapCenter} />
+            <MiniLiveMap data={live} center={mapCenter} boundaries={activeCities.map((c) => c.placeId)} />
           </div>
         </Card>
       )}

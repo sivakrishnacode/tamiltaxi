@@ -115,6 +115,7 @@ export function LiveMap({
   demand = null,
   onDemandHover,
   overlay,
+  boundaries,
 }: {
   data: LiveData;
   area?: ServiceArea | null;
@@ -128,6 +129,8 @@ export function LiveMap({
   demand?: readonly DemandCell[] | null;
   onDemandHover?: (h: DemandHover | null) => void;
   overlay?: React.ReactNode;
+  /** Google place IDs of the cities whose limits to outline. */
+  boundaries?: readonly (string | null)[];
 }) {
   return (
     <TtMap
@@ -136,6 +139,7 @@ export function LiveMap({
       className={className}
       options={compact ? { gestureHandling: "cooperative", zoomControl: false } : undefined}
       overlay={overlay}
+      boundaries={boundaries}
     >
       {demand && <DemandLayer cells={demand} onHover={onDemandHover} />}
       {heat && <HeatOverlay metric={heat} opacity={0.45} />}

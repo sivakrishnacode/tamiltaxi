@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { GOOGLE_MAPS_KEY, NEIGHBOURHOOD_MIN_ZOOM, TT_MAP_STYLES, TT_MAP_STYLES_ZOOMED_OUT } from "./style";
+import { CityBoundaries } from "./city-boundaries";
+import { GOOGLE_MAP_ID, GOOGLE_MAPS_KEY, NEIGHBOURHOOD_MIN_ZOOM, TT_MAP_STYLES, TT_MAP_STYLES_ZOOMED_OUT } from "./style";
 
 export type MapType = "roadmap" | "hybrid";
 
@@ -84,7 +85,8 @@ function StatusOverlay() {
 
 /**
  * Google map with Tamil Taxi styling. Children run inside the map context (useMap); [overlay] is absolutely positioned
- * UI on top of the map (search box, toolbars).
+ * UI on top of the map (search box, toolbars). [boundaries]: Google place IDs of the cities whose limits to outline
+ * (needs GOOGLE_MAP_ID; cities without a place ID are skipped).
  */
 export function TtMap({
   center,
@@ -94,6 +96,7 @@ export function TtMap({
   overlay,
   children,
   options,
+  boundaries,
 }: {
   center: google.maps.LatLngLiteral;
   zoom?: number;
@@ -102,7 +105,9 @@ export function TtMap({
   overlay?: React.ReactNode;
   children?: React.ReactNode;
   options?: Partial<MapProps>;
+  boundaries?: readonly (string | null)[];
 }) {
+  const placeIds = (boundaries ?? []).filter((id): id is string => !!id);
   return (
     <div className={cn("relative overflow-hidden rounded-xl bg-[#EEF0F3]", className)}>
       {/* English labels. Note: Google still adds local-script names on India tiles for every language/region
@@ -114,14 +119,16 @@ export function TtMap({
             defaultCenter={center}
             defaultZoom={zoom}
             mapTypeId={mapType}
-            styles={TT_MAP_STYLES_ZOOMED_OUT}
+            // A map ID brings its own style from Google Cloud (and ignores `styles`).
+            {...(GOOGLE_MAP_ID ? { mapId: GOOGLE_MAP_ID } : { styles: TT_MAP_STYLES_ZOOMED_OUT })}
             gestureHandling="greedy"
             clickableIcons={false}
             disableDefaultUI
             zoomControl
             {...options}
           >
-            <ZoomStyles />
+            {!GOOGLE_MAP_ID && <ZoomStyles />}
+            {GOOGLE_MAP_ID && placeIds.length > 0 && <CityBoundaries placeIds={placeIds} />}
             {children}
           </Map>
         )}

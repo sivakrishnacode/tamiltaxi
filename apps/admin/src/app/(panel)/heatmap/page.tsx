@@ -31,7 +31,7 @@ export default async function HeatmapPage({ searchParams }: PageProps<"/heatmap"
         initialPreset={when}
         cities={cities
           .filter((c) => c.isActive)
-          .map((c) => ({ id: c.id, name: c.name, h3Resolution: c.h3Resolution, centerLat: c.centerLat, centerLng: c.centerLng, serviceCells: c.serviceCells }))}
+          .map((c) => ({ id: c.id, name: c.name, h3Resolution: c.h3Resolution, centerLat: c.centerLat, centerLng: c.centerLng, serviceCells: c.serviceCells, placeId: c.placeId }))}
       />
     </>
   );

@@ -52,6 +52,7 @@ export function ServiceAreaEditor({ city }: { city: CityDetail }) {
         targetLabel="service area"
         groups={[{ key: "zones", label: "Zones (outlines)", layers: zoneLayers }]}
         zoneLabels={labels}
+        boundaries={[city.placeId]}
         status={
           <span className="tabular-nums">
             <b className="text-navy-900">{formatCount(ed.cells.length)}</b> hexagons · ≈

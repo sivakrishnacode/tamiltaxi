@@ -45,6 +45,7 @@ export interface HeatCity {
   readonly centerLat: number;
   readonly centerLng: number;
   readonly serviceCells: string[];
+  readonly placeId: string | null;
 }
 
 type Preset = "today" | "7d" | "30d" | "custom";
@@ -311,6 +312,7 @@ export function HeatmapView({
           zoom={cityView(cities).zoom}
           mapType={mapType}
           className="h-[calc(100vh-19rem)] min-h-[560px] border"
+          boundaries={cities.map((c) => c.placeId)}
           overlay={
             <>
               <div className="absolute top-2 right-2 z-10 flex gap-1.5">

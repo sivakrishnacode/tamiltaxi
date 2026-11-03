@@ -36,7 +36,7 @@ export function LiveView({
 }: {
   initial: LiveData;
   initialDemand: DemandSnapshot | null;
-  cities: { id: string; name: string; centerLat: number; centerLng: number }[];
+  cities: { id: string; name: string; centerLat: number; centerLng: number; placeId: string | null }[];
 }) {
   const [data, setData] = useState<LiveData>(initial);
   const [area, setArea] = useState<ServiceArea | null>(null);
@@ -173,6 +173,7 @@ export function LiveView({
             heat={heat === "off" ? null : heat}
             demand={showDemand ? (demand?.cells ?? []) : null}
             onDemandHover={setDemandHover}
+            boundaries={cities.map((c) => c.placeId)}
             className="h-full rounded-none"
             overlay={
               demandHover && (

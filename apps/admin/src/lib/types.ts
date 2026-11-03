@@ -799,6 +799,8 @@ export interface City {
   readonly centerLng: number;
   readonly h3Resolution: number;
   readonly serviceCells: string[];
+  /** Google place ID of the city (its locality), for the maps' city boundary; null when Google has none. */
+  readonly placeId: string | null;
   readonly isActive: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;

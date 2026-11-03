@@ -27,3 +27,10 @@ export const TT_MAP_STYLES_ZOOMED_OUT: google.maps.MapTypeStyle[] = [
 export const NEIGHBOURHOOD_MIN_ZOOM = 14;
 
 export const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
+
+/**
+ * Map ID (a JavaScript vector map in the browser key's Google Cloud project). With one, the map's look comes from the
+ * map style in Google Cloud (TT_MAP_STYLES imported there) and city boundaries can be drawn; without one, the maps use
+ * TT_MAP_STYLES as before and show no boundary.
+ */
+export const GOOGLE_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID ?? "";
