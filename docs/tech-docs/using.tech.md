@@ -1148,7 +1148,10 @@ loaded, or if it can't be made, it falls back to a Google Maps link to the vehic
     `visible` takes no keyzooms, so neighbourhood names follow Google's default at every zoom), Apply; switch on the **Locality** feature layer; save and
     publish. (2) Map Management › Create map ID: type JavaScript, **Vector**; attach the style. (3) Put the ID in
     `NEXT_PUBLIC_GOOGLE_MAP_ID` and rebuild the admin. With a Map ID the browser uses the Cloud style, not
-    `TT_MAP_STYLES`: change both files together, then paste the JSON again in Google Cloud.
+    `TT_MAP_STYLES`: change both files together, then paste the JSON again in Google Cloud. Done 3 Nov 2026: style
+    `tamiltaxi-ui-map-layer`, Map ID `tamiltaxi-admin` (the ID itself is in `apps/admin/.env.local` and the server's
+    `.env`, both git-ignored). Without WebGL a browser falls back to raster tiles: Google's default look, no boundary.
+    Automatic fits (`FitCells`) stop at zoom 14 (vector maps would otherwise zoom one busy hexagon to street level).
   - Zones tab layout (2 Nov 2026): the zone list on the left (360 px, 400 px on very wide screens), the map on the
     right; on phones the list comes after the map. The list column is exactly the map's height and only the list
     scrolls (thin scrollbar that stays visible, a fade at the bottom while more zones are below); the page doesn't.
