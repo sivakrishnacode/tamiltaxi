@@ -29,7 +29,7 @@ export type VehicleKind =
   | "PICKUP"
   | "TRUCK";
 export type DriverStatus = "PENDING" | "APPROVED" | "REJECTED" | "ON_HOLD";
-export type KycDocType = "DRIVING_LICENCE" | "AADHAAR" | "VEHICLE_RC" | "INSURANCE" | "POLICE_VERIFICATION";
+export type KycDocType = "DRIVING_LICENCE" | "AADHAAR" | "VEHICLE_RC" | "INSURANCE" | "POLICE_VERIFICATION" | "SELFIE";
 export type KycStatus = "NOT_UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
 /** Didit identity check (drivers: licence + Aadhaar + selfie; riders: optional, any ID). */
 export type IdentityStatus = "NOT_STARTED" | "IN_PROGRESS" | "IN_REVIEW" | "APPROVED" | "DECLINED";
@@ -1160,6 +1160,8 @@ export interface Settings {
   readonly driverAutoApprove: boolean;
   /** Drivers take a daily selfie (matched to their verified face) before going online. */
   readonly dailySelfieCheckEnabled: boolean;
+  /** Identity checked by hand: drivers upload licence, Aadhaar and a selfie for an admin (instead of Didit). */
+  readonly manualIdentityCheck: boolean;
 }
 
 /** Settings as returned by the API: the known keys plus anything newer (rendered in "Other"). */

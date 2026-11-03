@@ -61,6 +61,7 @@ const RULES: Record<string, (v: SettingValue) => string | null> = {
   driverPlansEnabled: (v) => (typeof v === "boolean" ? null : "Paid driver plans must be on or off"),
   driverAutoApprove: (v) => (typeof v === "boolean" ? null : "Auto-approval must be on or off"),
   dailySelfieCheckEnabled: (v) => (typeof v === "boolean" ? null : "The daily selfie check must be on or off"),
+  manualIdentityCheck: (v) => (typeof v === "boolean" ? null : "The identity check by hand must be on or off"),
   sosAdminAlert: (v) => (typeof v === "boolean" ? null : "SOS push must be on or off"),
   stopRadiusM: (v) => (inRange(v, 10, 200, true) ? null : "Stop radius must be 10–200 whole metres"),
   stopMinutes: (v) => (inRange(v, 1, 60, true) ? null : "Stop time must be 1–60 whole minutes"),

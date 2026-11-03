@@ -137,6 +137,7 @@ const DOC_LABELS: Record<KycDocType, string> = {
   VEHICLE_RC: "Vehicle RC",
   INSURANCE: "Insurance",
   POLICE_VERIFICATION: "Police verification",
+  SELFIE: "Selfie",
 };
 
 export function docLabel(type: KycDocType): string {
