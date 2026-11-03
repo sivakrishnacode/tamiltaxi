@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { ApprovalChecks, missingChecks } from "@/components/common/approval-checks";
 import { PlateBadge, StatusBadge } from "@/components/common/status";
+import { DocumentReviewer } from "@/components/people/document-reviewer";
 import { MessageButton } from "@/components/people/message-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import type { ApprovalItem, ApprovalStage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 import { approveDrivers, setDriverStatus } from "../../actions";
-import { DocumentActions, PhotoReviewActions } from "../[id]/driver-actions";
+import { PhotoReviewActions } from "../[id]/driver-actions";
 
 /** Didit decides "In review" identity sessions in its own console; the result comes back by webhook. */
 const DIDIT_CONSOLE = "https://business.didit.me";
@@ -134,25 +135,29 @@ export function ApprovalList({ stage, items, waiting }: { stage: ApprovalStage; 
                   {isPending && busyId === d.id ? <Loader2Icon className="animate-spin" /> : <CheckIcon />} Approve
                 </Button>
               )}
-              {stage === "documents" &&
-                d.documents
-                  .filter((doc) => doc.status === "UNDER_REVIEW")
-                  .map((doc) => (
-                    <div key={doc.id} className="flex flex-wrap items-center gap-2 lg:justify-end">
-                      <span className="text-sm font-medium text-navy-900">{docLabel(doc.type)}</span>
-                      {doc.fileUrl && (
-                        <a
-                          href={docFileHref(doc.fileUrl)}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="inline-flex items-center gap-0.5 text-xs text-coral-600 hover:underline"
-                        >
-                          View <ExternalLinkIcon className="size-3" />
-                        </a>
-                      )}
-                      <DocumentActions driverId={d.id} type={doc.type} label={docLabel(doc.type)} status={doc.status} expiresOn={doc.expiresOn} />
-                    </div>
-                  ))}
+              {stage === "documents" && (
+                <div className="flex flex-col gap-2 lg:items-end">
+                  <p className="text-xs text-muted-foreground lg:text-right">
+                    To review:{" "}
+                    {[
+                      ...d.documents.filter((doc) => doc.status === "UNDER_REVIEW").map((doc) => docLabel(doc.type)),
+                      ...(d.pendingPhotoFile ? ["Profile photo"] : []),
+                    ].join(", ")}
+                  </p>
+                  <DocumentReviewer
+                    driver={{
+                      id: d.id,
+                      name: displayName(d.user),
+                      phone: d.user.phone,
+                      vehicle: `${vehicleLabel(d.vehicleKind)} · ${d.vehicleModel}`,
+                      plate: d.plate,
+                      photoFile: d.photoFile,
+                      pendingPhotoFile: d.pendingPhotoFile,
+                    }}
+                    docs={d.documents}
+                  />
+                </div>
+              )}
               {stage === "identity" && (
                 <Button asChild size="sm" variant="outline">
                   <a href={DIDIT_CONSOLE} target="_blank" rel="noreferrer noopener">
@@ -183,7 +188,7 @@ export function ApprovalList({ stage, items, waiting }: { stage: ApprovalStage; 
                     <img src={docFileHref(d.pendingPhotoFile)} alt="New photo" className="size-14 rounded-lg border object-cover" />
                   </a>
                   <span className="text-xs text-muted-foreground">
-                    {d.photoMatchScore != null ? `Face match ${d.photoMatchScore.toFixed(0)}%` : "Face match not run"}
+                    {d.photoFile ? "Replaces the current photo" : "First photo"}
                   </span>
                   <PhotoReviewActions driverId={d.id} />
                 </div>

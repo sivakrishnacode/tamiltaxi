@@ -25,12 +25,12 @@ const STAGES: Record<ApprovalStage, { label: string; about: string; none: string
   },
   documents: {
     label: "Documents to review",
-    about: "RC or insurance uploads waiting for you. Verify or reject them here.",
+    about: "Licence, Aadhaar, RC and insurance uploads (and new profile photos) waiting for you. Review opens each one large, with the driver's photo beside the licence and Aadhaar; the driver is told only about a rejection or once everything is approved.",
     none: "No uploads are waiting for review.",
   },
   identity: {
     label: "Identity in review",
-    about: "Didit couldn't decide the identity check on its own. Decide it in the Didit console; the result arrives by webhook.",
+    about: "Didit couldn't decide the identity check on its own. Decide it in the Didit console; the result arrives by webhook. Checks by hand are under Documents to review.",
     none: "No identity checks are waiting in Didit.",
   },
   driver: {
@@ -40,7 +40,7 @@ const STAGES: Record<ApprovalStage, { label: string; about: string; none: string
   },
   photos: {
     label: "Photos to review",
-    about: "Profile photos whose face match with the verified selfie was unclear.",
+    about: "New profile photos: each one needs your approval before riders see it. By hand it is also the face for the identity check.",
     none: "No photos are waiting for review.",
   },
 };

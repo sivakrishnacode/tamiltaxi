@@ -12,7 +12,8 @@ import { PersonMenu } from "@/components/people/person-menu";
 import { PersonRecord } from "@/components/people/person-record";
 import { PersonTabs } from "@/components/people/person-tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DocumentReviewer } from "@/components/people/document-reviewer";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { can } from "@/lib/access";
@@ -31,7 +32,7 @@ import {
   shortId,
   vehicleLabel,
 } from "@/lib/format";
-import { GOODS_TRUCKS, KYC_DOC_TYPES, type GoodsTruck, type KycDocument } from "@/lib/types";
+import { GOODS_TRUCKS, KYC_DOC_TYPES, REQUIRED_DOC_TYPES, type GoodsTruck, type KycDocument } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 import { LiftBlockButton } from "./block-actions";
@@ -54,19 +55,22 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
   const identity = d.user.identityChecks?.[0] ?? null;
   const kyc = kycProgress(d.documents, d.user.identityStatus ?? "NOT_STARTED");
   const name = displayName(d.user);
-  // Always list every uploaded document (RC, insurance), even if the API has no row for one yet.
-  const docs: KycDocument[] = KYC_DOC_TYPES.map(
-    (type) =>
-      d.documents.find((doc) => doc.type === type) ?? {
-        id: type,
-        driverId: d.id,
-        type,
-        status: "NOT_UPLOADED",
-        rejectReason: null,
-        fileUrl: null,
-        updatedAt: d.createdAt,
-      },
-  );
+  // RC and insurance always (even before the API has a row); the licence and Aadhaar once uploaded (check by hand).
+  const docs: KycDocument[] = [
+    ...REQUIRED_DOC_TYPES.map(
+      (type) =>
+        d.documents.find((doc) => doc.type === type) ?? {
+          id: type,
+          driverId: d.id,
+          type,
+          status: "NOT_UPLOADED" as const,
+          rejectReason: null,
+          fileUrl: null,
+          updatedAt: d.createdAt,
+        },
+    ),
+    ...d.documents.filter((doc) => KYC_DOC_TYPES.includes(doc.type) && !REQUIRED_DOC_TYPES.includes(doc.type)),
+  ];
   const payments = d.subscriptions.flatMap((s) => (s.payments ?? []).map((p) => ({ ...p, plan: s.plan })));
   const rate = d.cancelRate;
   const blocks = d.blocks ?? [];
@@ -342,28 +346,24 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
         <CardHeader className="border-b">
           <CardTitle className="font-semibold">Profile photo</CardTitle>
           <CardDescription>
-            Riders see the approved photo. The driver takes it in the app; it is matched to the live selfie from the
-            identity check. A clear match goes live at once; an unclear one waits here.
+            Riders see the approved photo. The driver takes it in the app and you approve each new one; it is also the
+            face for the identity check by hand (compare it with the licence and Aadhaar).
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-start gap-6">
             <PhotoTile label="Shown to riders" file={d.photoFile} note={d.photoUpdatedAt ? `Since ${formatDateTime(d.photoUpdatedAt)}` : "None yet"} />
-            <PhotoTile label="Verified selfie (Didit)" file={d.selfieFile} note="Reference face, never shown to riders" />
+            <PhotoTile label="Reference face" file={d.selfieFile} note="Didit's selfie, or the approved photo; for the daily selfie" />
             {d.pendingPhotoFile && (
               <div className="flex flex-col gap-3">
-                <PhotoTile
-                  label="Waiting for review"
-                  file={d.pendingPhotoFile}
-                  note={d.photoMatchScore != null ? `Face match ${d.photoMatchScore.toFixed(0)}%` : "Face match not run"}
-                />
+                <PhotoTile label="Waiting for review" file={d.pendingPhotoFile} note={d.photoFile ? "Replaces the current photo" : "First photo"} />
                 <PhotoReviewActions driverId={d.id} />
               </div>
             )}
           </div>
           {d.selfieFile && (
             <p className="mt-3 text-xs text-muted-foreground">
-              Daily selfie check (matched to the verified selfie before going online):{" "}
+              Daily selfie check (matched to the reference face before going online):{" "}
               {d.selfieCheckedAt ? `last passed ${formatDateTime(d.selfieCheckedAt)}` : "not taken yet"}
             </p>
           )}
@@ -377,9 +377,25 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
         <CardHeader className="border-b">
           <CardTitle className="font-semibold">KYC documents</CardTitle>
           <CardDescription>
-            {kyc.verified} of {kyc.total} verified (identity check included). RC and insurance verified plus an approved
-            identity check approves the driver; any rejection marks the driver rejected.
+            {kyc.verified} of {kyc.total} verified (identity check included). RC and insurance verified plus the identity
+            check (Didit, or by hand: the licence and Aadhaar verified and the profile photo approved) approves the driver;
+            any rejection marks the driver rejected. The driver is told only about a rejection, or once all is approved.
           </CardDescription>
+          <CardAction>
+            <DocumentReviewer
+              driver={{
+                id: d.id,
+                name,
+                phone: d.user.phone,
+                vehicle: `${vehicleLabel(d.vehicleKind)} · ${d.vehicleModel}`,
+                plate: d.plate,
+                photoFile: d.photoFile ?? null,
+                pendingPhotoFile: d.pendingPhotoFile ?? null,
+              }}
+              docs={docs}
+              label="Review documents"
+            />
+          </CardAction>
         </CardHeader>
         <ul className="divide-y">
           {docs.map((doc) => (

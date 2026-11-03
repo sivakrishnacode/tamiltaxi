@@ -109,11 +109,11 @@ const GROUPS: readonly Group[] = [
   {
     group: "Driver approval",
     description:
-      "Every driver uploads RC + insurance (verified in Drivers › Approvals or Documents) and passes the identity check: Didit's automatic check, or, by hand, their driving licence, Aadhaar and a selfie that you verify in Documents. When Didit can't be used (no credits, down), the app switches to the check by hand by itself. Drivers on apps older than 0.1.2 can't upload these, so by hand they are approved on RC + insurance. Every profile photo waits for you in Approvals › Photos. Auto-approve on: drivers are approved the moment the last check passes; off: they wait in Approvals › Ready to approve. The daily selfie check: once a day (IST) before going online, a live selfie must match the face from their identity check (5 tries a day); if Didit is down it lets them through.",
+      "Every driver uploads RC + insurance (verified in Drivers › Approvals or Documents) and passes the identity check: Didit's automatic check, or, by hand, their driving licence and Aadhaar that you verify (Approvals › Documents to review) with their profile photo as the matching face. When Didit can't be used (no credits, down), the app switches to the check by hand by itself. Drivers on apps older than 0.1.2 can't upload these, so by hand they are approved on RC + insurance. Every profile photo waits for your approval. Drivers are told only about a rejection, or once everything is approved. Auto-approve on: drivers are approved the moment the last check passes; off: they wait in Approvals › Ready to approve. The daily selfie check: once a day (IST) before going online, a live selfie must match the face from their identity check (5 tries a day); if Didit is down it lets them through.",
     fields: [
       { key: "driverAutoApprove", label: "Auto-approve drivers", hint: "Off = you approve each ready driver yourself" },
       { key: "dailySelfieCheckEnabled", label: "Daily selfie check", hint: "Off = drivers go online without a selfie" },
-      { key: "manualIdentityCheck", label: "Check identity by hand", hint: "On = you verify each driver's licence, Aadhaar and selfie; off = Didit" },
+      { key: "manualIdentityCheck", label: "Check identity by hand", hint: "On = you verify each driver's licence and Aadhaar with their photo; off = Didit" },
     ],
   },
   {

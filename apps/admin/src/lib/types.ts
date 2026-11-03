@@ -125,7 +125,10 @@ export const ZONE_KINDS: readonly ZoneKind[] = ["SURGE", "DEMAND", "NO_SERVICE",
 export const AUDIENCES: readonly AnnouncementAudience[] = ["ALL", "PASSENGER", "DRIVER"];
 export const PLAN_PERIODS: readonly PlanPeriod[] = ["DAILY", "WEEKLY", "MONTHLY"];
 /** Documents drivers upload for review. The licence and Aadhaar are checked by Didit (identity check). */
-export const KYC_DOC_TYPES: readonly KycDocType[] = ["VEHICLE_RC", "INSURANCE"];
+/** Documents an admin reviews: RC and insurance from every driver, the licence and Aadhaar of the identity check by hand. */
+export const KYC_DOC_TYPES: readonly KycDocType[] = ["VEHICLE_RC", "INSURANCE", "DRIVING_LICENCE", "AADHAAR"];
+/** Always listed on a driver's page, uploaded or not. */
+export const REQUIRED_DOC_TYPES: readonly KycDocType[] = ["VEHICLE_RC", "INSURANCE"];
 
 /** A page of results (admin.types.ts). */
 export interface Paged<T> {

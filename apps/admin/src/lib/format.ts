@@ -1,4 +1,4 @@
-import { KYC_DOC_TYPES, type IdentityStatus, type KycDocType, type KycDocument, type VehicleKind } from "./types";
+import { REQUIRED_DOC_TYPES, type IdentityStatus, type KycDocType, type KycDocument, type VehicleKind } from "./types";
 
 /** Every date is shown in IST (Tamil Taxi runs in India) regardless of where the server runs. */
 export const TIME_ZONE = "Asia/Kolkata";
@@ -146,9 +146,10 @@ export function docLabel(type: KycDocType): string {
 
 /** KYC progress: verified RC + insurance, plus the identity check when [identity] is given. */
 export function kycProgress(docs: readonly Pick<KycDocument, "type" | "status">[], identity?: IdentityStatus): { verified: number; total: number } {
-  const verified = docs.filter((d) => KYC_DOC_TYPES.includes(d.type) && d.status === "VERIFIED").length;
-  if (identity === undefined) return { verified, total: KYC_DOC_TYPES.length };
-  return { verified: verified + (identity === "APPROVED" ? 1 : 0), total: KYC_DOC_TYPES.length + 1 };
+  // RC and insurance, plus the identity check as one step (the licence and Aadhaar by hand are part of it).
+  const verified = docs.filter((d) => REQUIRED_DOC_TYPES.includes(d.type) && d.status === "VERIFIED").length;
+  if (identity === undefined) return { verified, total: REQUIRED_DOC_TYPES.length };
+  return { verified: verified + (identity === "APPROVED" ? 1 : 0), total: REQUIRED_DOC_TYPES.length + 1 };
 }
 
 /** Name or a phone fallback, for tables. */
