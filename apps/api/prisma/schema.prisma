@@ -769,6 +769,9 @@ model City {
   h3Resolution Int            @default(8)
   /// H3 cell indexes (strings) that make up the service area.
   serviceCells String[]
+  /// Google place ID of the city (its Geocoding `locality`), for the admin maps' city boundary. Looked up when the
+  /// city is made or renamed, and at start-up for cities without one; null when Google has no such locality.
+  placeId      String?
   isActive     Boolean        @default(true)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { type City, type CityFareRule, Prisma, type Zone } from '../../generated/prisma/client.js';
@@ -7,6 +7,7 @@ import { FARE_RULES } from '../fares/fare-rules.js';
 import { effectivePricing, isPricingSection, type ModePricing, parsePricingSection, type PricingSection } from '../fares/pricing.js';
 import { type RentalPackage, RENTAL_PACKAGES } from '../fares/ride-modes.js';
 import { GeoService } from '../geo/geo.service.js';
+import { MapsService } from '../maps/maps.service.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { cellsForCircle, DEFAULT_H3_RESOLUTION, validateCells } from '../geo/h3.util.js';
 import type { CreateCityDto, UpdateCityDto } from './dto/city.dto.js';
@@ -38,12 +39,28 @@ export function checkZoneRules(z: {
 }
 
 @Injectable()
-export class AdminCitiesService {
+export class AdminCitiesService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(AdminCitiesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly geo: GeoService,
     private readonly notifier: NotifierService,
+    private readonly maps: MapsService,
   ) {}
+
+  /** Cities made before place IDs (or whose lookup failed) get one in the background; start-up doesn't wait. */
+  onApplicationBootstrap(): void {
+    void this.fillPlaceIds().catch((e: Error) => this.logger.warn(`City place IDs: ${e.message}`));
+  }
+
+  private async fillPlaceIds(): Promise<void> {
+    const missing = await this.prisma.city.findMany({ where: { placeId: null }, select: { id: true, name: true, state: true } });
+    for (const c of missing) {
+      const placeId = await this.maps.cityPlaceId(c.name, c.state);
+      if (placeId) await this.prisma.city.update({ where: { id: c.id }, data: { placeId } });
+    }
+  }
 
   cities(): Promise<(City & { _count: { zones: number } })[]> {
     return this.prisma.city.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { zones: true } } } });
@@ -56,15 +73,24 @@ export class AdminCitiesService {
   async create(dto: CreateCityDto): Promise<City> {
     const h3Resolution = dto.h3Resolution ?? DEFAULT_H3_RESOLUTION;
     const serviceCells = cellsForCircle({ lat: dto.centerLat, lng: dto.centerLng, radiusKm: dto.radiusKm ?? 10, resolution: h3Resolution });
+    const placeId = await this.maps.cityPlaceId(dto.name, dto.state);
     const city = await this.prisma.city.create({
-      data: { id: dto.id, name: dto.name, state: dto.state, centerLat: dto.centerLat, centerLng: dto.centerLng, h3Resolution, serviceCells },
+      data: { id: dto.id, name: dto.name, state: dto.state, centerLat: dto.centerLat, centerLng: dto.centerLng, h3Resolution, serviceCells, placeId },
     });
     this.geo.invalidate();
     return city;
   }
 
   async update(id: string, dto: UpdateCityDto): Promise<City> {
-    const city = await this.prisma.city.update({ where: { id }, data: dto });
+    // A new name or state can be another place: look its place ID up again (null when Google has none).
+    let placeId: string | null | undefined;
+    if (dto.name !== undefined || dto.state !== undefined) {
+      const current = await this.prisma.city.findUniqueOrThrow({ where: { id }, select: { name: true, state: true } });
+      const name = dto.name ?? current.name;
+      const state = dto.state ?? current.state;
+      if (name !== current.name || state !== current.state) placeId = await this.maps.cityPlaceId(name, state);
+    }
+    const city = await this.prisma.city.update({ where: { id }, data: { ...dto, ...(placeId !== undefined && { placeId }) } });
     this.geo.invalidate();
     return city;
   }

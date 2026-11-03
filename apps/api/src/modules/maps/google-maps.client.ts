@@ -227,6 +227,22 @@ export class GoogleMapsClient {
   }
 
   /**
+   * The city's Google place ID: the Geocoding result for "<name>, <state>, India" typed `locality`, the feature the
+   * admin maps outline as the city boundary. Null when Google has no locality by that name (or on failure).
+   */
+  async localityPlaceId(name: string, state: string): Promise<string | null> {
+    const address = encodeURIComponent(`${name}, ${state}, India`);
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${address}&components=country:IN&language=en&key=${this.env.googleMapsApiKey}`;
+    const json = await this.call<{ status: string; results?: { place_id: string; types?: string[] }[] }>(url, {
+      method: 'GET',
+      isKeyInUrl: true,
+      sku: 'maps.geocode',
+    });
+    const locality = json?.status === 'OK' ? json.results?.find((r) => r.types?.includes('locality')) : undefined;
+    return locality?.place_id ?? null;
+  }
+
+  /**
    * Routes API computeRoutes.
    *
    * `vehicleStopover` snaps a stop to a road where a vehicle can pull over, not a flyover or highway passing

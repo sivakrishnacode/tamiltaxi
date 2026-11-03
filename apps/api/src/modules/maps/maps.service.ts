@@ -105,6 +105,11 @@ export class MapsService {
     return this.cached(key, TTL.geocode, () => this.google.reverseGeocode(point));
   }
 
+  /** The city's Google place ID (its `locality`), or null; callers store it, so it isn't cached here. */
+  cityPlaceId(name: string, state: string): Promise<string | null> {
+    return this.google.localityPlaceId(name, state);
+  }
+
   /** Road route (Google when enabled; cached ~6 h on a ~100 m grid), else null. */
   route(params: { from: LatLngLiteral; to: LatLngLiteral; vehicleKind?: VehicleKind; stops?: boolean }): Promise<RoadRoute | null> {
     const mode = MapsService.travelMode(params.vehicleKind);

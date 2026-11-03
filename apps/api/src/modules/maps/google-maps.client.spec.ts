@@ -71,6 +71,36 @@ describe('GoogleMapsClient.route', () => {
   });
 });
 
+describe('GoogleMapsClient.localityPlaceId', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const client = new GoogleMapsClient({ googleMapsApiKey: 'test-key' } as unknown as Env);
+
+  it("takes the result typed locality (the city boundary), in India, and null when there is none", async () => {
+    const { urls } = stubFetch({
+      status: 'OK',
+      results: [
+        { place_id: 'district', types: ['administrative_area_level_3', 'political'] },
+        { place_id: 'city', types: ['locality', 'political'] },
+      ],
+    });
+    expect(await client.localityPlaceId('Coimbatore', 'Tamil Nadu')).toBe('city');
+    expect(urls[0]).toContain('address=Coimbatore%2C%20Tamil%20Nadu%2C%20India');
+    expect(urls[0]).toContain('components=country:IN');
+    vi.unstubAllGlobals();
+    stubFetch({ status: 'OK', results: [{ place_id: 'road', types: ['route'] }] });
+    expect(await client.localityPlaceId('Nowhere', 'Tamil Nadu')).toBeNull();
+    vi.unstubAllGlobals();
+    stubFetch({ status: 'ZERO_RESULTS', results: [] });
+    expect(await client.localityPlaceId('Nowhere', 'Tamil Nadu')).toBeNull();
+  });
+
+  it('needs no request without a key', async () => {
+    const { urls } = stubFetch();
+    expect(await new GoogleMapsClient({ googleMapsApiKey: '' } as unknown as Env).localityPlaceId('Coimbatore', 'Tamil Nadu')).toBeNull();
+    expect(urls).toHaveLength(0);
+  });
+});
+
 describe('GoogleMapsClient.reverseGeocode', () => {
   afterEach(() => vi.unstubAllGlobals());
   const client = new GoogleMapsClient({ googleMapsApiKey: 'test-key' } as unknown as Env);
