@@ -443,9 +443,15 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
     final identity = showcase ? null : ref.watch(identityProvider).value;
     // Done by hand: the licence and Aadhaar are listed with the documents instead of the Didit card.
     final hasIdentity = (identity?.isEnabled ?? showcase) && !docs.any((d) => identityUploadDocs.contains(d.type));
+    // Count what the page shows: each document, the Didit card, and the profile photo (shown wherever the identity
+    // step applies). An identity done by hand is its documents, not one more step.
+    final profile = live && !showcase ? ref.watch(driverProfileProvider).value : null;
+    final hasPhoto = profile != null && (identity?.isRequired ?? false);
     final verified = docs.where((d) => d.status == KycStatus.verified).length;
-    final steps = docs.length + (hasIdentity ? 1 : 0);
-    final stepsVerified = verified + (identity?.isApproved == true ? 1 : 0);
+    final steps = docs.length + (hasIdentity ? 1 : 0) + (hasPhoto ? 1 : 0);
+    final stepsVerified = verified +
+        (hasIdentity && identity?.isApproved == true ? 1 : 0) +
+        (hasPhoto && profile.photoPath != null ? 1 : 0);
 
     return Scaffold(
       backgroundColor: TtColors.background,

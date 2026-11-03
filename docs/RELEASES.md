@@ -76,6 +76,7 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 - Registration: when the identity check is by hand, or Didit can't be used right now, the driver uploads their
   driving licence and Aadhaar instead of Didit's check, and the profile photo is the face an admin matches to them.
 - The app sends its version (`x-app-version`, `kDriverAppVersion`), so the server knows it can upload them.
+- Account › Documents counts what it shows (it said "5 of 4 verified" for a driver checked by hand).
 - A new profile photo shows "being checked" until an admin approves it, and it can be taken any time (it used to wait
   for the identity check, so a driver approved without one could never add the photo needed to go online).
 
