@@ -135,9 +135,15 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `e3a2cfe` (admin) and `24340fe` (API).
+
+### 3 Nov 2026 (third) · admin at `e3a2cfe`
+
+Release: `staging-2026-11-03.3` at `e3a2cfe`
+
 Admin only (no API or database change).
 
-- City boundary: only the line now; the white tint inside the city washed the map out. The admin maps take Google's
+- `e3a2cfe` City boundary: only the line now; the white tint inside the city washed the map out. The admin maps take Google's
   own default look, like Google Maps (coloured roads, water, parks and places), at the owner's request: the Cloud map
   style is just `{ "variant": "light" }` (`cloud-map-style.json`).
 

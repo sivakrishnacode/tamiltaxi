@@ -2429,6 +2429,11 @@ the grey style and Coimbatore's boundary on the Zones tab); automatic fits stop 
 `tamiltaxi-admin:rollback-20261103-52f4be2` (the build without the Map ID). Admin healthy at `52f4be2`; the owner
 tests the pages.
 
+**Deployed 3 Nov 2026 (third):** admin only at `e3a2cfe` (`52f4be2..e3a2cfe`): the city boundary is a line only (its
+white fill washed the map out). The map's look itself is the Cloud style, set in Google Cloud (Google's default since
+the owner asked for the Google Maps look). Backup `/opt/tamiltaxi/backups/20261103-e3a2cfe`; rollback image
+`tamiltaxi-admin:rollback-20261103-e3a2cfe`. Admin healthy at `e3a2cfe`.
+
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
 [staging-kyc-delete-policy.json](staging-kyc-delete-policy.json). The `rido` AWS profile cannot administer IAM.
