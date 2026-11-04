@@ -71,8 +71,6 @@ class P23AccountScreen extends ConsumerWidget {
     String onOff(bool v) => v ? 'On' : 'Off';
     final places = p.savedPlaces.map((s) => s.label).join(', ');
     final contacts = p.emergencyContacts.map((c) => c.name).join(', ');
-    final identity = showcase ? null : ref.watch(identityProvider).value;
-    final isVerified = identity?.isApproved ?? false;
 
     return Scaffold(
       body: ListView(
@@ -92,16 +90,7 @@ class P23AccountScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(children: [
-                            Flexible(child: Text(p.name, style: t.h1, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                            if (isVerified) ...[
-                              const SizedBox(width: 6),
-                              Semantics(
-                                label: 'Verified',
-                                child: const Icon(Symbols.verified_rounded, fill: 1, color: TtColors.success, size: 22),
-                              ),
-                            ],
-                          ]),
+                          Text(p.name, style: t.h1, maxLines: 1, overflow: TextOverflow.ellipsis),
                           Text(displayPhone(p.phone), style: TtTextStyles.tabular(t.body.copyWith(color: TtColors.navy700))),
                         ],
                       ),
@@ -134,19 +123,6 @@ class P23AccountScreen extends ConsumerWidget {
                           : contacts,
                       onTap: () => context.push(Routes.emergencyContacts),
                     ),
-                    if (identity?.isEnabled ?? false)
-                      TtListTile(
-                        icon: Symbols.verified_user_rounded,
-                        title: 'Verify identity',
-                        subtitle: switch (identity!.status) {
-                          IdentityStatus.approved => 'Verified',
-                          IdentityStatus.inReview => 'Being checked',
-                          IdentityStatus.declined =>
-                            "Couldn't verify. Try again",
-                          _ => 'Optional. Get a Verified badge',
-                        },
-                        onTap: () => context.push(Routes.verifyIdentity),
-                      ),
                     TtListTile(
                       icon: Symbols.shield_person_rounded,
                       title: 'Safety preferences',

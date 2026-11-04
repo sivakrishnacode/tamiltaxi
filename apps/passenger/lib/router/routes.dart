@@ -67,7 +67,6 @@ abstract final class Routes {
   static const savedPlaces = '/account/saved-places';
   static const safety = '/account/safety';
   static const about = '/account/about';
-  static const verifyIdentity = '/account/verify-identity';
   static const emergencyContacts = '/account/emergency-contacts';
 
   // Full-screen, reachable from anywhere

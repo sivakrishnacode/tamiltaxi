@@ -107,7 +107,6 @@ RideRequest rideRequestFromUpdate(LiveTripUpdate update, {RideRequest? offer}) {
         ? womenDriverFromApi(update.json['womenDriver'])
         : (offer?.womenDriver ?? WomenDriverPref.none),
     bookedBy: riderName != null ? (account ?? offer?.bookedBy) : offer?.bookedBy,
-    isCustomerVerified: riderName == null && (p['identityStatus'] == 'APPROVED' || (offer?.isCustomerVerified ?? false)),
     parcel: trip.parcel ?? offer?.parcel,
     // The driver never sees the ride OTP: the passenger reads it out and the API checks it.
     otp: '',

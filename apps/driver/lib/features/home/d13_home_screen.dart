@@ -144,12 +144,6 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
       context.push(Routes.accountOnHold);
       return;
     }
-    // Mock: the simulated daily selfie once per app session. Live: the server says when it is due (a 403
-    // SELFIE_CHECK_REQUIRED opens S-13).
-    if (!_api && !ref.read(driverSessionProvider).selfieDoneThisSession) {
-      context.push(Routes.selfieCheck);
-      return;
-    }
     await goOnlineOrExplain(context, ref);
   }
 

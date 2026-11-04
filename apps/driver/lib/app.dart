@@ -69,7 +69,7 @@ class _TtDriverAppState extends ConsumerState<TtDriverApp> with WidgetsBindingOb
             ref.read(driverSessionProvider).job != null) {
           _router.push(Routes.chat);
         }
-      case 'kyc' || 'identity' || 'account':
+      case 'kyc' || 'account':
         ref.invalidate(identityProvider);
         ref.invalidate(driverProfileProvider);
         if (!_authPaths.contains(_path)) _router.go(Routes.splash);

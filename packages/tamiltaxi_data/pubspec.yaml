@@ -8,7 +8,6 @@ environment:
   flutter: ">=3.35.0"
 
 dependencies:
-  didit_sdk: ^4.9.0
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
   flutter:

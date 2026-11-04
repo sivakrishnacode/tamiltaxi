@@ -30,13 +30,11 @@ import '../onboarding/d05_choose_vehicle_screen.dart';
 import '../onboarding/d06_personal_details_screen.dart';
 import '../onboarding/d07_documents_screen.dart';
 import '../onboarding/d08_upload_document_screen.dart';
-import '../onboarding/d09_selfie_screen.dart';
 import '../onboarding/d11_choose_plan_screen.dart';
 import '../onboarding/d12_autopay_screen.dart';
 import '../onboarding/d12b_autopay_success_screen.dart';
 import '../plan/d24_plan_screen.dart';
 import '../states/s10_account_on_hold_screen.dart';
-import '../states/s13_selfie_check_screen.dart';
 import '../states/s14_payment_failed_dialog.dart';
 import '../states/s15_empty_earnings_view.dart';
 
@@ -91,7 +89,6 @@ final List<GalleryEntry> galleryEntries = [
       (_) => const D08UploadDocumentScreen(type: KycDocType.drivingLicence, captured: false, showcase: true)),
   _e('D-08b', 'Upload document · captured', _p5,
       (_) => const D08UploadDocumentScreen(type: KycDocType.drivingLicence, captured: true, showcase: true)),
-  _e('D-09', 'Selfie verification', _p5, (_) => const D09SelfieScreen(showcase: true)),
   _e('D-11', 'Choose plan · start free trial', _p5, (_) => const D11ChoosePlanScreen(showcase: true)),
   _e('D-12a', 'UPI Autopay setup', _p5, (_) => const D12AutopayScreen(showcase: true)),
   _e('D-12b', 'Autopay success', _p5, (_) => const D12bAutopaySuccessScreen(showcase: true)),
@@ -147,7 +144,6 @@ final List<GalleryEntry> galleryEntries = [
       (_) => S10AccountOnHoldScreen(showcase: true, pausedUntil: DateTime.now().add(const Duration(hours: 24)))),
   _e('S-11', 'Missed ride request', _p7, (_) => const D13HomeScreen(variant: HomeVariant.missedRequest, showcase: true)),
   _e('S-12', 'No ride requests yet', _p7, (_) => const D13HomeScreen(variant: HomeVariant.quiet, showcase: true)),
-  _e('S-13', 'Selfie check before going online', _p7, (_) => const S13SelfieCheckScreen(showcase: true)),
   _e('S-14', 'Autopay payment failed', _p7,
       (_) => const ShowcaseFrame.dialog(title: 'S-14 Payment failed', child: S14PaymentFailedDialog(showcase: true))),
   _e('S-15', 'Empty earnings', _p7, (_) => const _EmptyEarningsFrame()),

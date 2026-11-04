@@ -262,15 +262,6 @@ class LiveJobs {
     await api.session.clear();
   }
 
-  /// The daily selfie before going online (`POST /drivers/me/selfie-check`, multipart `file`): the server matches it
-  /// with the selfie from the identity check. Returns when it was checked. Throws [ApiException]: 422 no match or not
-  /// exactly one face (retake), 409 no reference selfie yet, 429 too many tries today.
-  Future<DateTime> selfieCheck(List<int> bytes, String filename) async {
-    final res = await api.upload('/drivers/me/selfie-check', field: 'file', bytes: bytes, filename: filename);
-    final at = res is Map ? DateTime.tryParse('${res['checkedAt']}')?.toLocal() : null;
-    return at ?? DateTime.now();
-  }
-
   /// Booking preferences (pickup distance, trip length, Go To / Stay In, parcels, saved areas); dispatch only offers
   /// trips that fit.
   Future<BookingPrefs> bookingPrefs() async => BookingPrefs.fromJson(_map(await api.get('/drivers/me/booking-preferences')));

@@ -144,7 +144,6 @@ void resetSignedInState(WidgetRef ref) {
     ..invalidate(rideFlowProvider)
     ..invalidate(parcelFlowProvider)
     ..invalidate(shiftingFlowProvider)
-    ..invalidate(identityProvider)
     ..invalidate(upcomingTripsProvider)
     ..invalidate(passengerProfileProvider)
     ..invalidate(tripHistoryProvider)

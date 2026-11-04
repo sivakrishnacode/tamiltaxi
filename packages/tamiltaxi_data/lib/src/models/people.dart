@@ -96,7 +96,7 @@ class DriverProfile {
   final String upiId;
   final Gender gender;
 
-  /// API path of the verified selfie (`/drivers/<id>/photo?v=<file>`); null until the identity check is approved.
+  /// API path of the approved profile photo (`/drivers/<id>/photo?v=<file>`); null until an admin approves one.
   /// Load it with [driverPhotoProvider].
   final String? photoPath;
 

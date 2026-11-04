@@ -585,7 +585,7 @@ abstract final class Seed {
         PaymentRecord(label: 'Aug 2026', amount: 2000, status: PaymentRecordStatus.paid, date: DateTime(2026, 8, 24)),
       ];
 
-  /// Uploaded by hand: RC and insurance. The licence and selfie are checked in the app with Didit.
+  /// A new driver's uploads: RC and insurance in review; the licence and Aadhaar rows start empty.
   static const List<KycDocument> kycFresh = [
     KycDocument(type: KycDocType.vehicleRc, status: KycStatus.underReview),
     KycDocument(type: KycDocType.insurance, status: KycStatus.notUploaded),

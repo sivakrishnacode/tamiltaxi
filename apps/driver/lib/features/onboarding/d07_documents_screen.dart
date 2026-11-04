@@ -9,18 +9,17 @@ import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 import '../../router/routes.dart';
 import '../../state/driver_account.dart';
 import '../../state/live_helpers.dart';
-import 'widgets/identity_check_card.dart';
 import 'widgets/profile_photo_card.dart';
 import 'widgets/signup_widgets.dart';
 
 /// D-07 Registration: the one page a driver sees from the OTP until an admin approves them (like Rapido's "My
 /// vehicles" card). A vehicle card with the overall status and the next thing to do, then the checklist:
 /// 1. vehicle and personal details (D-04 → D-05 → D-06, which creates the driver),
-/// 2. the in-app identity check (driving licence + Aadhaar + selfie, by Didit) and the profile photo,
+/// 2. the identity check by hand (the driving licence and Aadhaar, each checked by an admin) and the profile photo,
 /// 3. one row per document to upload (RC, insurance) with its status.
 /// Once everything is in, the page shows "Under review" and checks the application (live: every 30 s; mock: after
-/// [SimTimings.applicationReview]); approved → Home (or D-11 when paid plans are on). A rejected document, a declined
-/// identity check or a rejected photo shows on its row ("1 error") with Re-upload / Try again. The app opens here
+/// [SimTimings.applicationReview]); approved → Home (or D-11 when paid plans are on). A rejected document or a
+/// rejected photo shows on its row ("1 error") with Re-upload / Retake. The app opens here
 /// on every start until the driver is approved ([applicationRoute]).
 ///
 /// [readOnly] (Account → Documents) shows every document as verified, with no actions (live API: the real statuses,
@@ -208,9 +207,8 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
 
     // 1. Vehicle and personal details: live, the driver exists once D-06 has saved; mock, once D-06 committed.
     final detailsDone = showcase || signup.detailsSaved || (live && loggedIn);
-    // 2. Identity check (not asked = nothing to do; live before D-06 it shows locked) and, once it is approved, the
-    // profile photo. By hand (the server asks for it, Didit answered IDENTITY_MANUAL, or one is already uploaded):
-    // the licence and Aadhaar, each checked by an admin, with the profile photo as the matching face.
+    // 2. Identity check (not asked = nothing to do; live before D-06 it shows locked): the licence and Aadhaar, each
+    // checked by an admin, with the profile photo as the matching face.
     bool isIn(KycDocument d) =>
         d.status == KycStatus.verified || d.status == KycStatus.underReview;
     final idDocs = [
@@ -218,14 +216,9 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         allDocs.where((d) => d.type == type).firstOrNull ?? KycDocument(type: type, status: KycStatus.notUploaded),
     ];
     final hasIdentity = identity?.isRequired ?? live;
-    final isManualId = hasIdentity && ((identity?.isManual ?? false) || idDocs.any((d) => d.isUploaded));
     final identityApproved = identity?.isApproved ?? false;
-    final identityDone = !hasIdentity ||
-        identityApproved ||
-        (isManualId ? idDocs.every(isIn) : (identity?.isSubmitted ?? false));
-    final idErrors = isManualId ? idDocs.where((d) => d.status == KycStatus.rejected).length : 0;
-    final identityError = hasIdentity &&
-        (isManualId ? idErrors > 0 : identity?.status == IdentityStatus.declined);
+    final identityDone = !hasIdentity || identityApproved || idDocs.every(isIn);
+    final idErrors = hasIdentity ? idDocs.where((d) => d.status == KycStatus.rejected).length : 0;
     final needsPhoto = live && hasIdentity;
     // The photo can be taken any time (an admin approves each), not only after the identity check.
     final photoDone =
@@ -242,13 +235,11 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
     final docsDone = docs.where(isIn).length;
     final docErrors = docs.where((d) => d.status == KycStatus.rejected).length;
 
-    // By hand the identity is three steps (one per document), with Didit one.
-    final idSteps = !hasIdentity ? 0 : (isManualId ? idDocs.length : 1);
+    // The identity is one step per document.
+    final idSteps = hasIdentity ? idDocs.length : 0;
     final idDone = !hasIdentity
         ? 0
-        : isManualId
-        ? (identityApproved ? idDocs.length : idDocs.where(isIn).length)
-        : (identityDone ? 1 : 0);
+        : (identityApproved ? idDocs.length : idDocs.where(isIn).length);
     final steps = 1 + idSteps + (needsPhoto ? 1 : 0) + docs.length;
     // Steps after the details only count once they are open.
     final done = detailsDone
@@ -257,7 +248,7 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
               (needsPhoto && photoDone ? 1 : 0) +
               docsDone
         : 0;
-    final errors = docErrors + (isManualId ? idErrors : (identityError ? 1 : 0)) + (photoError ? 1 : 0);
+    final errors = docErrors + idErrors + (photoError ? 1 : 0);
     final allIn =
         detailsDone && identityDone && photoDone && docsDone == docs.length;
     if (allIn && errors == 0 && !showcase) {
@@ -279,7 +270,7 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         : allIn
         ? ('Under review', TtColors.warning, TtColors.navy900)
         : ('${steps - done} to do', TtColors.navy900, Colors.white);
-    final firstRejected = [...docs, if (isManualId) ...idDocs]
+    final firstRejected = [...docs, if (hasIdentity) ...idDocs]
         .where((d) => d.status == KycStatus.rejected)
         .firstOrNull;
     final firstMissing = docs
@@ -293,18 +284,8 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
             'Re-upload your ${firstRejected.type.label}',
             () => _upload(firstRejected.type),
           )
-        : hasIdentity && !identityDone && isManualId && firstMissingId != null
+        : hasIdentity && !identityDone && firstMissingId != null
         ? ('Upload your ${firstMissingId.type.label.toLowerCase()}', () => _upload(firstMissingId.type))
-        : hasIdentity && !identityDone && !isManualId
-        ? (
-            'Verify your licence and Aadhaar',
-            () async {
-              final error = await ref.read(identityProvider.notifier).verify();
-              if (context.mounted && error != null) {
-                showTtSnack(context, error);
-              }
-            },
-          )
         : !photoDone
         ? ('Take your profile photo', () => context.push(Routes.profilePhoto))
         : firstMissing != null
@@ -362,15 +343,13 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
                   const SizedBox(height: TtSpacing.m),
                   if (hasIdentity) ...[
                     if (!detailsDone)
-                      const _LockedRow(title: 'Licence, Aadhaar and selfie')
-                    else if (isManualId) ...[
+                      const _LockedRow(title: 'Driving licence and Aadhaar')
+                    else
                       // The identity check by hand: an admin checks the licence and Aadhaar (and the photo below).
                       for (final (i, doc) in idDocs.indexed) ...[
                         if (i > 0) const SizedBox(height: TtSpacing.m),
                         _DocRow(doc: doc, readOnly: false, live: live, onUpload: () => _upload(doc.type)),
                       ],
-                    ] else
-                      IdentityCheckCard(showcase: showcase),
                     const SizedBox(height: TtSpacing.m),
                     if (needsPhoto && detailsDone) ...[
                       const ProfilePhotoCard(),
@@ -441,17 +420,13 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         if (isShownDoc(d)) d,
     ];
     final identity = showcase ? null : ref.watch(identityProvider).value;
-    // Done by hand: the licence and Aadhaar are listed with the documents instead of the Didit card.
-    final hasIdentity = (identity?.isEnabled ?? showcase) && !docs.any((d) => identityUploadDocs.contains(d.type));
-    // Count what the page shows: each document, the Didit card, and the profile photo (shown wherever the identity
-    // step applies). An identity done by hand is its documents, not one more step.
+    // Count what the page shows: each document (the licence and Aadhaar among them once uploaded) and the profile
+    // photo (shown wherever the identity step applies).
     final profile = live && !showcase ? ref.watch(driverProfileProvider).value : null;
     final hasPhoto = profile != null && (identity?.isRequired ?? false);
     final verified = docs.where((d) => d.status == KycStatus.verified).length;
-    final steps = docs.length + (hasIdentity ? 1 : 0) + (hasPhoto ? 1 : 0);
-    final stepsVerified = verified +
-        (hasIdentity && identity?.isApproved == true ? 1 : 0) +
-        (hasPhoto && profile.photoPath != null ? 1 : 0);
+    final steps = docs.length + (hasPhoto ? 1 : 0);
+    final stepsVerified = verified + (hasPhoto && profile.photoPath != null ? 1 : 0);
 
     return Scaffold(
       backgroundColor: TtColors.background,
@@ -470,10 +445,6 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (hasIdentity) ...[
-                    IdentityCheckCard(showcase: showcase),
-                    const SizedBox(height: TtSpacing.l),
-                  ],
                   // Shown whenever the identity step applies (by hand too); hidden when it isn't asked.
                   if (!showcase) ...[
                     const ProfilePhotoCard(),
@@ -491,12 +462,9 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
                   ],
                   const SizedBox(height: TtSpacing.l),
                   Text(
-                      // Counts the identity check too: a declined check is never "all verified".
-                      identity?.status == IdentityStatus.declined
-                          ? 'Your identity check needs another try. Fix the points above, then tap Try again.'
-                          : stepsVerified == steps
-                              ? 'All your documents are verified. Contact support if something changes, like a new RC.'
-                              : 'An admin checks each document, usually within 24 hours. Contact support if you need help.',
+                      stepsVerified == steps
+                          ? 'All your documents are verified. Contact support if something changes, like a new RC.'
+                          : 'An admin checks each document, usually within 24 hours. Contact support if you need help.',
                       style: t.bodySmall.copyWith(color: TtColors.navy500)),
                 ],
               ),

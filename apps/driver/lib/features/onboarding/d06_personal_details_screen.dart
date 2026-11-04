@@ -166,7 +166,7 @@ class _D06PersonalDetailsScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Live: the real profile photo is taken on D-07, after the identity check (it must match the selfie).
+                  // Live: the real profile photo is taken on D-07 (an admin approves it).
                   if (!ref.watch(isLiveApiProvider)) ...[
                     _photoRow(t),
                     const SizedBox(height: TtSpacing.l),

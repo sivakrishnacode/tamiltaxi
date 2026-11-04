@@ -70,11 +70,6 @@ const _privacy = [
         'your messages to Help & support and in the trip chat; and your device location while you book or ride.',
   ),
   _Section(
-    'Identity check (optional)',
-    'Didit scans your ID and takes a live selfie inside the app. We keep the result, your name and date of birth from '
-        'the ID and its last 4 digits, never the full number. A passed check adds a Verified badge.',
-  ),
-  _Section(
     'How we use it',
     'To find nearby drivers, show your pickup to your driver, calculate fares, share your live trip with '
         'your emergency contacts when you ask us to, and help you if something goes wrong. We may also remind you '
@@ -83,7 +78,7 @@ const _privacy = [
   ),
   _Section(
     'What drivers see',
-    'Your name, phone number, pickup and drop, and whether you are verified. Numbers are shared so you and your '
+    'Your name, phone number, pickup and drop. Numbers are shared so you and your '
         'driver can call each other about the current trip. Your gender is never shown; if you ask for a woman '
         'driver (Pink Taxi), your driver sees that it is a Pink Taxi ride.',
   ),
@@ -91,13 +86,13 @@ const _privacy = [
     'Sharing',
     'We do not sell your data. We share it only with your driver for the current trip, with your emergency contacts '
         'when you share a trip or use SOS, with the police or emergency services when a safety incident needs it, with '
-        'the services that run the app (AWS, Google Maps, Firebase, Didit and WATX for sign-in codes on WhatsApp), '
+        'the services that run the app (AWS, Google Maps, Firebase and WATX for sign-in codes on WhatsApp), '
         'and when the law requires it.',
   ),
   _Section(
     'Location and camera',
     'Tamil Taxi uses your location only while the app is open or a trip is in progress. You can turn it off in '
-        'your phone settings and enter your pickup manually. The camera is used only for the identity check and the '
+        'your phone settings and enter your pickup manually. The camera is used only for the '
         'photos you choose to add.',
   ),
   _Section(
@@ -133,7 +128,7 @@ class LegalScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(TtSpacing.l, TtSpacing.s, TtSpacing.l, TtSpacing.xxl),
           children: [
-            Text('Last updated 16 October 2026', style: t.caption),
+            Text('Last updated 4 November 2026', style: t.caption),
             const SizedBox(height: TtSpacing.m),
             Text(
               isPrivacy

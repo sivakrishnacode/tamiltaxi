@@ -37,7 +37,7 @@ void main() {
 
     expect(find.byType(D07DocumentsScreen), findsOneWidget);
     expect(find.text('Registration'), findsOneWidget);
-    expect(find.text('0 of 4 done'), findsOneWidget);
+    expect(find.text('0 of 5 done'), findsOneWidget);
     expect(find.text('Your vehicle'), findsOneWidget);
     // The documents wait for the details (they belong to the new driver).
     expect(find.text('Opens after your vehicle and details'), findsNWidgets(3));
@@ -55,14 +55,15 @@ void main() {
     await advance(tester, const Duration(seconds: 1));
     expect(find.byType(D07DocumentsScreen), findsOneWidget);
     expect(container.read(signupProvider).detailsSaved, isTrue);
-    // The demo's RC is already uploaded (under review); the insurance is not.
-    expect(find.text('2 of 4 done'), findsOneWidget);
-    expect(find.text('Upload'), findsOneWidget);
-    expect(find.text('Verify your licence and Aadhaar'), findsOneWidget);
+    // The demo's RC is already uploaded (under review); the licence, Aadhaar and insurance are not.
+    expect(find.text('2 of 5 done'), findsOneWidget);
+    expect(find.text('Upload'), findsNWidgets(3));
+    expect(find.text('Upload your driving licence'), findsOneWidget);
 
-    // The in-app identity check (mock: approved at once), both documents (the mock camera's "Use photo") → under
-    // review → approved → Home.
-    await container.read(identityProvider.notifier).verify();
+    // The licence and Aadhaar of the identity check by hand, then the documents (the mock camera's "Use photo") →
+    // under review → approved → Home.
+    await container.read(kycProvider.notifier).upload(KycDocType.drivingLicence);
+    await container.read(kycProvider.notifier).upload(KycDocType.aadhaar);
     await advance(tester, const Duration(milliseconds: 300));
     expect(find.text('Upload your Vehicle insurance'), findsOneWidget);
     await container.read(kycProvider.notifier).upload(KycDocType.vehicleRc);
@@ -94,17 +95,16 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Registration'), findsOneWidget);
     expect(find.text('Add your vehicle and details'), findsOneWidget);
-    expect(find.text('Licence, Aadhaar and selfie'), findsOneWidget);
-    expect(find.text('0 of 5 done'), findsOneWidget);
+    expect(find.text('Driving licence and Aadhaar'), findsOneWidget);
+    expect(find.text('0 of 6 done'), findsOneWidget);
   });
 
   testWidgets('a rejected document shows on the registration page with Re-upload', (tester) async {
     final container = await pumpRoute(tester, Routes.documents);
     container.read(demoSettingsProvider.notifier).update((s) => s.copyWith(fastMode: true, rejectKyc: true));
     container.read(signupProvider.notifier).update((d) => d.copyWith(detailsSaved: true));
-    container.read(demoSettingsProvider.notifier).update((s) => s.copyWith(rejectKyc: false));
-    await container.read(identityProvider.notifier).verify();
-    container.read(demoSettingsProvider.notifier).update((s) => s.copyWith(rejectKyc: true));
+    await container.read(kycProvider.notifier).upload(KycDocType.drivingLicence);
+    await container.read(kycProvider.notifier).upload(KycDocType.aadhaar);
     await container.read(kycProvider.notifier).upload(KycDocType.vehicleRc);
     await container.read(kycProvider.notifier).upload(KycDocType.insurance);
     await advance(tester, const Duration(seconds: 6));

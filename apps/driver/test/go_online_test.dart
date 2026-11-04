@@ -1,5 +1,5 @@
-// Going online is refused the same way from Home and the daily selfie: on hold → S-10, paused → S-10b, not approved →
-// D-07, selfie due → S-13, Location off → a snack with Settings.
+// Going online is refused the same way everywhere: on hold → S-10, paused → S-10b, not approved → D-07, Location off →
+// a snack with Settings.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -32,7 +32,6 @@ void main() {
   test('refusals map to their screens', () {
     expect(goOnlineRefusalRoute(const ApiException(403, 'Account is on_hold')), Routes.accountOnHold);
     expect(goOnlineRefusalRoute(const ApiException(403, 'Account is pending')), Routes.documents);
-    expect(goOnlineRefusalRoute(const ApiException(403, 'Take a selfie first', code: 'SELFIE_CHECK_REQUIRED')), Routes.selfieCheck);
     final until = DateTime.utc(2026, 10, 2, 10);
     expect(
       goOnlineRefusalRoute(ApiException(403, 'Paused', code: 'DRIVER_TEMP_BLOCKED', details: {'until': until.toIso8601String()})),
@@ -45,7 +44,6 @@ void main() {
     final rig = await _rig();
     rig.jobs.onlineError = const ApiException(403, 'Account is on_hold');
     final container = await pumpRoute(tester, Routes.home, overrides: rig.overrides);
-    container.read(driverSessionProvider.notifier).markSelfieDone();
     await tester.tap(find.text('GO ONLINE').hitTestable().first);
     await _advance(tester);
     expect(find.byType(S10AccountOnHoldScreen), findsOneWidget);
@@ -53,13 +51,13 @@ void main() {
     await closeApp(tester, container);
   });
 
-  testWidgets('daily selfie: paused for cancellations closes to Home and opens S-10b', (tester) async {
+  testWidgets('Home: paused for cancellations opens S-10b', (tester) async {
     final rig = await _rig();
     final until = DateTime.now().add(const Duration(hours: 3));
     rig.jobs.onlineError = ApiException(403, 'You cancelled too many rides',
         code: 'DRIVER_TEMP_BLOCKED', details: {'until': until.toUtc().toIso8601String()});
-    final container = await pumpRoute(tester, Routes.dailySelfie, overrides: rig.overrides);
-    await tester.tap(find.text('Take selfie').hitTestable().first);
+    final container = await pumpRoute(tester, Routes.home, overrides: rig.overrides);
+    await tester.tap(find.text('GO ONLINE').hitTestable().first);
     await _advance(tester, const Duration(seconds: 2));
     final s10 = tester.widget<S10AccountOnHoldScreen>(find.byType(S10AccountOnHoldScreen));
     expect(s10.pausedUntil, isNotNull);
@@ -67,11 +65,11 @@ void main() {
     await closeApp(tester, container);
   });
 
-  testWidgets('daily selfie: Location off shows Settings on Home', (tester) async {
+  testWidgets('Home: Location off shows Settings', (tester) async {
     final rig = await _rig();
     rig.locator.problem = const LocationProblem('Turn on Location to go online', fix: LocationFix.locationSettings);
-    final container = await pumpRoute(tester, Routes.dailySelfie, overrides: rig.overrides);
-    await tester.tap(find.text('Take selfie').hitTestable().first);
+    final container = await pumpRoute(tester, Routes.home, overrides: rig.overrides);
+    await tester.tap(find.text('GO ONLINE').hitTestable().first);
     await _advance(tester, const Duration(seconds: 2));
     expect(find.byType(D13HomeScreen), findsOneWidget);
     expect(find.text('Turn on Location to go online'), findsOneWidget);
@@ -83,7 +81,6 @@ void main() {
     final rig = await _rig();
     rig.jobs.onlineError = const ApiException(403, 'Account is pending');
     final container = await pumpRoute(tester, Routes.home, overrides: rig.overrides);
-    container.read(driverSessionProvider.notifier).markSelfieDone();
     await tester.tap(find.text('GO ONLINE').hitTestable().first);
     await _advance(tester);
     expect(find.byType(D07DocumentsScreen), findsOneWidget);

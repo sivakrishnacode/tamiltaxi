@@ -30,8 +30,7 @@ enum RequestPerk {
   bestRate('Best ₹/km', Symbols.trending_up_rounded, TtColors.successText, TtColors.successTint),
 
   /// The shortest ride to the pickup, when only one has it.
-  closest('Closest pickup', Symbols.my_location_rounded, TtColors.navy900, TtColors.infoTint),
-  verified('Verified', Symbols.verified_rounded, TtColors.successText, TtColors.successTint);
+  closest('Closest pickup', Symbols.my_location_rounded, TtColors.navy900, TtColors.infoTint);
 
   const RequestPerk(this.label, this.icon, this.fg, this.bg);
   final String label;
@@ -69,7 +68,6 @@ Map<String, List<RequestPerk>> requestPerks(List<RideRequest> requests) {
         if (mixed && r.isDelivery && !r.isShifting) RequestPerk.parcel,
         if (r.id == bestRate) RequestPerk.bestRate,
         if (r.id == closest) RequestPerk.closest,
-        if (r.isCustomerVerified) RequestPerk.verified,
       ],
   };
 }
@@ -368,8 +366,6 @@ class _RequestCard extends StatelessWidget {
                   _Tag(icon: r.vehicle.icon, label: r.vehicle.label, bg: TtColors.infoTint, fg: TtColors.navy900),
                   for (final p in perks)
                     if (p.comparative) _Tag(icon: p.icon, label: p.label, bg: p.bg, fg: p.fg),
-                  if (r.isCustomerVerified)
-                    const _Tag(icon: Symbols.verified_rounded, label: 'Verified', bg: TtColors.successTint, fg: TtColors.successText),
                   if (shift != null) ...[
                     _Tag(icon: Symbols.checklist_rounded, label: '${shift.itemCount} items', bg: TtColors.coral50, fg: TtColors.coral700),
                     if (shift.packing != PackingLevel.none)

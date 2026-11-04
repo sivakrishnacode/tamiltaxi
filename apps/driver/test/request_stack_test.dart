@@ -98,11 +98,11 @@ void main() {
     final r = Seed.rideRequest;
     final perks = requestPerks([
       r.copyWith(id: 'a', fare: 200, tripKm: 10, pickupDistanceKm: 0.6), // ₹20/km, closest
-      r.copyWith(id: 'b', fare: 150, tripKm: 5, pickupDistanceKm: 1.3, isCustomerVerified: true), // ₹30/km
+      r.copyWith(id: 'b', fare: 150, tripKm: 5, pickupDistanceKm: 1.3), // ₹30/km
       Seed.deliveryRequest.copyWith(id: 'c', fare: 100, tripKm: 4, pickupDistanceKm: 2), // ₹25/km
     ]);
     expect(perks['a'], [RequestPerk.closest]);
-    expect(perks['b'], [RequestPerk.bestRate, RequestPerk.verified]);
+    expect(perks['b'], [RequestPerk.bestRate]);
     expect(perks['c'], [RequestPerk.parcel]);
     // A tie on what the cards show gives neither; one request alone has nothing to compare with.
     final tie = requestPerks([

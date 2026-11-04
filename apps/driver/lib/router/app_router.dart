@@ -37,14 +37,12 @@ import '../features/onboarding/d06_personal_details_screen.dart';
 import '../features/onboarding/d07_documents_screen.dart';
 import '../features/onboarding/d08_upload_document_screen.dart';
 import '../features/onboarding/profile_photo_screen.dart';
-import '../features/onboarding/d09_selfie_screen.dart';
 import '../features/onboarding/d11_choose_plan_screen.dart';
 import '../features/onboarding/d12_autopay_screen.dart';
 import '../features/onboarding/d12b_autopay_success_screen.dart';
 import '../features/onboarding/legal_screen.dart';
 import '../features/plan/d24_plan_screen.dart';
 import '../features/states/s10_account_on_hold_screen.dart';
-import '../features/states/s13_selfie_check_screen.dart';
 import 'routes.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -117,8 +115,6 @@ GoRouter createDriverRouter({
         )?.toLocal(),
       ),
     ),
-    _full(Routes.selfieCheck, (_) => const S13SelfieCheckScreen()),
-    _full(Routes.dailySelfie, (_) => const D09SelfieScreen(dailyCheck: true)),
     _full(
       '/legal/:doc',
       (s) => LegalScreen(doc: s.pathParameters['doc'] ?? 'terms'),

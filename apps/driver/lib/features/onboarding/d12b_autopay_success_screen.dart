@@ -58,7 +58,6 @@ class D12bAutopaySuccessScreen extends ConsumerWidget {
 
     Future<void> goOnline() async {
       if (showcase) return showTtSnack(context, kPreviewNote);
-      ref.read(driverSessionProvider.notifier).markSelfieDone();
       await goOnlineOrExplain(context, ref, toHome: true);
     }
 

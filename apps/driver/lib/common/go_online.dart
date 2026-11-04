@@ -12,9 +12,8 @@ import '../state/live_helpers.dart';
 
 /// Where a refused go-online sends the driver, from the API's 403: S-10 when an admin put the account on hold, S-10b
 /// with the end time when paused for too many cancellations, D-07 when the account is not approved (any more: a new
-/// number plate waits for its RC check), S-13 when the daily selfie is due. Null: just show the message.
+/// number plate waits for its RC check). Null: just show the message.
 String? goOnlineRefusalRoute(ApiException e) {
-  if (e.code == 'SELFIE_CHECK_REQUIRED') return Routes.selfieCheck;
   final pausedUntil = e.tempBlockedUntil;
   if (pausedUntil != null) return Routes.accountPaused(pausedUntil);
   if (e.status != 403) return null;
@@ -24,22 +23,22 @@ String? goOnlineRefusalRoute(ApiException e) {
   return null;
 }
 
-/// Goes online from any screen with a Go online button (Home, the daily selfie, D-12b) and explains a refusal the
-/// same way everywhere: the screens of [goOnlineRefusalRoute], a snack with a Settings action when Location is off or
-/// not allowed ([LocationProblem]), else a snack with the message. [toHome]: the screen closes to Home first (the
-/// selfie and plan screens), success or not; [onlineMessage] shows once online. True when online.
-Future<bool> goOnlineOrExplain(BuildContext context, WidgetRef ref, {bool toHome = false, String? onlineMessage}) async {
+/// Goes online from any screen with a Go online button (Home, D-12b) and explains a refusal the same way everywhere:
+/// the screens of [goOnlineRefusalRoute], a snack with a Settings action when Location is off or not allowed
+/// ([LocationProblem]), else a snack with the message. [toHome]: the screen closes to Home first (the plan screen),
+/// success or not. True when online.
+Future<bool> goOnlineOrExplain(BuildContext context, WidgetRef ref, {bool toHome = false}) async {
   // Read up front: the calling screen may close (toHome) before the answer comes.
   final router = GoRouter.of(context);
   final container = ProviderScope.containerOf(context, listen: false);
   final session = container.read(driverSessionProvider.notifier);
   final locator = container.read(driverLocatorProvider);
 
-  void snack(String message, {String? actionLabel, VoidCallback? onAction, bool success = false}) {
+  void snack(String message, {String? actionLabel, VoidCallback? onAction}) {
     // After the navigation settles, on whatever screen is showing then.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = rootNavigatorKey.currentContext;
-      if (c != null) showTtSnack(c, message, actionLabel: actionLabel, onAction: onAction, success: success);
+      if (c != null) showTtSnack(c, message, actionLabel: actionLabel, onAction: onAction);
     });
   }
 
@@ -79,6 +78,5 @@ Future<bool> goOnlineOrExplain(BuildContext context, WidgetRef ref, {bool toHome
     return false;
   }
   home();
-  if (onlineMessage != null) snack(onlineMessage, success: true);
   return true;
 }

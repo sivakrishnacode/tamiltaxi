@@ -85,7 +85,6 @@ P-10b,Who's riding (sheet),passenger,passenger/P-10b.png,Added after the design
 P-26,Edit profile,passenger,passenger/P-26.png,Added after the design
 P-27,Saved places,passenger,passenger/P-27.png,Added after the design
 P-28,Safety preferences,passenger,passenger/P-28.png,Added after the design
-P-29,Verify identity,passenger,passenger/P-29.png,Added after the design
 P-31,About,passenger,passenger/P-31.png,Added after the design
 P-32,Terms,passenger,passenger/P-32.png,Added after the design
 P-33,Privacy,passenger,passenger/P-33.png,Added after the design
@@ -100,7 +99,6 @@ D-06,Personal details,driver,driver/D-06.png,In the app
 D-07,Registration · vehicle card + checklist,driver,driver/D-07.png,In the app
 D-08a,Upload document · before capture,driver,driver/D-08a.png,In the app
 D-08b,Upload document · captured,driver,driver/D-08b.png,In the app
-D-09,Selfie verification,driver,driver/D-09.png,In the app
 D-11,Choose plan · start free trial,driver,driver/D-11.png,Off while the app is free (paid plans switched off)
 D-12a,UPI Autopay setup,driver,driver/D-12a.png,Off while the app is free (paid plans switched off)
 D-12b,Autopay success,driver,driver/D-12b.png,Off while the app is free (paid plans switched off)
@@ -140,7 +138,6 @@ S-10,Account on hold,driver,states/S-10.png,In the app
 S-10b,Paused for cancellations,driver,states/S-10b.png,Added after the design
 S-11,Missed ride request,driver,states/S-11.png,In the app
 S-12,No ride requests yet,driver,states/S-12.png,In the app
-S-13,Selfie check before going online,driver,states/S-13.png,In the app
 S-14,Autopay payment failed,driver,states/S-14.png,Off while the app is free (paid plans switched off)
 S-15,Empty earnings,driver,states/S-15.png,In the app
 S-16,GPS weak / location off,driver,states/S-16.png,In the app

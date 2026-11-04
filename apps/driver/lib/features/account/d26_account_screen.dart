@@ -65,14 +65,16 @@ class _D26AccountScreenState extends ConsumerState<D26AccountScreen> {
     final loadedPrefs = ref.watch(bookingPrefsProvider).value;
     final prefs = loadedPrefs == null ? null : withoutExpired(loadedPrefs, DateTime.now());
     final prefsSub = prefs == null || !prefs.hasFilters ? 'Every request · voice, Go To, Stay In' : _cap(prefs.summary);
-    // Counted as Account › Documents (D-07 read-only) counts them: the uploads plus the identity check, from the
-    // same source (mock: every upload verified). It used to count every KYC record and skip the identity step.
+    // Counted as Account › Documents (D-07 read-only) counts them: the uploads (the licence and Aadhaar among them
+    // once uploaded) plus the profile photo where the identity step applies, from the same source (mock: every
+    // upload verified).
     final kyc = ref.watch(isLiveApiProvider) ? ref.watch(kycProvider).value : Seed.kycAllVerified;
     final identity = ref.watch(identityProvider).value;
     final uploads = kyc?.where(isShownDoc).toList();
-    final steps = (uploads?.length ?? 0) + (identity?.isEnabled == true ? 1 : 0);
+    final hasPhoto = ref.watch(isLiveApiProvider) && profile != null && (identity?.isRequired ?? false);
+    final steps = (uploads?.length ?? 0) + (hasPhoto ? 1 : 0);
     final verified = (uploads?.where((d) => d.status == KycStatus.verified).length ?? 0) +
-        (identity?.isApproved == true ? 1 : 0);
+        (hasPhoto && profile.photoPath != null ? 1 : 0);
     final docsSub = uploads == null
         ? 'Driving licence, RC, insurance…'
         : verified == steps

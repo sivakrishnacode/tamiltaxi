@@ -101,24 +101,7 @@ class FakeJobs extends LiveJobs {
   @override
   Future<void> goOnline(LatLng at) async {
     calls.add('online');
-    if (selfieRequired) throw const ApiException(403, 'Take your daily selfie first', code: 'SELFIE_CHECK_REQUIRED');
     if (onlineError != null) throw onlineError!;
-  }
-
-  /// The server wants the daily selfie: going online is refused until a [selfieCheck] passes.
-  bool selfieRequired = false;
-
-  /// Answers for the next selfie checks, in order (an exception is thrown; null passes).
-  final selfieAnswers = <Object?>[];
-  int selfieChecks = 0;
-
-  @override
-  Future<DateTime> selfieCheck(List<int> bytes, String filename) async {
-    selfieChecks++;
-    final answer = selfieAnswers.isEmpty ? null : selfieAnswers.removeAt(0);
-    if (answer != null) throw answer;
-    selfieRequired = false;
-    return DateTime.now();
   }
 
   @override

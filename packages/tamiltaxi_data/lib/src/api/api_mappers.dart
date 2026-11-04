@@ -251,7 +251,6 @@ RideRequest rideRequestFromOffer(Json offer) {
     customerName: _s(passenger['name'], 'Tamil Taxi customer'),
     customerRating: 4.8,
     customerPhone: _s(passenger['phone']),
-    isCustomerVerified: passenger['isVerified'] == true,
     womenDriver: womenDriverFromApi((offer['trip'] as Map)['womenDriver']),
     bookedBy: passenger['bookedBy'] is String ? passenger['bookedBy'] as String : null,
     parcel: trip.parcel,
@@ -288,8 +287,6 @@ RideRequest rideRequestFromTrip(Json j) {
     customerPhone: j['riderPhone'] is String
         ? j['riderPhone'] as String
         : _s(passenger['phone']),
-    isCustomerVerified:
-        j['riderName'] is! String && passenger['identityStatus'] == 'APPROVED',
     womenDriver: womenDriverFromApi(j['womenDriver']),
     bookedBy: j['riderName'] is String
         ? _s(passenger['name'], 'Tamil Taxi customer')

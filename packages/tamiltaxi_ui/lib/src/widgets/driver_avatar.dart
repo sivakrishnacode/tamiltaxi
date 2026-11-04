@@ -4,7 +4,7 @@ import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 
 import 'tt_avatar.dart';
 
-/// A driver's verified photo (the approved Didit selfie), or their initials until there is one.
+/// A driver's approved profile photo, or their initials until there is one.
 class DriverAvatar extends ConsumerWidget {
   const DriverAvatar({
     super.key,

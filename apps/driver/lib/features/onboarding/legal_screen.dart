@@ -34,9 +34,8 @@ class LegalScreen extends StatelessWidget {
     ),
     (
       'Identity and documents',
-      'You must pass an identity check (your driving licence, Aadhaar and a live selfie, checked by Didit) and keep a '
-          'valid vehicle RC and insurance. Before you go online we may ask for a quick selfie, compared with your '
-          'identity-check selfie, to confirm it is you.',
+      'You must pass an identity check (our team compares your driving licence and Aadhaar with your profile photo) '
+          'and keep a valid vehicle RC and insurance.',
     ),
     (
       'Conduct',
@@ -54,14 +53,13 @@ class LegalScreen extends StatelessWidget {
     (
       'What we collect',
       'Your name, phone number, gender, vehicle details, UPI ID and, if you add them, emergency contacts; photos of '
-          'your RC and insurance; your profile photo; your identity check; your trips and ratings; and your location '
-          'while you are online or on a job.',
+          'your RC, insurance, driving licence and Aadhaar; your profile photo; your trips and ratings; and your '
+          'location while you are online or on a job.',
     ),
     (
       'Identity check',
-      'Didit scans your driving licence and Aadhaar and takes a live selfie. We keep the result, your name and date of '
-          'birth from the ID, the last 4 digits of each number (never the full number) and the selfie. Your profile '
-          'photo and the selfie before you go online are compared with it by Didit.',
+      'You upload photos of your driving licence and Aadhaar, and our team checks them by hand against your profile '
+          'photo. We keep the photos and the result. No outside identity-check service is used.',
     ),
     (
       'How we use it',
@@ -77,15 +75,15 @@ class LegalScreen extends StatelessWidget {
     (
       'Sharing',
       'Only with the rider on your trip, your emergency contacts when you use SOS, the police or emergency services '
-          'when a safety incident needs it, the services that run the app (AWS, Google Maps, Firebase, Didit and '
-          'WATX for sign-in codes on WhatsApp), and when the law requires it.',
+          'when a safety incident needs it, the services that run the app (AWS, Google Maps, Firebase and WATX for '
+          'sign-in codes on WhatsApp), and when the law requires it.',
     ),
     (
       'Your choices',
       'You can update your details from Account. To close your account, raise a "Delete my account" ticket in '
           'Account › Help & support, or email us. We keep your details, documents, photos and trips for 6 months '
-          'after that for police enquiries. Then your name, number and email are removed, your document photos, '
-          'profile photo and selfie are deleted, and your trip records are kept without your name for safety and '
+          'after that for police enquiries. Then your name, number and email are removed, your document photos '
+          'and profile photo are deleted, and your trip records are kept without your name for safety and '
           'accounting.',
     ),
   ];
@@ -105,7 +103,7 @@ class LegalScreen extends StatelessWidget {
           children: [
             Text(privacy ? 'Tamil Taxi Driver Privacy Policy' : 'Tamil Taxi Driver Terms of Service', style: t.h1),
             const SizedBox(height: TtSpacing.xs),
-            Text('Last updated 16 October 2026', style: t.caption.copyWith(color: TtColors.navy500)),
+            Text('Last updated 4 November 2026', style: t.caption.copyWith(color: TtColors.navy500)),
             for (final (title, body) in sections) ...[
               const SizedBox(height: TtSpacing.xl),
               Text(title, style: t.h2),

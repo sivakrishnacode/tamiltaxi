@@ -28,8 +28,6 @@ abstract final class Routes {
   static const accountPausedPath = '/account-paused';
   static String accountPaused(DateTime until) =>
       '$accountPausedPath?until=${Uri.encodeQueryComponent(until.toUtc().toIso8601String())}';
-  static const selfieCheck = '/selfie-check';
-  static const dailySelfie = '/selfie-check/camera';
   static String legal(String doc) => '/legal/$doc';
 
   // Tabs

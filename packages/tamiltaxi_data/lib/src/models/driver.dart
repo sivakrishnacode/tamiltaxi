@@ -105,8 +105,7 @@ enum KycDocType {
 /// Documents every driver uploads (an admin checks them). Police verification is retired.
 const driverUploadDocs = [KycDocType.vehicleRc, KycDocType.insurance];
 
-/// The identity check by hand, when the server asks for it or Didit can't be used: an admin checks these and approves
-/// the profile photo as the matching face.
+/// The identity check by hand: an admin checks these and approves the profile photo as the matching face.
 const identityUploadDocs = [KycDocType.drivingLicence, KycDocType.aadhaar];
 
 /// Shown in the driver's document lists: RC and insurance, and the identity documents once uploaded.
@@ -274,7 +273,6 @@ class RideRequest {
     required this.customerName,
     required this.customerRating,
     this.customerPhone = '',
-    this.isCustomerVerified = false,
     this.womenDriver = WomenDriverPref.none,
     this.bookedBy,
     this.parcel,
@@ -336,8 +334,6 @@ class RideRequest {
   final double customerRating;
   final String customerPhone;
 
-  /// The rider passed the optional identity check (Didit): a "Verified" badge on the request card.
-  final bool isCustomerVerified;
 
   /// Butterfly: a woman rider asked for a woman driver first ([WomenDriverPref.preferred]) or only
   /// ([WomenDriverPref.only]). The request card gets the pink Butterfly band.
@@ -371,7 +367,6 @@ class RideRequest {
     String? customerName,
     double? customerRating,
     String? customerPhone,
-    bool? isCustomerVerified,
     WomenDriverPref? womenDriver,
     String? bookedBy,
     ParcelDetails? parcel,
@@ -398,7 +393,6 @@ class RideRequest {
     customerName: customerName ?? this.customerName,
     customerRating: customerRating ?? this.customerRating,
     customerPhone: customerPhone ?? this.customerPhone,
-    isCustomerVerified: isCustomerVerified ?? this.isCustomerVerified,
     womenDriver: womenDriver ?? this.womenDriver,
     bookedBy: bookedBy ?? this.bookedBy,
     parcel: parcel ?? this.parcel,

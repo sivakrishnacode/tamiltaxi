@@ -1,5 +1,5 @@
 // Main driver path, end to end with fast mode and fake time:
-// Home → GO ONLINE → daily selfie → ride request → swipe to accept → Arrived at pickup →
+// Home → GO ONLINE → ride request → swipe to accept → Arrived at pickup →
 // (back asks "Leave this screen?") → OTP 4829 → Start ride → Swipe to end ride → Received cash → rate → Home, with today's
 // earnings and rides up by the fare.
 import 'package:flutter/material.dart';
@@ -45,13 +45,8 @@ void main() {
     await advance(tester, const Duration(seconds: 1));
     final before = container.read(driverSessionProvider);
 
-    // GO ONLINE → S-13 selfie check → D-09 camera → back Home, online.
+    // GO ONLINE → online on Home.
     await tester.tap(find.text('GO ONLINE').hitTestable().first);
-    await waitFor(tester, find.text('Take selfie').hitTestable());
-    await tester.tap(find.text('Take selfie').hitTestable().first);
-    await waitFor(tester, find.text('Take selfie').hitTestable());
-    await advance(tester, const Duration(milliseconds: 500));
-    await tester.tap(find.text('Take selfie').hitTestable().first);
     await advance(tester, const Duration(seconds: 1));
     expect(container.read(driverSessionProvider).online, isTrue);
 

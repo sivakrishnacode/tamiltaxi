@@ -89,7 +89,6 @@ Notes:
 | P-26 | Edit profile | Added after the design | [passenger/P-26.png](passenger/P-26.png) |
 | P-27 | Saved places | Added after the design | [passenger/P-27.png](passenger/P-27.png) |
 | P-28 | Safety preferences | Added after the design | [passenger/P-28.png](passenger/P-28.png) |
-| P-29 | Verify identity | Added after the design | [passenger/P-29.png](passenger/P-29.png) |
 | P-31 | About | Added after the design | [passenger/P-31.png](passenger/P-31.png) |
 | P-32 | Terms | Added after the design | [passenger/P-32.png](passenger/P-32.png) |
 | P-33 | Privacy | Added after the design | [passenger/P-33.png](passenger/P-33.png) |
@@ -143,7 +142,6 @@ Notes:
 | D-07 | Registration · vehicle card + checklist | In the app | [driver/D-07.png](driver/D-07.png) |
 | D-08a | Upload document · before capture | In the app | [driver/D-08a.png](driver/D-08a.png) |
 | D-08b | Upload document · captured | In the app | [driver/D-08b.png](driver/D-08b.png) |
-| D-09 | Selfie verification | In the app | [driver/D-09.png](driver/D-09.png) |
 | D-11 | Choose plan · start free trial | Off while the app is free (paid plans switched off) | [driver/D-11.png](driver/D-11.png) |
 | D-12a | UPI Autopay setup | Off while the app is free (paid plans switched off) | [driver/D-12a.png](driver/D-12a.png) |
 | D-12b | Autopay success | Off while the app is free (paid plans switched off) | [driver/D-12b.png](driver/D-12b.png) |
@@ -199,7 +197,6 @@ Notes:
 | S-10b | Paused for cancellations | Added after the design | [states/S-10b.png](states/S-10b.png) |
 | S-11 | Missed ride request | In the app | [states/S-11.png](states/S-11.png) |
 | S-12 | No ride requests yet | In the app | [states/S-12.png](states/S-12.png) |
-| S-13 | Selfie check before going online | In the app | [states/S-13.png](states/S-13.png) |
 | S-14 | Autopay payment failed | Off while the app is free (paid plans switched off) | [states/S-14.png](states/S-14.png) |
 | S-15 | Empty earnings | In the app | [states/S-15.png](states/S-15.png) |
 | S-16 | GPS weak / location off | In the app | [states/S-16.png](states/S-16.png) |

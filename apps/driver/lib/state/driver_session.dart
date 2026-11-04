@@ -58,7 +58,6 @@ class DriverSessionState {
   const DriverSessionState({
     this.online = false,
     this.goingOnline = false,
-    this.selfieDoneThisSession = false,
     this.incoming,
     this.incomingExpiresAt,
     this.queued = const [],
@@ -79,10 +78,6 @@ class DriverSessionState {
 
   /// Live API: getting a GPS fix and asking the API to go online.
   final bool goingOnline;
-
-  /// Mock mode: the simulated daily selfie check (S-13) is due the first time each app session. Live, the server
-  /// decides (403 `SELFIE_CHECK_REQUIRED` from going online).
-  final bool selfieDoneThisSession;
 
   /// A request waiting for Accept / Decline (D-15 / D-20).
   final RideRequest? incoming;
@@ -119,7 +114,6 @@ class DriverSessionState {
   DriverSessionState copyWith({
     bool? online,
     bool? goingOnline,
-    bool? selfieDoneThisSession,
     RideRequest? incoming,
     DateTime? incomingExpiresAt,
     bool clearIncoming = false,
@@ -139,7 +133,6 @@ class DriverSessionState {
   }) => DriverSessionState(
     online: online ?? this.online,
     goingOnline: goingOnline ?? this.goingOnline,
-    selfieDoneThisSession: selfieDoneThisSession ?? this.selfieDoneThisSession,
     incoming: clearIncoming ? null : (incoming ?? this.incoming),
     incomingExpiresAt: clearIncoming
         ? null
@@ -265,8 +258,6 @@ class DriverSessionController extends Notifier<DriverSessionState> {
   WorkType get workType => ref.read(demoSettingsProvider).workType;
 
   // ------------------------------------------------------------ online state
-  void markSelfieDone() => state = state.copyWith(selfieDoneThisSession: true);
-
   /// Live API: throws [LocationProblem] (GPS off / denied) or [ApiException] (not approved, plan expired)
   /// with a message to show; the driver stays offline.
   Future<void> goOnline() async {
@@ -943,7 +934,6 @@ class DriverSessionController extends Notifier<DriverSessionState> {
       online: true,
       job: job,
       phase: phase,
-      selfieDoneThisSession: true,
       noShowAt: update.noShowAt,
       waiting: waitingOf(update),
     );

@@ -391,9 +391,13 @@ class MockDriverRepository with _Latency implements DriverRepository {
 
   @override
   Future<List<KycDocument>> setKycStatus(KycDocType type, KycStatus status, {String? reason}) async {
+    final row = KycDocument(type: type, status: status, rejectReason: reason);
+    // The licence and Aadhaar have no row until first uploaded.
+    final isNew = !db.kyc.any((d) => d.type == type);
     db.kyc = [
       for (final d in db.kyc)
-        if (d.type == type) KycDocument(type: type, status: status, rejectReason: reason) else d,
+        if (d.type == type) row else d,
+      if (isNew) row,
     ];
     return db.kyc;
   }

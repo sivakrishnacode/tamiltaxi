@@ -100,15 +100,12 @@ class _TtPassengerAppState extends ConsumerState<TtPassengerApp> {
   }
 
   /// A tapped notification: a trip, its chat or a reminder about it opens that trip's screen (a finished one its
-  /// rating or details); a safety check opens its sheet; an identity result opens Verify identity; a trip suggestion
-  /// opens that trip ready to book; a campaign opens the screen it names.
+  /// rating or details); a safety check opens its sheet; a trip suggestion opens that trip ready to book; a campaign opens the screen it names.
   Future<void> _onPushTap(PushData data) async {
     switch (data['type']) {
       case 'safety':
         final check = SafetyCheck.fromJson(data);
         return _showSafetyCheck(check, openTrip: !check.isArrival);
-      case 'identity':
-        if (ref.read(authRepositoryProvider).isLoggedIn) _router.go(Routes.verifyIdentity);
       case 'trip' || 'chat' || 'nudge':
         final route = await routeForTripPush(ref, data);
         if (mounted && route != null && !isSosOpen(_router)) _router.go(route);

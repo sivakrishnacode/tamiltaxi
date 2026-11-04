@@ -97,7 +97,7 @@ void main() {
     });
 
     test('carries what the comparison list shows, and back to a request', () {
-      final rich = r.copyWith(customerRating: 4.6, isCustomerVerified: true);
+      final rich = r.copyWith(customerRating: 4.6);
       final o = OverlayOffer.fromJson(jsonDecode(jsonEncode(OverlayOffer.fromRequest(rich, expires).toJson())))!;
       final back = o.toRequest();
       expect(back.id, 'trip-9');
@@ -105,7 +105,6 @@ void main() {
       expect(back.pickup.address, r.pickup.address);
       expect(back.drop.address, r.drop.address);
       expect(back.customerRating, 4.6);
-      expect(back.isCustomerVerified, isTrue);
       expect(back.isDelivery, isTrue);
       expect(o.expiresAt, expires);
     });
