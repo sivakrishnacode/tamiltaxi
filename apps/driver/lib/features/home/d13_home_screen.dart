@@ -566,9 +566,21 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
     );
   }
 
-  void _goOfflineOrShowcase() {
+  /// Asks first: the button sits low on the screen, where a phone going into a pocket can tap it.
+  Future<void> _goOfflineOrShowcase() async {
+    final ok = await showTtConfirm(
+      context,
+      icon: Symbols.power_settings_new_rounded,
+      title: 'Go offline?',
+      message: "You won't get new requests until you go online again.",
+      confirmLabel: 'Go offline',
+      cancelLabel: 'Stay online',
+    );
+    if (!ok || !mounted) return;
     if (_live) {
-      _goOffline();
+      // A request accepted while the question was open: going offline now would leave that trip.
+      final session = ref.read(driverSessionProvider);
+      if (session.online && !session.onJob) _goOffline();
     } else {
       showTtSnack(context, "You're offline. No new requests.");
     }

@@ -98,6 +98,8 @@ Release: `passenger-v0.1.0+1` at `42008b6`
   demand hexes (were brown), pickup points a lighter blue. Zone names show when zoomed out to the city too (short:
   "Airport", "Singanallur"), and sit on the zone's top edge instead of covering it or the car. The zone the driver
   is in always gets its label: zones off screen no longer use up the 5 places.
+- Go offline asks first ("Go offline?" with Stay online), so a tap while putting the phone in a pocket doesn't end
+  the shift.
 
 ### 0.1.2 (code 4) · 4 Nov 2026
 
