@@ -112,7 +112,8 @@ export function surgeExample(ratio: number, sensitivity: number, maxMultiplier: 
 }
 
 /** H3 resolution 8 hexagon ≈ 0.737 km² (average area). */
-export const KM2_PER_CELL: Record<number, number> = { 7: 5.161, 8: 0.737, 9: 0.105 };
+/** H3 average hexagon area (km²) per resolution; zones may go down to res 10. */
+export const KM2_PER_CELL: Record<number, number> = { 7: 5.161, 8: 0.737, 9: 0.105, 10: 0.015 };
 
 export function cellsToKm2(count: number, resolution = 8): number {
   return count * (KM2_PER_CELL[resolution] ?? 0.737);

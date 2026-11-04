@@ -78,6 +78,8 @@ describe("h3 helpers", () => {
 
   it("converts cells to km²", () => {
     expect(Math.round(cellsToKm2(1519, 8))).toBe(1120);
+    // A fine zone: 343 res 10 hexagons are the 7 res 8 ones they split from (≈ 5.2 km²), not 250 km².
+    expect(cellsToKm2(343, 10)).toBeCloseTo(cellsToKm2(7, 8), 0);
   });
 });
 

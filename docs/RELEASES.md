@@ -203,6 +203,9 @@ API (no database change).
 - Driver map (`/demand/hotspots`) is cut to the **driver's home city**, read from their Bearer token (a Coimbatore
   driver saw Tiruppur's service area and zones): hotspots, zones and the service-area outline carry a `cityId`.
   No token, or no home city yet: every city, as before. Works with the driver app already on Play.
+- **Zones can use finer hexagons** than their city: Hexagon size in the zone editor (City size ~1 km, Fine ~400 m,
+  Finest ~150 m across), so a zone can leave out streets it shouldn't cover. Fares, no-service rules, pickup points
+  and the driver map match each zone at its own size. Zone stats in res 9 cities (Tiruppur) count again.
 
 ### 4 Nov 2026 (second) · API and admin at `e28e30a`
 

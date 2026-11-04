@@ -1,5 +1,6 @@
 "use client";
 
+import { getResolution } from "h3-js";
 import { HexagonIcon, Loader2Icon, PencilIcon, PlusIcon, SaveIcon, Trash2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -26,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { formatCount, humanize } from "@/lib/format";
+import { toResolution } from "@/lib/hex";
 import { ZONE_KINDS, type AreaStats, type CityDetail, type Zone, type ZoneKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { cellsToKm2 } from "@/lib/validation";
@@ -81,6 +83,27 @@ interface Draft {
   kind: ZoneKind;
   surgeMultiplier: string;
   rules: RulesDraft;
+  /** The zone's hexagon size: the city's resolution or finer (the API takes up to [MAX_ZONE_RES]). */
+  resolution: number;
+}
+
+/** Finest hexagons a zone may use (res 10 ≈ 150 m across: a gate, a bus stand). */
+const MAX_ZONE_RES = 10;
+
+/** Hexagon sizes a zone may use in a city at [cityRes]: the city's, then up to two finer, as people see them. */
+function zoneSizes(cityRes: number): { res: number; label: string }[] {
+  const across = (res: number) => {
+    const m = [0, 0, 0, 0, 0, 0, 0, 2600, 1000, 400, 150][res] ?? 0;
+    return m >= 1000 ? `~${(m / 1000).toFixed(m % 1000 ? 1 : 0)} km` : `~${m} m`;
+  };
+  return [cityRes, cityRes + 1, cityRes + 2]
+    .filter((res) => res <= MAX_ZONE_RES)
+    .map((res, i) => ({ res, label: `${["City size", "Fine", "Finest"][i]} (${across(res)} across)` }));
+}
+
+/** A zone's hexagon resolution: its cells', or the city's for a new zone. */
+function zoneRes(cells: readonly string[], cityRes: number): number {
+  return cells.length ? getResolution(cells[0]) : cityRes;
 }
 
 const STATE_BADGE: Record<ReturnType<typeof zoneState>, { label: string; className: string } | null> = {
@@ -195,7 +218,9 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   const { ref: listRef, isMore, check: checkMore } = useMoreBelow(`${city.zones.length}-${!!draft}-${isFullscreen}`);
   const [isPending, startTransition] = useTransition();
 
-  const outside = draft ? ed.cells.filter((c) => !service.has(c)) : [];
+  // Finer zone hexagons count as inside when their city-sized parent is.
+  const cityCell = (c: string) => (getResolution(c) > city.h3Resolution ? toResolution([c], city.h3Resolution)[0] : c);
+  const outside = draft ? ed.cells.filter((c) => !service.has(cityCell(c))) : [];
   const multiplier = Number(draft?.surgeMultiplier ?? 1);
   const isMultiplierValid = multiplier >= 1 && multiplier <= 1.5;
   const rulesProblem = draft ? rulesError(draft.rules, draft.kind) : null;
@@ -204,8 +229,8 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   function startEdit(z?: Zone) {
     setDraft(
       z
-        ? { id: z.id, name: z.name, kind: z.kind, surgeMultiplier: String(z.surgeMultiplier), rules: rulesDraftOf(z) }
-        : { name: "", kind: "SURGE", surgeMultiplier: "1.2", rules: rulesDraftOf() },
+        ? { id: z.id, name: z.name, kind: z.kind, surgeMultiplier: String(z.surgeMultiplier), rules: rulesDraftOf(z), resolution: zoneRes(z.cells, city.h3Resolution) }
+        : { name: "", kind: "SURGE", surgeMultiplier: "1.2", rules: rulesDraftOf(), resolution: city.h3Resolution },
     );
     ed.reset(z?.cells ?? []);
     ed.setTool("add");
@@ -254,7 +279,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
           <CardHeader>
             <CardTitle className="font-semibold">{draft.id ? "Edit zone" : "New zone"}</CardTitle>
             <CardDescription>
-              {formatCount(ed.cells.length)} hexagons · {cellsToKm2(ed.cells.length, city.h3Resolution).toFixed(1)} km²
+              {formatCount(ed.cells.length)} hexagons · {cellsToKm2(ed.cells.length, draft.resolution).toFixed(2)} km²
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
@@ -290,6 +315,30 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
               </Select>
               <p className="text-xs text-muted-foreground">{KIND_HINT[draft.kind]}</p>
             </div>
+            <div className="grid gap-1.5">
+              <Label>Hexagon size</Label>
+              <Select
+                value={String(draft.resolution)}
+                onValueChange={(v) => {
+                  const resolution = Number(v);
+                  // Split each hexagon into its smaller ones (or merge them back), so nothing drawn is lost.
+                  ed.commit(toResolution(ed.cells, resolution));
+                  setDraft({ ...draft, resolution });
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Hexagon size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {zoneSizes(city.h3Resolution).map((o) => (
+                    <SelectItem key={o.res} value={String(o.res)}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Smaller hexagons follow the streets you want and leave the rest out.</p>
+            </div>
             {draft.kind === "SURGE" && (
               <div className="grid gap-1.5">
                 <Label htmlFor="zone-mult">Multiplier</Label>
@@ -319,7 +368,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                   size="xs"
                   variant="outline"
                   className="mt-1.5 bg-card"
-                  onClick={() => ed.commit(ed.cells.filter((c) => service.has(c)))}
+                  onClick={() => ed.commit(ed.cells.filter((c) => service.has(cityCell(c))))}
                 >
                   Remove outside hexagons
                 </Button>
@@ -366,7 +415,9 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
                   <div className="mt-1 flex items-center gap-2 pl-5 text-xs text-muted-foreground">
                     <Badge variant="outline">{humanize(z.kind)}</Badge>
                     {z.kind === "SURGE" && <span>{z.surgeMultiplier.toFixed(2)}×</span>}
-                    <span>{formatCount(z.cells.length)} cells</span>
+                    <span>
+                      {formatCount(z.cells.length)} {zoneRes(z.cells, city.h3Resolution) > city.h3Resolution ? "fine " : ""}cells
+                    </span>
                     {STATE_BADGE[zoneState(z)] && (
                       <span className={cn("rounded-full px-1.5 py-px text-[10px] font-medium", STATE_BADGE[zoneState(z)]!.className)}>{STATE_BADGE[zoneState(z)]!.label}</span>
                     )}
@@ -398,7 +449,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
     <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start 2xl:grid-cols-[400px_minmax(0,1fr)]">
       <HexWorkbench
         center={{ lat: city.centerLat, lng: city.centerLng }}
-        resolution={city.h3Resolution}
+        resolution={draft?.resolution ?? city.h3Resolution}
         fitCells={city.serviceCells}
         editor={draft ? ed : null}
         editStyle={zoneStyle(draft?.kind ?? "SURGE", "live", true)}
