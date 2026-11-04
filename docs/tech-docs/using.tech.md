@@ -1701,7 +1701,7 @@ suggestion's name.
 
 ## 7a0. Driver demand map (hex + nested hex)
 
-- **API:** public `GET /v1/demand/hotspots` (`DriverMapService`, Redis-cached 60 s, key `drivermap:v4`): up to 30 res-7
+- **API:** public `GET /v1/demand/hotspots` (`DriverMapService`, Redis-cached 60 s, key `drivermap:v5`): up to 30 res-7
   hexes (≈5 km²) ranked by live demand (distinct riders in the demand window ×3) + bookings in the last hour (×2) +
   the usual pickups at this IST hour ±1 over the last 4 weeks (weekly average). Level: `high` (surging, or ≥ 60 % of the
   busiest), `busy` (≥ 30 % or live busy), `some`. Each hotspot carries its outline and its busy res-8 children
@@ -1715,6 +1715,11 @@ suggestion's name.
   **nearest busy area** (`nearestHotspot()`: nearest `high`, else nearest `busy`; `NearestDemandChip`): "HIGH DEMAND
   · 1.2x", the area name, and a directions button with the distance that opens Google Maps ("You're here" within
   1.2 km of its centre).
+- **One city per driver (4 Nov 2026):** the route is public, but when the request carries a driver's Bearer token the
+  answer is cut to that driver's home city (`Driver.cityId`, set when they first go online inside a city, or by an
+  admin; `driverCity()`): its hotspots (`cityOf()`: the city holding most of the hex, whatever its resolution), its
+  zones and its service-area outline. `?cityId=` overrides it; no token or no home city yet = every city. The cache
+  holds every city once (`DriverMapData`), `forCity()` filters per request.
 - **Admin zones on the map (4 Nov 2026):** `/demand/hotspots` also returns `zones`: each active city's zones live now
   (`isZoneLive`), largest first, with `kind`, `multiplier` and `vehicleKinds` (surge), `blocksPickups` /
   `blocksDrops` (no service), `meetingPoint` (pickup point), `startMinute` / `endMinute`, `days`, `endsAt`, a label

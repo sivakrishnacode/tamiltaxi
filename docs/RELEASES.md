@@ -200,6 +200,9 @@ API (no database change).
 - A blocked or deleted account's session gets **401** `ACCOUNT_BLOCKED` (was 403), so the apps sign out and show the
   welcome screen instead of retrying for ever ("Could not load your documents"); signing in again says the
   account is blocked. Works with the apps already on Play (they drop a session on 401).
+- Driver map (`/demand/hotspots`) is cut to the **driver's home city**, read from their Bearer token (a Coimbatore
+  driver saw Tiruppur's service area and zones): hotspots, zones and the service-area outline carry a `cityId`.
+  No token, or no home city yet: every city, as before. Works with the driver app already on Play.
 
 ### 4 Nov 2026 (second) · API and admin at `e28e30a`
 

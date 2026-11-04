@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, Param, ParseFloatPipe, Query } from '@nestjs/common';
+import { Controller, Get, Headers, NotFoundException, Param, ParseFloatPipe, Query } from '@nestjs/common';
 import { compactCells } from 'h3-js';
 
 import { Public } from '../../core/auth/public.decorator.js';
@@ -41,10 +41,13 @@ export class GeoController {
     return { at: snap.at, cells: snap.cells.filter((c) => c.level !== 'normal').map(({ cell, level, multiplier }) => ({ cell, level, multiplier })) };
   }
 
-  /** Driver app map: demand hotspots (res-7 hexes with outlines, no counts) and the service area outline. */
+  /**
+   * Driver app map: demand hotspots (res-7 hexes with outlines, no counts), the admin zones live now and the service
+   * area outline, for the calling driver's home city (from their Bearer token; `cityId` overrides it), else for all.
+   */
   @Get('demand/hotspots')
-  hotspots(): Promise<DriverMap> {
-    return this.driverMap.map();
+  async hotspots(@Headers('authorization') authorization?: string, @Query('cityId') cityId?: string): Promise<DriverMap> {
+    return this.driverMap.map(cityId?.trim() || (await this.driverMap.driverCity(authorization)));
   }
 
   @Get('geo/check')

@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { cellsToMultiPolygon, cellToBoundary, cellToChildren, cellToLatLng, cellToParent } from 'h3-js';
+import { JwtService } from '@nestjs/jwt';
+import { cellsToMultiPolygon, cellToBoundary, cellToChildren, cellToLatLng, cellToParent, getResolution } from 'h3-js';
+
+import type { JwtPayload } from '../../core/auth/auth-user.js';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
@@ -34,11 +37,14 @@ export interface Hotspot {
   boundary: LatLngPair[];
   /** Busy res-8 hexes inside (only those with pickups): where in the area the orders come from. */
   nested: NestedHex[];
+  /** The city most of it lies in; absent outside every service area. */
+  cityId?: string;
 }
 
 /** An admin zone that counts right now (Setup › Cities › Zones), with what a driver needs to know about it. */
 export interface MapZone {
   id: string;
+  cityId: string;
   name: string;
   kind: ZoneKind;
   /** SURGE: the fare multiplier (1 = none). */
@@ -72,7 +78,22 @@ export interface DriverMap {
   zones: MapZone[];
 }
 
-const CACHE_KEY = 'drivermap:v4';
+/** One city's service area: its cells (to place the hotspots) and the outline drawn. */
+export interface CityArea {
+  cityId: string;
+  cells: string[];
+  rings: LatLngPair[][];
+}
+
+/** What is built once and cached for every driver; [forCity] cuts it down to one city. */
+export interface DriverMapData {
+  at: string;
+  hotspots: Hotspot[];
+  zones: MapZone[];
+  areas: CityArea[];
+}
+
+const CACHE_KEY = 'drivermap:v5';
 /** Recent pickups read per map build to name the hotspots. */
 const NAME_SAMPLE = 3000;
 const CACHE_S = 60;
@@ -94,22 +115,44 @@ export class DriverMapService {
     private readonly redis: RedisService,
     private readonly demand: DemandService,
     private readonly geo: GeoService,
+    private readonly jwt: JwtService,
   ) {}
 
-  async map(): Promise<DriverMap> {
+  /**
+   * The map for one driver: their home city's hotspots, zones and service area when [cityId] is given (a driver
+   * map for a Coimbatore driver never shows Tiruppur), else every city's (drivers without a home city yet, apps
+   * that send no token).
+   */
+  async map(cityId?: string): Promise<DriverMap> {
     const cached = await this.redis.get(CACHE_KEY);
-    if (cached) return JSON.parse(cached) as DriverMap;
-    const map = await this.build(new Date());
-    await this.redis.set(CACHE_KEY, JSON.stringify(map), 'EX', CACHE_S);
-    return map;
+    let data: DriverMapData;
+    if (cached) data = JSON.parse(cached) as DriverMapData;
+    else {
+      data = await this.build(new Date());
+      await this.redis.set(CACHE_KEY, JSON.stringify(data), 'EX', CACHE_S);
+    }
+    return forCity(data, cityId);
   }
 
-  async build(now: Date): Promise<DriverMap> {
-    const [snapshot, recent, usual, serviceArea, zones] = await Promise.all([
+  /** The home city of the driver whose Bearer [authorization] this is (the route is public: no token, no city). */
+  async driverCity(authorization: string | undefined): Promise<string | undefined> {
+    const token = authorization?.replace(/^Bearer\s+/i, '');
+    if (!token) return undefined;
+    try {
+      const { driverId } = await this.jwt.verifyAsync<JwtPayload>(token);
+      if (!driverId) return undefined;
+      return (await this.prisma.driver.findUnique({ where: { id: driverId }, select: { cityId: true } }))?.cityId ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async build(now: Date): Promise<DriverMapData> {
+    const [snapshot, recent, usual, areas, zones] = await Promise.all([
       this.demand.snapshot(),
       this.pickupsSince(new Date(now.getTime() - RECENT_MIN * 60_000)),
       this.usualPickups(now),
-      this.serviceAreaOutline(),
+      this.cityAreas(),
       this.liveZones(now),
     ]);
     const live = new Map(snapshot.cells.map((c) => [c.cell, c]));
@@ -150,7 +193,11 @@ export class DriverMapService {
       const name = names.get(h.cell);
       if (name) h.name = name;
     }
-    return { at: now.toISOString(), hotspots, serviceArea, zones };
+    for (const h of hotspots) {
+      const cityId = cityOf(h.cell, areas);
+      if (cityId) h.cityId = cityId;
+    }
+    return { at: now.toISOString(), hotspots, zones, areas };
   }
 
   /** The active cities' zones that count at [now], as the driver map shows them. */
@@ -210,15 +257,15 @@ export class DriverMapService {
   }
 
   /** Each active city's service cells merged into outer rings (holes dropped: the map only draws the edge). */
-  private async serviceAreaOutline(): Promise<LatLngPair[][]> {
+  private async cityAreas(): Promise<CityArea[]> {
     const cities = await this.geo.activeCities();
-    const rings: LatLngPair[][] = [];
+    const areas: CityArea[] = [];
     for (const c of cities) {
       const area = await this.geo.serviceArea(c.id);
       if (!area?.cells.length) continue;
-      for (const polygon of cellsToMultiPolygon(area.cells, false)) rings.push(polygon[0] as LatLngPair[]);
+      areas.push({ cityId: c.id, cells: area.cells, rings: cellsToMultiPolygon(area.cells, false).map((polygon) => polygon[0] as LatLngPair[]) });
     }
-    return rings;
+    return areas;
   }
 }
 
@@ -255,6 +302,7 @@ export function mapZone(z: Zone): MapZone {
   const hasHours = z.startMinute != null && z.endMinute != null && z.startMinute !== z.endMinute;
   return {
     id: z.id,
+    cityId: z.cityId,
     name: z.name,
     kind: z.kind,
     multiplier: z.kind === 'SURGE' ? z.surgeMultiplier : 1,
@@ -267,5 +315,29 @@ export function mapZone(z: Zone): MapZone {
     ...(z.endsAt ? { endsAt: z.endsAt.toISOString() } : {}),
     centre: centre as LatLngPair,
     outline: cellsToMultiPolygon(z.cells, false).map((polygon) => polygon[0] as LatLngPair[]),
+  };
+}
+
+/** The city whose service area holds most of res-7 [cell] (cities may use different resolutions); undefined if none. */
+export function cityOf(cell: string, areas: readonly CityArea[]): string | undefined {
+  let best: { cityId: string; n: number } | undefined;
+  for (const a of areas) {
+    const res = a.cells.length ? getResolution(a.cells[0]) : 0;
+    if (res < getResolution(cell)) continue;
+    const set = new Set(a.cells);
+    const n = cellToChildren(cell, res).filter((c) => set.has(c)).length;
+    if (n > 0 && (!best || n > best.n)) best = { cityId: a.cityId, n };
+  }
+  return best?.cityId;
+}
+
+/** [data] for one city ([cityId]), or for all when it is undefined, as `/demand/hotspots` returns it. */
+export function forCity(data: DriverMapData, cityId: string | undefined): DriverMap {
+  const keep = (id: string | undefined) => cityId === undefined || id === cityId;
+  return {
+    at: data.at,
+    hotspots: data.hotspots.filter((h) => keep(h.cityId)),
+    serviceArea: data.areas.filter((a) => keep(a.cityId)).flatMap((a) => a.rings),
+    zones: data.zones.filter((z) => keep(z.cityId)),
   };
 }

@@ -2350,6 +2350,40 @@ describe('Tamil Taxi API (e2e)', () => {
     await http.post('/v1/kyc/didit/webhook').send({}).expect(404);
   });
 
+  it("driver map: a driver sees only their home city's service area and zones; no token, every city", async () => {
+    const admin = await adminAuth();
+    const other = `e2e-map-${Date.now()}`;
+    await http.post('/v1/admin/cities').set(admin).send({ id: other, name: 'E2E Map town', state: 'Tamil Nadu', centerLat: 11.1085, centerLng: 77.3411, radiusKm: 1 }).expect(201);
+    const zoneIds: string[] = [];
+    let token = '';
+    try {
+      const cells = async (id: string) => ((await http.get(`/v1/admin/cities/${id}`).set(admin).expect(200)).body as { serviceCells: string[] }).serviceCells;
+      const zone = async (city: string, name: string) => {
+        const first = (await cells(city)).slice(0, 1);
+        const res = await http.post(`/v1/admin/cities/${city}/zones`).set(admin).send({ name, kind: 'DEMAND', cells: first }).expect(201);
+        zoneIds.push((res.body as { id: string }).id);
+      };
+      await zone('coimbatore', 'E2E home zone');
+      await zone(other, 'E2E other town zone');
+      await app.get(RedisService).del('drivermap:v5');
+      // Going online inside Coimbatore makes it the driver's home city.
+      token = await onlineDriver('BIKE', { lat: 11.019, lng: 76.973 });
+      const mine = (await http.get('/v1/demand/hotspots').set('Authorization', `Bearer ${token}`).expect(200)).body as { zones: { name: string; cityId: string }[]; serviceArea: unknown[] };
+      expect(mine.zones.map((z) => z.name)).toContain('E2E home zone');
+      expect(mine.zones.map((z) => z.name)).not.toContain('E2E other town zone');
+      expect(new Set(mine.zones.map((z) => z.cityId))).toEqual(new Set(['coimbatore']));
+      const all = (await http.get('/v1/demand/hotspots').expect(200)).body as { zones: { name: string }[]; serviceArea: unknown[] };
+      expect(all.zones.map((z) => z.name)).toEqual(expect.arrayContaining(['E2E home zone', 'E2E other town zone']));
+      expect(all.serviceArea.length).toBeGreaterThan(mine.serviceArea.length);
+    } finally {
+      // Offline again, or the next dispatch tests offer their trips to this driver.
+      if (token) await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${token}`);
+      for (const id of zoneIds) await http.delete(`/v1/admin/zones/${id}`).set(admin).expect(204);
+      await http.delete(`/v1/admin/cities/${other}`).set(admin).expect(204);
+      await app.get(RedisService).del('drivermap:v5');
+    }
+  });
+
   it('driver Redis keys expire: an app that dies without going offline leaves nothing behind for ever', async () => {
     const redis = app.get(RedisService);
     const token = await onlineDriver('BIKE', { lat: 11.0185, lng: 76.9727 });
