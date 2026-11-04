@@ -145,7 +145,7 @@ export default async function DashboardPage() {
     { label: "Ready to approve", count: counts?.ready ?? 0, href: "/drivers/approvals?stage=ready", icon: UserCheckIcon },
     { label: "Documents to review", count: counts?.documents ?? 0, href: "/drivers/approvals?stage=documents", icon: FileSearchIcon },
     { label: "Photos to review", count: counts?.photos ?? 0, href: "/drivers/approvals?stage=photos", icon: CameraIcon },
-    { label: "Identity in Didit", count: counts?.identity ?? 0, href: "/drivers/approvals?stage=identity", icon: ScanFaceIcon },
+    { label: "Waiting for the photo", count: counts?.identity ?? 0, href: "/drivers/approvals?stage=identity", icon: ScanFaceIcon },
     { label: "Trips to review", count: flagged?.total ?? 0, href: "/trips?review=true", icon: TriangleAlertIcon },
     { label: "Documents expiring", count: expiring?.total ?? 0, href: "/kyc?status=EXPIRING", icon: CalendarClockIcon },
     { label: "Open tickets", count: stats.openTickets, href: "/support", icon: LifeBuoyIcon },

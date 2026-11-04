@@ -52,7 +52,6 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
     getAccess(),
     adminApi.cities().catch(() => []),
   ]);
-  const identity = d.user.identityChecks?.[0] ?? null;
   const kyc = kycProgress(d.documents, d.user.identityStatus ?? "NOT_STARTED");
   const name = displayName(d.user);
   // RC and insurance always (even before the API has a row); the licence and Aadhaar once uploaded (check by hand).
@@ -301,44 +300,20 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
       <Card className="mt-4 gap-0">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2 font-semibold">
-            <ScanFaceIcon className="size-4 text-navy-700" aria-hidden /> Identity check (Didit)
+            <ScanFaceIcon className="size-4 text-navy-700" aria-hidden /> Identity check
             <StatusBadge status={d.user.identityStatus ?? "NOT_STARTED"} />
           </CardTitle>
           <CardDescription>
-            Driving licence + Aadhaar + selfie, checked in the driver app. &ldquo;In review&rdquo; sessions are decided
-            in the Didit console (business.didit.me); the result arrives here by webhook.
+            By hand: you verify the driving licence and Aadhaar (KYC documents below) and approve the profile photo as the
+            face that matches them.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
-          {identity ? (
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Field label="Name on ID">{identity.fullName ?? "–"}</Field>
-              <Field label="Date of birth">{identity.dateOfBirth ?? "–"}</Field>
-              <Field label="Documents">
-                {identity.documents?.length
-                  ? identity.documents.map((doc) => (
-                      <span key={`${doc.type}-${doc.last4}`} className="block">
-                        {doc.type} {doc.last4 && <span className="font-mono text-[13px]">•••• {doc.last4}</span>}
-                      </span>
-                    ))
-                  : "–"}
-              </Field>
-              <Field label="Didit session">
-                <span className="block font-mono text-[12px] break-all">{identity.sessionId}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {identity.providerStatus}
-                  {identity.decidedAt ? ` · ${formatDateTime(identity.decidedAt)}` : ""}
-                </span>
-              </Field>
-              {identity.warnings && identity.warnings.length > 0 && (
-                <Field label="Warnings" className="sm:col-span-2 lg:col-span-4">
-                  <span className="text-error">{identity.warnings.join(" · ")}</span>
-                </Field>
-              )}
-            </dl>
-          ) : (
-            <p className="text-sm text-muted-foreground">The driver hasn&apos;t started the identity check yet.</p>
-          )}
+          <p className="text-sm text-muted-foreground">
+            {d.identityRequired === false
+              ? "Not asked: the driver's app is older than 0.1.2 and can't upload the licence and Aadhaar, so RC and insurance approve them."
+              : "Asked of this driver: their app uploads the licence and Aadhaar."}
+          </p>
         </CardContent>
       </Card>
 
@@ -347,13 +322,12 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
           <CardTitle className="font-semibold">Profile photo</CardTitle>
           <CardDescription>
             Riders see the approved photo. The driver takes it in the app and you approve each new one; it is also the
-            face for the identity check by hand (compare it with the licence and Aadhaar).
+            face for the identity check (compare it with the licence and Aadhaar).
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-start gap-6">
             <PhotoTile label="Shown to riders" file={d.photoFile} note={d.photoUpdatedAt ? `Since ${formatDateTime(d.photoUpdatedAt)}` : "None yet"} />
-            <PhotoTile label="Reference face" file={d.selfieFile} note="Didit's selfie, or the approved photo; for the daily selfie" />
             {d.pendingPhotoFile && (
               <div className="flex flex-col gap-3">
                 <PhotoTile label="Waiting for review" file={d.pendingPhotoFile} note={d.photoFile ? "Replaces the current photo" : "First photo"} />
@@ -361,12 +335,6 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
               </div>
             )}
           </div>
-          {d.selfieFile && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Daily selfie check (matched to the reference face before going online):{" "}
-              {d.selfieCheckedAt ? `last passed ${formatDateTime(d.selfieCheckedAt)}` : "not taken yet"}
-            </p>
-          )}
           {d.photoRejectReason && !d.pendingPhotoFile && (
             <p className="mt-3 text-xs text-error">Last photo rejected: {d.photoRejectReason}</p>
           )}
@@ -378,7 +346,7 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
           <CardTitle className="font-semibold">KYC documents</CardTitle>
           <CardDescription>
             {kyc.verified} of {kyc.total} verified (identity check included). RC and insurance verified plus the identity
-            check (Didit, or by hand: the licence and Aadhaar verified and the profile photo approved) approves the driver;
+            check (the licence and Aadhaar verified and the profile photo approved) approves the driver;
             any rejection marks the driver rejected. The driver is told only about a rejection, or once all is approved.
           </CardDescription>
           <CardAction>

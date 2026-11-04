@@ -99,9 +99,9 @@ describe("settings validation", () => {
     ]);
   });
 
-  it("takes the daily selfie check as a switch only", () => {
-    expect(validateSettings({ dailySelfieCheckEnabled: false })).toEqual({});
-    expect(Object.keys(validateSettings({ dailySelfieCheckEnabled: "off" }))).toEqual(["dailySelfieCheckEnabled"]);
+  it("takes driver auto-approval as a switch only", () => {
+    expect(validateSettings({ driverAutoApprove: false })).toEqual({});
+    expect(Object.keys(validateSettings({ driverAutoApprove: "off" }))).toEqual(["driverAutoApprove"]);
   });
 
   it("surge example matches the API formula (ratio 3 → 1.2×)", async () => {

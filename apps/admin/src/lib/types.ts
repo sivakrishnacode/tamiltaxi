@@ -31,7 +31,7 @@ export type VehicleKind =
 export type DriverStatus = "PENDING" | "APPROVED" | "REJECTED" | "ON_HOLD";
 export type KycDocType = "DRIVING_LICENCE" | "AADHAAR" | "VEHICLE_RC" | "INSURANCE" | "POLICE_VERIFICATION" | "SELFIE";
 export type KycStatus = "NOT_UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
-/** Didit identity check (drivers: licence + Aadhaar + selfie; riders: optional, any ID). */
+/** Drivers' identity check by hand: the licence and Aadhaar verified by an admin, with the profile photo. */
 export type IdentityStatus = "NOT_STARTED" | "IN_PROGRESS" | "IN_REVIEW" | "APPROVED" | "DECLINED";
 /** LOCAL: priced by distance and time; RENTAL: a cab by the hour; OUTSTATION: a cab to another town. */
 export type RideMode = "LOCAL" | "RENTAL" | "OUTSTATION";
@@ -124,7 +124,6 @@ export const PAYMENT_STATUSES: readonly PaymentStatus[] = ["PENDING", "PAID", "F
 export const ZONE_KINDS: readonly ZoneKind[] = ["SURGE", "DEMAND", "NO_SERVICE", "PICKUP_POINT"];
 export const AUDIENCES: readonly AnnouncementAudience[] = ["ALL", "PASSENGER", "DRIVER"];
 export const PLAN_PERIODS: readonly PlanPeriod[] = ["DAILY", "WEEKLY", "MONTHLY"];
-/** Documents drivers upload for review. The licence and Aadhaar are checked by Didit (identity check). */
 /** Documents an admin reviews: RC and insurance from every driver, the licence and Aadhaar of the identity check by hand. */
 export const KYC_DOC_TYPES: readonly KycDocType[] = ["VEHICLE_RC", "INSURANCE", "DRIVING_LICENCE", "AADHAAR"];
 /** Always listed on a driver's page, uploaded or not. */
@@ -160,24 +159,6 @@ export interface User {
   readonly deletedAt?: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
-}
-
-/** One Didit session. Only the last 4 digits of each document number are kept. */
-export interface IdentityVerification {
-  readonly id: string;
-  readonly purpose: "DRIVER" | "RIDER";
-  readonly sessionId: string;
-  readonly status: IdentityStatus;
-  /** Didit's own status ("Approved", "In Review", "Kyc Expired"…). */
-  readonly providerStatus: string;
-  readonly documentType: string | null;
-  readonly documentLast4: string | null;
-  readonly documents: { type: string; last4: string | null }[] | null;
-  readonly fullName: string | null;
-  readonly dateOfBirth: string | null;
-  readonly warnings: string[] | null;
-  readonly decidedAt: string | null;
-  readonly createdAt: string;
 }
 
 /** GET /admin/passengers item. */
@@ -248,13 +229,8 @@ export interface DriverBase {
   /** Profile photo riders see (stored file; the admin opens it at /files/<name>). */
   readonly photoFile?: string | null;
   readonly photoUpdatedAt?: string | null;
-  /** Live selfie from the approved Didit check (the reference photos are matched against). */
-  readonly selfieFile?: string | null;
-  /** Last passed daily selfie check. */
-  readonly selfieCheckedAt?: string | null;
-  /** A new photo with an unclear face match, waiting for an admin. */
+  /** A new photo waiting for an admin. */
   readonly pendingPhotoFile?: string | null;
-  readonly photoMatchScore?: number | null;
   readonly photoRejectReason?: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -341,11 +317,11 @@ export interface PassengerCancelRate {
 export type ApprovalStage = "ready" | "documents" | "identity" | "driver" | "photos";
 export const APPROVAL_STAGES: readonly ApprovalStage[] = ["ready", "documents", "identity", "driver", "photos"];
 
-/** One approval step: DONE, REVIEW (waiting for an admin or Didit), TODO (waiting for the driver), FAILED. */
+/** One approval step: DONE, REVIEW (waiting for an admin), TODO (waiting for the driver), FAILED. */
 export type CheckState = "DONE" | "REVIEW" | "TODO" | "FAILED";
 
 export interface ApprovalChecklist {
-  /** RC, insurance, then IDENTITY when Didit is set up. */
+  /** RC, insurance, then IDENTITY when the driver's app can upload the licence and Aadhaar (0.1.2 on). */
   readonly checks: readonly { readonly key: KycDocType | "IDENTITY"; readonly state: CheckState }[];
   readonly isReady: boolean;
   readonly isRejected: boolean;
@@ -362,7 +338,6 @@ export interface ApprovalItem {
   readonly plate: string;
   readonly photoFile: string | null;
   readonly pendingPhotoFile: string | null;
-  readonly photoMatchScore: number | null;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly user: { readonly id: string; readonly name: string | null; readonly phone: string; readonly gender: Gender | null; readonly identityStatus: IdentityStatus };
@@ -377,7 +352,7 @@ export interface ApprovalsPage extends Paged<ApprovalItem> {
   readonly counts: Record<ApprovalStage, number>;
   /** Setting driverAutoApprove: off = ready drivers wait for an admin. */
   readonly autoApprove: boolean;
-  /** Didit is set up: the identity check is one of the steps. */
+  /** The identity check is one of the steps for a driver on this page. */
   readonly identityRequired: boolean;
 }
 
@@ -390,8 +365,7 @@ export interface DriverDetail extends Driver {
   readonly blocks?: DriverBlock[];
   readonly cancelRate?: DriverCancelRate;
   readonly blockedUntil?: string | null;
-  /** Newest first (up to 5). */
-  readonly user: User & { readonly identityChecks: IdentityVerification[] };
+  readonly user: User;
 }
 
 /** Itemised quote stored on the trip (fare engine output). */
@@ -1161,10 +1135,6 @@ export interface Settings {
   readonly driverPlansEnabled: boolean;
   /** On: approved as soon as every check passes. Off: ready drivers wait in Drivers › Approvals. */
   readonly driverAutoApprove: boolean;
-  /** Drivers take a daily selfie (matched to their verified face) before going online. */
-  readonly dailySelfieCheckEnabled: boolean;
-  /** Identity checked by hand: drivers upload licence, Aadhaar and a selfie for an admin (instead of Didit). */
-  readonly manualIdentityCheck: boolean;
 }
 
 /** Settings as returned by the API: the known keys plus anything newer (rendered in "Other"). */

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, ExternalLinkIcon, Loader2Icon } from "lucide-react";
+import { CheckIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -19,12 +19,10 @@ import { cn } from "@/lib/utils";
 import { approveDrivers, setDriverStatus } from "../../actions";
 import { PhotoReviewActions } from "../[id]/driver-actions";
 
-/** Didit decides "In review" identity sessions in its own console; the result comes back by webhook. */
-const DIDIT_CONSOLE = "https://business.didit.me";
-
 /**
  * The Approvals queue rows. Each stage shows the action that moves the driver on: approve (ready), verify or reject
- * the uploads (documents), the Didit console (identity), what is missing (driver), the photo review (photos).
+ * the uploads (documents), the profile photo that completes the identity check (identity: review it, or remind the
+ * driver to take it), what is missing (driver), the photo review (photos).
  * Ready drivers can be selected and approved together.
  */
 export function ApprovalList({ stage, items, waiting }: { stage: ApprovalStage; items: readonly ApprovalItem[]; waiting: Record<string, string> }) {
@@ -158,14 +156,7 @@ export function ApprovalList({ stage, items, waiting }: { stage: ApprovalStage; 
                   />
                 </div>
               )}
-              {stage === "identity" && (
-                <Button asChild size="sm" variant="outline">
-                  <a href={DIDIT_CONSOLE} target="_blank" rel="noreferrer noopener">
-                    Decide in Didit <ExternalLinkIcon />
-                  </a>
-                </Button>
-              )}
-              {stage === "driver" && (
+              {(stage === "driver" || (stage === "identity" && !d.pendingPhotoFile)) && (
                 <div className="flex gap-2">
                   <MessageButton
                     label="Remind"
@@ -181,7 +172,7 @@ export function ApprovalList({ stage, items, waiting }: { stage: ApprovalStage; 
                   </Button>
                 </div>
               )}
-              {stage === "photos" && d.pendingPhotoFile && (
+              {(stage === "photos" || stage === "identity") && d.pendingPhotoFile && (
                 <div className="flex items-center gap-3">
                   <a href={docFileHref(d.pendingPhotoFile)} target="_blank" rel="noreferrer noopener" title="New photo">
                     {/* eslint-disable-next-line @next/next/no-img-element -- private, token-proxied file */}

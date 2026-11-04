@@ -24,7 +24,7 @@ const TONES: Record<string, Tone> = {
   NOT_UPLOADED: "neutral",
   UNDER_REVIEW: "warning",
   VERIFIED: "success",
-  // Identity (Didit)
+  // Identity check (drivers)
   NOT_STARTED: "neutral",
   IN_REVIEW: "warning",
   DECLINED: "error",

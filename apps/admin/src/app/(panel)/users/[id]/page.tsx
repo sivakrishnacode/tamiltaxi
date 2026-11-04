@@ -154,9 +154,6 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
                   <RideOtpControl userId={u.id} name={name} rideOtp={u.rideOtp ?? null} />
                 </Field>
               )}
-              <Field label="Identity (Didit)">
-                <StatusBadge status={u.identityStatus ?? "NOT_STARTED"} label={u.identityStatus === "APPROVED" ? "Verified" : undefined} />
-              </Field>
               {u.cancelRate && (
                 <Field label="Cancelled (30 days)">
                   {Math.round(u.cancelRate.rate * 100)}% · {u.cancelRate.cancelled} of {u.cancelRate.booked} bookings

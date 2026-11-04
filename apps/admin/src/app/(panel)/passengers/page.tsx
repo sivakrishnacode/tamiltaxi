@@ -1,4 +1,4 @@
-import { BadgeCheckIcon, BanIcon, UsersIcon } from "lucide-react";
+import { BanIcon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -17,11 +17,11 @@ export const metadata: Metadata = { title: "Riders" };
 
 export default async function PassengersPage({ searchParams }: PageProps<"/passengers">) {
   const sp = await searchParams;
-  const query = { q: param(sp.q), blocked: param(sp.blocked), women: param(sp.women), verified: param(sp.verified), sort: param(sp.sort) };
+  const query = { q: param(sp.q), blocked: param(sp.blocked), women: param(sp.women), sort: param(sp.sort) };
   const page = parsePage(sp.page);
   const pageSize = parsePageSize(sp.pageSize);
   const data = await adminApi.passengers({ ...query, page, pageSize });
-  const isFiltered = !!(query.q || query.blocked || query.women || query.verified);
+  const isFiltered = !!(query.q || query.blocked || query.women);
 
   return (
     <>
@@ -31,7 +31,6 @@ export default async function PassengersPage({ searchParams }: PageProps<"/passe
         filters={[
           { name: "blocked", label: "Accounts", options: [{ value: "false", label: "Active" }, { value: "true", label: "Blocked" }] },
           { name: "women", label: "Preferences", options: [{ value: "true", label: "Prefers women drivers" }] },
-          { name: "verified", label: "Identity", options: [{ value: "true", label: "Verified" }] },
           {
             name: "sort",
             label: "Sort",
@@ -78,11 +77,6 @@ export default async function PassengersPage({ searchParams }: PageProps<"/passe
                       <span className="min-w-0">
                         <span className="block truncate">{u.name ?? <span className="font-normal text-muted-foreground">No name yet</span>}</span>
                         <span className="flex flex-wrap gap-1">
-                          {u.identityStatus === "APPROVED" && (
-                            <Badge variant="secondary" className="h-4 bg-success-tint px-1.5 text-[10px] text-success-text">
-                              <BadgeCheckIcon /> Verified
-                            </Badge>
-                          )}
                           {u.isBlocked && (
                             <Badge variant="secondary" className="h-4 bg-error-tint px-1.5 text-[10px] text-error">
                               <BanIcon /> Blocked

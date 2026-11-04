@@ -176,9 +176,8 @@ export interface ListQuery {
   readonly gender?: string;
   /** Drivers: home city id, or "none". */
   readonly city?: string;
-  /** Riders: "true" = prefers women drivers / identity verified. */
+  /** Riders: "true" = prefers women drivers. */
   readonly women?: string;
-  readonly verified?: string;
   /** Trips booked from / before (ISO). */
   readonly from?: string;
   readonly to?: string;
@@ -200,7 +199,6 @@ function listQuery(q: ListQuery): QueryInput {
     online: q.online,
     gender: q.gender,
     women: q.women,
-    verified: q.verified,
     from: q.from,
     to: q.to,
   };
