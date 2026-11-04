@@ -3,8 +3,11 @@ import { cellsToMultiPolygon, cellToBoundary, cellToChildren, cellToLatLng, cell
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
+import type { Zone } from '../../generated/prisma/client.js';
+import type { VehicleKind, ZoneKind } from '../../generated/prisma/enums.js';
 import { DEMAND_RES, DemandService } from './demand.service.js';
 import { GeoService } from './geo.service.js';
+import { isZoneLive } from './zone-schedule.js';
 
 type LatLngPair = [number, number];
 
@@ -33,14 +36,43 @@ export interface Hotspot {
   nested: NestedHex[];
 }
 
+/** An admin zone that counts right now (Setup › Cities › Zones), with what a driver needs to know about it. */
+export interface MapZone {
+  id: string;
+  name: string;
+  kind: ZoneKind;
+  /** SURGE: the fare multiplier (1 = none). */
+  multiplier: number;
+  /** SURGE: only these vehicles (empty = all). */
+  vehicleKinds: VehicleKind[];
+  /** NO_SERVICE: whether it stops pickups, drops or both. */
+  blocksPickups: boolean;
+  blocksDrops: boolean;
+  /** PICKUP_POINT: where riders and drivers meet ("Gate 2, P1 parking"). */
+  meetingPoint?: string;
+  /** Its daily hours (IST minutes of the day, [start, end), past midnight when start > end); absent = all day. */
+  startMinute?: number;
+  endMinute?: number;
+  /** Days of the week it runs (0 = Sunday, IST); empty = every day. */
+  days: number[];
+  /** When it ends for good (a "Surge now", or a zone with an end date). */
+  endsAt?: string;
+  /** A point inside the zone for its label (the cell centre nearest the zone's middle). */
+  centre: LatLngPair;
+  /** Outer ring of each separate piece of the zone. */
+  outline: LatLngPair[][];
+}
+
 export interface DriverMap {
   at: string;
   hotspots: Hotspot[];
   /** Outer rings of each city's service area (lat, lng), for the zoomed-out map. */
   serviceArea: LatLngPair[][];
+  /** Admin zones live now (surge, demand, no service, pickup points), largest last so small ones draw on top. */
+  zones: MapZone[];
 }
 
-const CACHE_KEY = 'drivermap:v3';
+const CACHE_KEY = 'drivermap:v4';
 /** Recent pickups read per map build to name the hotspots. */
 const NAME_SAMPLE = 3000;
 const CACHE_S = 60;
@@ -73,11 +105,12 @@ export class DriverMapService {
   }
 
   async build(now: Date): Promise<DriverMap> {
-    const [snapshot, recent, usual, serviceArea] = await Promise.all([
+    const [snapshot, recent, usual, serviceArea, zones] = await Promise.all([
       this.demand.snapshot(),
       this.pickupsSince(new Date(now.getTime() - RECENT_MIN * 60_000)),
       this.usualPickups(now),
       this.serviceAreaOutline(),
+      this.liveZones(now),
     ]);
     const live = new Map(snapshot.cells.map((c) => [c.cell, c]));
     const scores = new Map<string, number>();
@@ -117,7 +150,18 @@ export class DriverMapService {
       const name = names.get(h.cell);
       if (name) h.name = name;
     }
-    return { at: now.toISOString(), hotspots, serviceArea };
+    return { at: now.toISOString(), hotspots, serviceArea, zones };
+  }
+
+  /** The active cities' zones that count at [now], as the driver map shows them. */
+  private async liveZones(now: Date): Promise<MapZone[]> {
+    const cities = await this.geo.activeCities();
+    if (!cities.length) return [];
+    const rows = await this.prisma.zone.findMany({ where: { isActive: true, cityId: { in: cities.map((c) => c.id) } } });
+    return rows
+      .filter((z) => z.cells.length > 0 && isZoneLive(z, now))
+      .sort((a, b) => b.cells.length - a.cells.length)
+      .map(mapZone);
   }
 
   /** The commonest pickup area per res-7 hotspot over the history window (no Google calls: trips carry addresses). */
@@ -201,4 +245,27 @@ export function areaName(address: string | null | undefined, notAreas: ReadonlyS
     .filter((p) => p.length > 1 && !isNotArea(p, notAreas) && !/^\d+[a-z]?$/i.test(p));
   const last = parts.at(-1);
   return last ? last.slice(0, 40) : null;
+}
+
+/** A zone row as the driver map shows it: its pieces' outlines and a label point inside it. */
+export function mapZone(z: Zone): MapZone {
+  const centres = z.cells.map((c) => cellToLatLng(c));
+  const mid = centres.reduce(([a, b], [lat, lng]) => [a + lat / centres.length, b + lng / centres.length], [0, 0]);
+  const centre = centres.reduce((best, c) => ((c[0] - mid[0]) ** 2 + (c[1] - mid[1]) ** 2 < (best[0] - mid[0]) ** 2 + (best[1] - mid[1]) ** 2 ? c : best));
+  const hasHours = z.startMinute != null && z.endMinute != null && z.startMinute !== z.endMinute;
+  return {
+    id: z.id,
+    name: z.name,
+    kind: z.kind,
+    multiplier: z.kind === 'SURGE' ? z.surgeMultiplier : 1,
+    vehicleKinds: z.kind === 'SURGE' ? z.vehicleKinds : [],
+    blocksPickups: z.kind === 'NO_SERVICE' && z.blockPickups,
+    blocksDrops: z.kind === 'NO_SERVICE' && z.blockDrops,
+    ...(z.kind === 'PICKUP_POINT' && z.meetingPoint?.trim() ? { meetingPoint: z.meetingPoint.trim() } : {}),
+    ...(hasHours ? { startMinute: z.startMinute!, endMinute: z.endMinute! } : {}),
+    days: z.days,
+    ...(z.endsAt ? { endsAt: z.endsAt.toISOString() } : {}),
+    centre: centre as LatLngPair,
+    outline: cellsToMultiPolygon(z.cells, false).map((polygon) => polygon[0] as LatLngPair[]),
+  };
 }

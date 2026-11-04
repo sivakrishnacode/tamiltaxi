@@ -168,6 +168,10 @@ API (database change: migration `20261104120000_remove_didit`) and admin.
   (apps from 0.1.2). The Approvals bucket "Identity in review" is now **Waiting for the photo** (licence and Aadhaar
   verified, profile photo to approve or still to come). Settings lose the daily selfie and "check by hand" switches;
   riders lose the Verified badge and filter.
+- Admin Heatmap: no more "Something went wrong" when cities use different hex sizes (Tiruppur is res 9, the others
+  res 8): `cellsOutline` outlines each resolution on its own (H3 can't merge them).
+- API: the driver map (`GET /v1/demand/hotspots`) also lists the admin **zones live now** (`zones`: surge with its
+  multiplier and vehicles, demand, no service, pickup points with the meeting spot, hours and end time, outline).
 
 ### 4 Nov 2026 · API and admin on tamiltaxi.co.in (settings only, code at `3dd117c`)
 
