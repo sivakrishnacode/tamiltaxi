@@ -83,11 +83,6 @@ export class ListQueryDto {
   @IsIn(['true'])
   women?: string;
 
-  /** Riders: "true" = identity verified (Didit). */
-  @IsOptional()
-  @IsIn(['true'])
-  verified?: string;
-
   /** Trips: booked from / before (ISO dates). */
   @IsOptional()
   @IsDateString()

@@ -1,5 +1,5 @@
-// End-to-end: driver registration, profile and account features (same set-up as app.e2e-spec.ts: Postgres + Redis,
-// a fake Didit). The e2e config runs the files one after another (they share the test database and Redis).
+// End-to-end: driver registration, profile and account features (same set-up as app.e2e-spec.ts: Postgres + Redis).
+// The e2e config runs the files one after another (they share the test database and Redis).
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -9,13 +9,12 @@ import { PrismaService } from '../src/core/prisma/prisma.service.js';
 import { RedisService } from '../src/core/redis/redis.service.js';
 import { accessKey, blockedFlagKey } from '../src/core/auth/user-access.service.js';
 import { FileStorageService } from '../src/core/storage/file-storage.service.js';
-import { DiditClient } from '../src/modules/kyc/didit.client.js';
 import { DocumentExpiryService } from '../src/modules/kyc/document-expiry.service.js';
 import { NotifierService } from '../src/modules/notifications/notifier.service.js';
 import { TripEventsService } from '../src/modules/realtime/trip-events.service.js';
 
 const ADMIN_PHONE = '9000000001';
-/** A stored photo so drivers approved directly in the database may go online (photo required with Didit on). */
+/** A stored photo so drivers approved directly in the database may go online (photo required on apps from 0.1.2). */
 const E2E_PHOTO = '00000000-0000-4000-8000-00000000e2e0.jpg';
 /** Smallest valid JPEG header bytes: enough for storage (it only checks the type). */
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9]);
@@ -34,16 +33,6 @@ function phone(): string {
   return `9${String(Math.floor(Math.random() * 1e9)).padStart(9, '0')}`;
 }
 
-/** Stands in for Didit: the next face-match result is set by the test. */
-const fakeDidit = {
-  isEnabled: true,
-  createSession: async (p: { userId: string }) => ({ sessionId: `sess-${p.userId}`, sessionToken: `tok-${p.userId}`, status: 'Not Started' }),
-  decision: async (sessionId: string) => ({ session_id: sessionId, status: 'In Progress' }),
-  image: async () => null,
-  nextMatch: { score: 97 as number | null, faces: 1, isMatch: true },
-  faceMatch: async () => fakeDidit.nextMatch,
-};
-
 describe('Tamil Taxi features (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -54,8 +43,7 @@ describe('Tamil Taxi features (e2e)', () => {
     process.env.OTP_DEV_MODE = 'true';
     process.env.ADMIN_PHONES = ADMIN_PHONE;
     process.env.GOOGLE_MAPS_API_KEY = '';
-    process.env.DIDIT_API_KEY = 'e2e';
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(DiditClient).useValue(fakeDidit).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('v1', { exclude: ['health', 'health/ready'] });
     await app.init();
@@ -313,75 +301,13 @@ describe('Tamil Taxi features (e2e)', () => {
     });
   });
 
-  it('serves the booking lead time and the selfie-check switch in the public app config', async () => {
+  it('serves the booking lead time in the public app config, and there is no daily selfie check', async () => {
     const res = await http.get('/v1/app-config').expect(200);
-    expect(res.body).toMatchObject({ scheduledDispatchLeadMin: 30, dailySelfieCheckEnabled: true });
-  });
-
-  describe('daily selfie check', () => {
-    /** An approved driver whose identity check kept a reference face (so the daily check applies). */
-    async function driverWithFace(): Promise<{ auth: Auth; driverId: string; userId: string; plate: string }> {
-      const d = await approvedDriver();
-      const selfieFile = await app.get(FileStorageService).save({ originalname: 'selfie.jpg', mimetype: 'image/jpeg', size: JPEG.length, buffer: JPEG });
-      await prisma.driver.update({ where: { id: d.driverId }, data: { selfieFile } });
-      return d;
-    }
-    const selfie = (auth: Auth) => http.post('/v1/drivers/me/selfie-check').set(auth).attach('file', JPEG, { filename: 's.jpg', contentType: 'image/jpeg' });
-
-    afterEach(() => {
-      fakeDidit.nextMatch = { score: 97, faces: 1, isMatch: true };
-    });
-
-    it('asks for the selfie before going online, once a day; a retake on no face or another person', async () => {
-      const d = await driverWithFace();
-      expect((await http.get('/v1/drivers/me').set(d.auth).expect(200)).body).toMatchObject({ selfieCheckRequired: true, selfieCheckedAt: null });
-      const refused = await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(403);
-      expect(refused.body).toMatchObject({ code: 'SELFIE_CHECK_REQUIRED', message: 'Take your daily selfie to go online' });
-
-      fakeDidit.nextMatch = { score: null, faces: 0, isMatch: false };
-      expect((await selfie(d.auth).expect(422)).body.code).toBe('SELFIE_NO_FACE');
-      fakeDidit.nextMatch = { score: 31, faces: 1, isMatch: false };
-      expect((await selfie(d.auth).expect(422)).body.code).toBe('SELFIE_NO_MATCH');
-      fakeDidit.nextMatch = { score: 96, faces: 1, isMatch: true };
-      const ok = (await selfie(d.auth).expect(200)).body;
-      expect(ok).toEqual({ passed: true, checkedAt: expect.any(String) });
-
-      const me = (await http.get('/v1/drivers/me').set(d.auth).expect(200)).body;
-      expect(me).toMatchObject({ selfieCheckRequired: false, selfieCheckedAt: ok.checkedAt });
-      await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(200);
-      // Not a photo → 400.
-      await http.post('/v1/drivers/me/selfie-check').set(d.auth).attach('file', Buffer.from('%PDF'), { filename: 'a.pdf', contentType: 'application/pdf' }).expect(400);
-    });
-
-    it('a driver still online from yesterday goes offline until the check is done', async () => {
-      const d = await driverWithFace();
-      await prisma.driver.update({ where: { id: d.driverId }, data: { isOnline: true, selfieCheckedAt: new Date(Date.now() - 2 * 86_400_000) } });
-      expect((await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(403)).body.code).toBe('SELFIE_CHECK_REQUIRED');
-      expect((await prisma.driver.findUniqueOrThrow({ where: { id: d.driverId } })).isOnline).toBe(false);
-    });
-
-    it('needs a reference face first (409) and stops after 5 tries a day (429)', async () => {
-      const noFace = await approvedDriver();
-      expect((await http.get('/v1/drivers/me').set(noFace.auth).expect(200)).body.selfieCheckRequired).toBe(false);
-      await selfie(noFace.auth).expect(409);
-
-      const d = await driverWithFace();
-      fakeDidit.nextMatch = { score: 20, faces: 1, isMatch: false };
-      for (let i = 0; i < 5; i++) await selfie(d.auth).expect(422);
-      expect((await selfie(d.auth).expect(429)).body.code).toBe('SELFIE_TOO_MANY_TRIES');
-    });
-
-    it('is off with the setting: nobody is asked', async () => {
-      const admin = await adminAuth();
-      const d = await driverWithFace();
-      await http.put('/v1/admin/settings').set(admin).send({ dailySelfieCheckEnabled: false }).expect(200);
-      try {
-        expect((await http.get('/v1/drivers/me').set(d.auth).expect(200)).body.selfieCheckRequired).toBe(false);
-        await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(200);
-      } finally {
-        await http.put('/v1/admin/settings').set(admin).send({ dailySelfieCheckEnabled: true }).expect(200);
-      }
-    });
+    expect(res.body).toMatchObject({ scheduledDispatchLeadMin: 30 });
+    expect(res.body).not.toHaveProperty('dailySelfieCheckEnabled');
+    const d = await approvedDriver();
+    await http.post('/v1/drivers/me/selfie-check').set(d.auth).attach('file', JPEG, { filename: 's.jpg', contentType: 'image/jpeg' }).expect(404);
+    await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(200);
   });
 
   describe('parcel and delivery photos', () => {
@@ -478,7 +404,6 @@ describe('Tamil Taxi features (e2e)', () => {
       await prisma.savedPlace.create({ data: { userId: rider.userId, label: 'Home', name: 'Home', address: '12 Race Course Rd', lat: 11, lng: 76.9 } });
       await prisma.emergencyContact.create({ data: { userId: rider.userId, name: 'Ravi', relation: 'Brother', phone: '+919876500000' } });
       await prisma.deviceToken.create({ data: { token: `tok-${rider.userId}`, userId: rider.userId, app: 'PASSENGER' } });
-      await prisma.identityVerification.create({ data: { userId: rider.userId, purpose: 'RIDER', sessionId: `del-${rider.userId}`, fullName: 'Meena K', dateOfBirth: '1990-01-01', documentLast4: '1234' } });
       const done = await tripRow({ passengerId: rider.userId, status: 'DELIVERED' });
       const photo = await stored();
       await prisma.trip.update({
@@ -506,7 +431,6 @@ describe('Tamil Taxi features (e2e)', () => {
         prisma.savedPlace.count({ where: { userId: rider.userId } }),
         prisma.emergencyContact.count({ where: { userId: rider.userId } }),
         prisma.deviceToken.count({ where: { userId: rider.userId } }),
-        prisma.identityVerification.count({ where: { userId: rider.userId } }),
       ]) expect(await count).toBe(0);
       // Trips stay for the records, without the personal details; the one booked for later is cancelled.
       const kept = await prisma.trip.findUniqueOrThrow({ where: { id: done } });
@@ -537,19 +461,19 @@ describe('Tamil Taxi features (e2e)', () => {
 
     it('takes a driver offline, rejects them and deletes their documents and photos; the plate is free again', async () => {
       const d = await approvedDriver();
-      const [rc, selfie] = [await stored(), await stored()];
+      const [rc, photo] = [await stored(), await stored()];
       await prisma.kycDocument.update({ where: { driverId_type: { driverId: d.driverId, type: 'VEHICLE_RC' } }, data: { status: 'VERIFIED', fileUrl: rc } });
-      await prisma.driver.update({ where: { id: d.driverId }, data: { selfieFile: selfie, selfieCheckedAt: new Date(), bookingPrefs: { maxPickupKm: 3 } } });
+      await prisma.driver.update({ where: { id: d.driverId }, data: { pendingPhotoFile: photo, bookingPrefs: { maxPickupKm: 3 } } });
       await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(200);
 
       await http.delete('/v1/me').set(d.auth).expect(204);
 
       const driver = await prisma.driver.findUniqueOrThrow({ where: { id: d.driverId } });
-      expect(driver).toMatchObject({ status: 'REJECTED', isOnline: false, upiId: '', photoFile: null, selfieFile: null, bookingPrefs: null });
+      expect(driver).toMatchObject({ status: 'REJECTED', isOnline: false, upiId: '', photoFile: null, pendingPhotoFile: null, bookingPrefs: null });
       expect(driver.plate).not.toBe(d.plate);
       expect(await prisma.kycDocument.count({ where: { driverId: d.driverId, fileUrl: { not: null } } })).toBe(0);
       expect(await exists(rc)).toBe(false);
-      expect(await exists(selfie)).toBe(false);
+      expect(await exists(photo)).toBe(false);
       expect(await redis.get(`driver:cell:${d.driverId}`)).toBeNull();
       // The same vehicle can be registered again.
       const { auth } = await login();

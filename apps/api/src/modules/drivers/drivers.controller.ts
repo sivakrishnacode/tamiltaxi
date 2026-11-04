@@ -53,7 +53,7 @@ export class DriversController {
     return { driver, accessToken };
   }
 
-  /** The driver and their account, with `selfieCheckRequired` and `selfieCheckedAt` (daily selfie check). */
+  /** The driver and their account. */
   @Roles(Role.DRIVER)
   @Get('drivers/me')
   me(@CurrentUser() user: AuthUser): Promise<DriverProfile> {
@@ -64,18 +64,6 @@ export class DriversController {
   @Patch('drivers/me')
   update(@CurrentUser() user: AuthUser, @Body() body: UpdateDriverDto): Promise<DriverProfile> {
     return this.drivers.update(DriversController.driverId(user), body);
-  }
-
-  /**
-   * Daily selfie check: multipart `file` (JPG / PNG / WebP ≤ 8 MB) → 200 {passed, checkedAt}; 422 retake (no face,
-   * several, another person); 409 no reference face yet; 429 after 5 tries today.
-   */
-  @Roles(Role.DRIVER)
-  @Post('drivers/me/selfie-check')
-  @HttpCode(200)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
-  selfieCheck(@CurrentUser() user: AuthUser, @UploadedFile() file?: UploadedBlob): Promise<{ passed: true; checkedAt: string }> {
-    return this.drivers.selfieCheck({ driverId: DriversController.driverId(user), file });
   }
 
   /** Booking preferences: pickup distance, trip length, go-to destination (dispatch only offers trips that fit). */
@@ -141,7 +129,7 @@ export class DriversController {
     return this.drivers.goOffline(DriversController.driverId(user));
   }
 
-  /** D-07 profile photo: multipart `file` (JPG / PNG / WebP ≤ 8 MB), matched to the verified selfie. */
+  /** D-07 profile photo: multipart `file` (JPG / PNG / WebP ≤ 8 MB), waits for an admin. */
   @Roles(Role.DRIVER)
   @Post('drivers/me/photo')
   @HttpCode(200)

@@ -82,23 +82,10 @@ export const SETTING_DEFAULTS = {
   /** A trip booked for later (rental, outstation) starts looking for a driver this many minutes before its pickup time. */
   scheduledDispatchLeadMin: 30,
   /**
-   * Driver approval. On: a driver is approved the moment RC + insurance are verified and (with Didit) the identity
-   * check passes. Off: they wait as "Ready to approve" in Drivers › Approvals until an admin approves them.
+   * Driver approval. On: a driver is approved the moment RC + insurance are verified and (apps from 0.1.2) the
+   * identity check by hand passes. Off: they wait as "Ready to approve" in Drivers › Approvals until an admin approves them.
    */
   driverAutoApprove: true,
-  /**
-   * Daily selfie check: before going online each day (IST), a driver takes a live selfie that must match the face of
-   * their approved identity check (Didit face match). Drivers without that reference face (approved before Didit, or
-   * Didit off) are never asked.
-   */
-  dailySelfieCheckEnabled: true,
-  /**
-   * Identity check by hand: drivers upload their driving licence and Aadhaar, and an admin verifies them and approves
-   * the profile photo as the matching face, instead of Didit's automatic check. Also what the app falls back to when
-   * Didit can't be used (no credits, down). Apps older than 0.1.2 can't upload these: with this on they are approved
-   * on RC + insurance.
-   */
-  manualIdentityCheck: false,
   /** Free-trial length for new drivers. */
   trialDays: 30,
   /** Days a lapsed plan can still go online. */

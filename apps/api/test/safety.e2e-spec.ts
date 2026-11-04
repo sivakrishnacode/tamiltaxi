@@ -39,7 +39,6 @@ describe('Tamil Taxi safety (e2e)', () => {
     process.env.OTP_DEV_MODE = 'true';
     process.env.ADMIN_PHONES = ADMIN_PHONE;
     process.env.GOOGLE_MAPS_API_KEY = '';
-    process.env.DIDIT_API_KEY = '';
     process.env.SHARE_BASE_URL = 'https://track.example.test';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();

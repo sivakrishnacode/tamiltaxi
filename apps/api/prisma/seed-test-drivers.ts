@@ -3,7 +3,7 @@
 //   npm run seed:test-drivers -w @tamiltaxi/api                        # add / refresh
 //   npm run seed:test-drivers -w @tamiltaxi/api -- --photo <file name> # also set their profile photo (a stored file)
 //   npm run seed:test-drivers -w @tamiltaxi/api -- --clear             # remove them
-// With Didit on, going online needs a profile photo: upload one placeholder to storage and pass its name.
+// On apps from 0.1.2, going online needs a profile photo: upload one placeholder to storage and pass its name.
 // Each gets a 90-day TRIAL on its vehicle's monthly plan, so they can go online even with paid plans switched on.
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   }
   console.log('Test drivers (sign in with any 6-digit OTP except 000000):');
   for (const t of TEST_DRIVERS) console.log(`  ${t.phone.slice(3)}  ${t.vehicleKind.padEnd(10)} ${t.name} (${t.gender.toLowerCase()}) · ${t.model} · ${t.plate}`);
-  if (!photoFile) console.log('No --photo given: with Didit on, each driver must add a profile photo before going online.');
+  if (!photoFile) console.log('No --photo given: on apps from 0.1.2, each driver must add a profile photo before going online.');
 }
 
 main()

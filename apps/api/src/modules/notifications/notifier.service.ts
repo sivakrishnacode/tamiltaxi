@@ -201,21 +201,6 @@ export class NotifierService {
     });
   }
 
-  /** Didit identity result. Drivers hear about approval from [kycReviewed] once their documents are verified too. */
-  identityChanged(params: { userId: string; purpose: 'DRIVER' | 'RIDER'; status: string }): void {
-    this.safe('identity', () => this.sendIdentityChanged(params));
-  }
-
-  private sendIdentityChanged(params: { userId: string; purpose: 'DRIVER' | 'RIDER'; status: string }): void {
-    const app = params.purpose === 'DRIVER' ? AppKind.DRIVER : AppKind.PASSENGER;
-    const data = { type: 'identity', status: params.status };
-    if (params.status === 'DECLINED') {
-      this.push.toUser(params.userId, app, { title: "We couldn't verify your identity", body: 'Tap to see why and try again', channel: 'account', data });
-    } else if (params.status === 'APPROVED' && params.purpose === 'RIDER') {
-      this.push.toUser(params.userId, app, { title: "You're verified ✅", body: 'Drivers will see a Verified badge on your profile', channel: 'account', data });
-    }
-  }
-
   /** Account notices to a driver: cancellation-rate nudge, pause, pause over ([kind] in the data). */
   driverAccount(params: { driverId: string; kind: string; title: string; body: string }): Promise<void> {
     return this.safeAsync(`driver ${params.kind}`, async () => {

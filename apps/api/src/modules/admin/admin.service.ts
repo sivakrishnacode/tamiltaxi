@@ -8,7 +8,6 @@ import type { Paged } from './admin.types.js';
 import type { ListQueryDto } from './dto/list-query.dto.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { DriverApprovalService } from '../kyc/driver-approval.service.js';
-import { DiditClient } from '../kyc/didit.client.js';
 import { approvalChecklist, type ApprovalChecklist, IDENTITY_DOCS, REQUIRED_DOCS } from '../kyc/driver-approval.js';
 import { SHOWN_DOCS } from './admin-approvals.service.js';
 import { istToday, parseDay } from '../kyc/document-expiry.js';
@@ -61,7 +60,6 @@ export class AdminService {
     private readonly approval: DriverApprovalService,
     private readonly driverState: DriverStateCache,
     private readonly blocks: DriverBlocksService,
-    private readonly didit: DiditClient,
     private readonly statusSync: DriverStatusSync,
   ) {}
 
@@ -94,14 +92,13 @@ export class AdminService {
       where: { id },
       include: {
         blocks: { orderBy: { fromAt: 'desc' }, take: 20 },
-        // Identity checks (Didit): newest first; the admin page shows the latest result and its reasons.
-        user: { include: { identityChecks: { orderBy: { createdAt: 'desc' }, take: 5 } } },
+        user: true,
         documents: { where: SHOWN_DOCS, orderBy: { type: 'asc' } },
         subscriptions: { orderBy: { endsAt: 'desc' }, include: { plan: true, payments: true } },
         trips: { orderBy: { createdAt: 'desc' }, take: 20 },
       },
     });
-    const identityRequired = await this.approval.isIdentityRequired(driver);
+    const identityRequired = this.approval.isIdentityRequired(driver);
     const checklist = approvalChecklist({ docs: driver.documents, identity: driver.user.identityStatus, isIdentityRequired: identityRequired });
     return { ...driver, cancelRate: await this.blocks.stats(id), checklist, identityRequired };
   }
@@ -206,14 +203,13 @@ export class AdminService {
     });
   }
 
-  /** Riders: search (name, phone), blocked / women-driver preference / verified filters, sort. */
+  /** Riders: search (name, phone), blocked / women-driver preference filters, sort. */
   async passengers(q: ListQueryDto): Promise<Paged<User>> {
     const { skip, take, page, pageSize } = paging(q);
     const where: Prisma.UserWhereInput = {
       role: Role.PASSENGER,
       isBlocked: flag(q.blocked),
       preferWomenDriver: q.women === 'true' ? true : undefined,
-      identityStatus: q.verified === 'true' ? 'APPROVED' : undefined,
       ...userSearch(q.q),
     };
     const [items, total] = await Promise.all([

@@ -4,7 +4,8 @@ import { ListQueryDto } from './list-query.dto.js';
 
 /**
  * Buckets of the Approvals queue. Pending drivers sit in exactly one: ready (every check done), documents (an
- * upload waits for an admin), identity (Didit put the check in review), driver (waiting on the driver). photos: any
+ * upload waits for an admin), identity (licence and Aadhaar verified, the profile photo still to approve or take),
+ * driver (waiting on the driver). photos: any
  * driver with a profile photo waiting for review.
  */
 export const APPROVAL_STAGES = ['ready', 'documents', 'identity', 'driver', 'photos'] as const;

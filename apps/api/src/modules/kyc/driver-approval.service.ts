@@ -5,14 +5,13 @@ import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { DriverStatus, IdentityStatus } from '../../generated/prisma/enums.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { SettingsService } from '../settings/settings.service.js';
-import { DiditClient } from './didit.client.js';
-import { type IdentityMode, isIdentityRequiredFor, manualIdentityStatus, nextDriverStatus } from './driver-approval.js';
+import { isIdentityRequiredFor, manualIdentityStatus, nextDriverStatus } from './driver-approval.js';
 
 /** Told after [DriverApprovalService.recompute] changed a driver's status (the row is already written). */
 export type DriverStatusListener = (driverId: string, status: DriverStatus) => Promise<unknown>;
 
 /**
- * Re-evaluates a driver's status after a document review or an identity result, and tells them when approved. With
+ * Re-evaluates a driver's status after a document or photo review, and tells them when approved. With
  * `driverAutoApprove` off, a driver who passes every check stays PENDING for an admin to approve. Modules that can't
  * be imported here (realtime, dispatch) hear about every change through [onStatusChange].
  */
@@ -23,7 +22,6 @@ export class DriverApprovalService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly didit: DiditClient,
     private readonly notifier: NotifierService,
     private readonly driverState: DriverStateCache,
     private readonly settings: SettingsService,
@@ -34,20 +32,15 @@ export class DriverApprovalService {
     this.listeners.push(listener);
   }
 
-  /** Didit when it is set up and the manual check isn't switched on; otherwise an admin checks the documents. */
-  async identityMode(): Promise<IdentityMode> {
-    return this.didit.isEnabled && !(await this.settings.get('manualIdentityCheck')) ? 'DIDIT' : 'MANUAL';
-  }
-
   /** Whether [driver] must pass the identity step (and so have a profile photo before going online). */
-  async isIdentityRequired(driver: { appVersion: string | null }): Promise<boolean> {
-    return isIdentityRequiredFor(await this.identityMode(), driver.appVersion);
+  isIdentityRequired(driver: { appVersion: string | null }): boolean {
+    return isIdentityRequiredFor(driver.appVersion);
   }
 
   /**
    * Mirrors the check by hand (licence, Aadhaar, approved profile photo) on the user's identity status (approved,
-   * declined, in review), so the approval, the queue and going online treat both checks alike. An identity Didit
-   * approved is left alone. No push here: a rejected document sends its own, and approval says "You're approved".
+   * declined, in review), which the approval, the queue and going online read. No push here: a rejected document
+   * sends its own, and approval says "You're approved".
    */
   async syncManualIdentity(driverId: string): Promise<void> {
     const driver = await this.prisma.driver.findUniqueOrThrow({
@@ -63,8 +56,6 @@ export class DriverApprovalService {
     const photo = driver.photoFile ? 'APPROVED' : driver.pendingPhotoFile ? 'PENDING' : 'NONE';
     const status = manualIdentityStatus(driver.documents, photo);
     if (!status || status === driver.user.identityStatus) return;
-    const byDidit = await this.prisma.identityVerification.count({ where: { userId: driver.userId, status: IdentityStatus.APPROVED } });
-    if (byDidit > 0) return;
     await this.prisma.user.update({
       where: { id: driver.userId },
       data: { identityStatus: status, identityVerifiedAt: status === IdentityStatus.APPROVED ? new Date() : null },
@@ -80,7 +71,7 @@ export class DriverApprovalService {
       current: driver.status,
       docs: driver.documents,
       identity: driver.user.identityStatus,
-      isIdentityRequired: await this.isIdentityRequired(driver),
+      isIdentityRequired: this.isIdentityRequired(driver),
       isAutoApprove: await this.settings.get('driverAutoApprove'),
     });
     if (next === driver.status) return next;

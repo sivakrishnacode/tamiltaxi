@@ -27,14 +27,13 @@ export type DeletedBy = { kind: 'self' } | { kind: 'admin'; adminId: string };
  * unfinished trip, as rider or driver; their trips booked for later are cancelled first (free). Then, in one
  * transaction:
  * - the user: name, email, gender null, phone → `deleted:<id>` (the number can sign up again as a new account),
- *   identity status reset, `deletedAt` set; saved places, emergency contacts, push devices, identity-check records
- *   (name, date of birth, last 4 digits) and admin notes about them deleted;
+ *   identity status reset, `deletedAt` set; saved places, emergency contacts, push devices and admin notes about them
+ *   deleted;
  * - their trips as rider stay (fares, safety, the drivers' records) without who-is-riding names / phones, the parcel's
  *   sender / receiver names, phones and notes, and the parcel and delivery photos;
  * - their support tickets stay (the text, for the records) without the photo;
  * - a driver: offline (out of dispatch), REJECTED, UPI ID and booking preferences cleared, the plate replaced by a
- *   tombstone (the vehicle can be registered again), KYC documents, profile / pending photos and the verified selfie
- *   gone. Ratings, earnings, cancellations, subscriptions and SOS records stay.
+ *   tombstone (the vehicle can be registered again), KYC documents and profile / pending photos gone. Ratings, earnings, cancellations, subscriptions and SOS records stay.
  * Sessions end at once (the `user:blocked:<id>` flag the auth guard checks). Stored files are deleted after the
  * transaction (best effort).
  */
@@ -57,7 +56,7 @@ export class AccountDeletionService {
       select: {
         id: true,
         deletedAt: true,
-        driver: { select: { id: true, photoFile: true, pendingPhotoFile: true, selfieFile: true, documents: { select: { fileUrl: true } } } },
+        driver: { select: { id: true, photoFile: true, pendingPhotoFile: true, documents: { select: { fileUrl: true } } } },
       },
     });
     if (!user || user.deletedAt) throw new NotFoundException('Account not found');
@@ -78,7 +77,6 @@ export class AccountDeletionService {
       ...ticketPhotos.map((t) => t.attachmentFile),
       user.driver?.photoFile,
       user.driver?.pendingPhotoFile,
-      user.driver?.selfieFile,
       ...(user.driver?.documents.map((d) => d.fileUrl) ?? []),
     ];
 
@@ -104,7 +102,6 @@ export class AccountDeletionService {
       await tx.savedPlace.deleteMany({ where: { userId } });
       await tx.emergencyContact.deleteMany({ where: { userId } });
       await tx.deviceToken.deleteMany({ where: { userId } });
-      await tx.identityVerification.deleteMany({ where: { userId } });
       await tx.adminNote.deleteMany({ where: { userId } });
       if (driverId) {
         await tx.kycDocument.updateMany({ where: { driverId }, data: { status: KycStatus.NOT_UPLOADED, fileUrl: null, rejectReason: null } });
@@ -118,10 +115,7 @@ export class AccountDeletionService {
             bookingPrefs: Prisma.DbNull,
             photoFile: null,
             pendingPhotoFile: null,
-            selfieFile: null,
-            photoMatchScore: null,
             photoRejectReason: null,
-            selfieCheckedAt: null,
           },
         });
       }

@@ -4,8 +4,7 @@ import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js'
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DriverStatus, IdentityStatus, KycStatus } from '../../generated/prisma/enums.js';
-import { approvalChecklist, type ApprovalChecklist, IDENTITY_DOCS, type IdentityMode, isIdentityRequiredFor, REQUIRED_DOCS, UPLOAD_DOCS } from '../kyc/driver-approval.js';
-import { DriverApprovalService } from '../kyc/driver-approval.service.js';
+import { approvalChecklist, type ApprovalChecklist, IDENTITY_DOCS, isIdentityRequiredFor, REQUIRED_DOCS, UPLOAD_DOCS } from '../kyc/driver-approval.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { SettingsService } from '../settings/settings.service.js';
 import type { Paged } from './admin.types.js';
@@ -28,12 +27,11 @@ const ITEM_SELECT = {
   plate: true,
   photoFile: true,
   pendingPhotoFile: true,
-  photoMatchScore: true,
   appVersion: true,
   createdAt: true,
   updatedAt: true,
   user: { select: { id: true, name: true, phone: true, gender: true, identityStatus: true } },
-  // RC and insurance always; the licence, Aadhaar and selfie once uploaded (most drivers do the check with Didit).
+  // RC and insurance always; the licence and Aadhaar once uploaded (apps from 0.1.2).
   documents: { where: SHOWN_DOCS, select: { id: true, type: true, status: true, fileUrl: true, rejectReason: true, updatedAt: true } },
 } satisfies Prisma.DriverSelect;
 
@@ -46,7 +44,7 @@ export interface ApprovalsPage extends Paged<ApprovalItem> {
   readonly counts: Record<ApprovalStage, number>;
   /** Setting `driverAutoApprove`: off = ready drivers wait here for an admin. */
   readonly autoApprove: boolean;
-  /** The identity check (Didit, or the documents by hand) is one of the steps for drivers on this page. */
+  /** The identity check by hand is one of the steps for drivers on this page. */
   readonly identityRequired: boolean;
 }
 
@@ -55,7 +53,6 @@ export interface ApprovalsPage extends Paged<ApprovalItem> {
 export class AdminApprovalsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly approval: DriverApprovalService,
     private readonly settings: SettingsService,
     private readonly notifier: NotifierService,
     private readonly driverState: DriverStateCache,
@@ -63,28 +60,27 @@ export class AdminApprovalsService {
   ) {}
 
   /**
-   * Where clause of one bucket. Pending drivers fall in exactly one of ready / documents / identity / driver. By hand
-   * ([mode] MANUAL), drivers on apps older than 0.1.2 (no `appVersion`) need no identity check.
+   * Where clause of one bucket. Pending drivers fall in exactly one of ready / documents / identity / driver. Drivers
+   * on apps older than 0.1.2 (no `appVersion`) need no identity check.
    */
-  private where(stage: ApprovalStage, mode: IdentityMode): Prisma.DriverWhereInput {
+  private where(stage: ApprovalStage): Prisma.DriverWhereInput {
     const pending = { status: DriverStatus.PENDING };
-    const identityDone: Prisma.DriverWhereInput =
-      mode === 'DIDIT' ? { user: { identityStatus: IdentityStatus.APPROVED } } : { OR: [{ user: { identityStatus: IdentityStatus.APPROVED } }, { appVersion: null }] };
+    const identityDone: Prisma.DriverWhereInput = { OR: [{ user: { identityStatus: IdentityStatus.APPROVED } }, { appVersion: null }] };
     const ready: Prisma.DriverWhereInput = {
       AND: [...REQUIRED_DOCS.map((type) => ({ documents: { some: { type, status: KycStatus.VERIFIED } } })), identityDone],
     };
-    // Any upload waiting, the licence and Aadhaar of the check by hand too ("identity" is left for Didit's reviews).
+    // Any upload waiting, the licence and Aadhaar too; "identity" is what is left: the profile photo.
     const documents: Prisma.DriverWhereInput = { documents: { some: { type: { in: [...UPLOAD_DOCS] }, status: KycStatus.UNDER_REVIEW } } };
-    const identity: Prisma.DriverWhereInput | null = { user: { identityStatus: IdentityStatus.IN_REVIEW } };
+    const identity: Prisma.DriverWhereInput = { user: { identityStatus: IdentityStatus.IN_REVIEW } };
     switch (stage) {
       case 'ready':
         return { ...pending, ...ready };
       case 'documents':
         return { ...pending, ...documents };
       case 'identity':
-        return identity ? { ...pending, ...identity, NOT: [documents] } : { id: { in: [] } };
+        return { ...pending, ...identity, NOT: [documents] };
       case 'driver':
-        return { ...pending, NOT: [ready, documents, ...(identity ? [identity] : [])] };
+        return { ...pending, NOT: [ready, documents, identity] };
       case 'photos':
         return { pendingPhotoFile: { not: null } };
     }
@@ -95,19 +91,18 @@ export class AdminApprovalsService {
     const page = q.page ?? 1;
     const pageSize = q.pageSize ?? 20;
     const search = driverSearch(q.q);
-    const mode = await this.approval.identityMode();
-    const where: Prisma.DriverWhereInput = search ? { AND: [this.where(stage, mode), search] } : this.where(stage, mode);
+    const where: Prisma.DriverWhereInput = search ? { AND: [this.where(stage), search] } : this.where(stage);
     const [rows, total, counts, autoApprove] = await Promise.all([
       this.prisma.driver.findMany({ where, select: ITEM_SELECT, orderBy: { updatedAt: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
       this.prisma.driver.count({ where }),
-      Promise.all(APPROVAL_STAGES.map((s) => this.prisma.driver.count({ where: this.where(s, mode) }))),
+      Promise.all(APPROVAL_STAGES.map((s) => this.prisma.driver.count({ where: this.where(s) }))),
       this.settings.get('driverAutoApprove'),
     ]);
-    const isIdentityRequired = mode === 'DIDIT' || rows.some((d) => isIdentityRequiredFor(mode, d.appVersion));
+    const isIdentityRequired = rows.some((d) => isIdentityRequiredFor(d.appVersion));
     return {
       items: rows.map((d) => ({
         ...d,
-        checklist: approvalChecklist({ docs: d.documents, identity: d.user.identityStatus, isIdentityRequired: isIdentityRequiredFor(mode, d.appVersion) }),
+        checklist: approvalChecklist({ docs: d.documents, identity: d.user.identityStatus, isIdentityRequired: isIdentityRequiredFor(d.appVersion) }),
       })),
       total,
       page,
@@ -129,7 +124,6 @@ export class AdminApprovalsService {
       where: { id: { in: unique } },
       select: { id: true, status: true, appVersion: true, documents: { select: { type: true, status: true } }, user: { select: { identityStatus: true } } },
     });
-    const mode = await this.approval.identityMode();
     const approved: string[] = [];
     const skipped: { id: string; reason: string }[] = unique.filter((id) => !drivers.some((d) => d.id === id)).map((id) => ({ id, reason: 'Not found' }));
     for (const d of drivers) {
@@ -137,7 +131,7 @@ export class AdminApprovalsService {
         skipped.push({ id: d.id, reason: `Already ${d.status.toLowerCase().replace('_', ' ')}` });
         continue;
       }
-      const check = approvalChecklist({ docs: d.documents, identity: d.user.identityStatus, isIdentityRequired: isIdentityRequiredFor(mode, d.appVersion) });
+      const check = approvalChecklist({ docs: d.documents, identity: d.user.identityStatus, isIdentityRequired: isIdentityRequiredFor(d.appVersion) });
       if (!check.isReady) {
         skipped.push({ id: d.id, reason: 'Checks not done' });
         continue;

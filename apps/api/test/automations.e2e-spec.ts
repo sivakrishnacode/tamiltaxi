@@ -35,7 +35,6 @@ describe('Tamil Taxi automations (e2e)', () => {
     process.env.OTP_DEV_MODE = 'true';
     process.env.ADMIN_PHONES = ADMIN_PHONE;
     process.env.GOOGLE_MAPS_API_KEY = '';
-    process.env.DIDIT_API_KEY = '';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('v1', { exclude: ['health', 'health/ready'] });

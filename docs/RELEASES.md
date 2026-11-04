@@ -149,7 +149,15 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `3dd117c` (API and admin).
+API (database change: migration `20261104120000_remove_didit`).
+
+- **Didit removed:** identities are checked only by hand (the driver's licence and Aadhaar, verified by an admin, with
+  the approved profile photo as the matching face). Gone: the Didit sessions, webhook and face match, the
+  `manualIdentityCheck` setting, the **daily selfie** before going online (`dailySelfieCheckEnabled`,
+  `POST /drivers/me/selfie-check`) and the riders' **Verified** badge (riders have no identity check; drivers' request
+  cards no longer show one).
+- The migration drops the Didit sessions table, the drivers' reference selfies, photo match scores and selfie-check
+  times, and resets riders' identity status. `GET /kyc/me` stays for apps up to 0.1.1 (`isEnabled: false`).
 
 ### 4 Nov 2026 · API and admin on tamiltaxi.co.in (settings only, code at `3dd117c`)
 

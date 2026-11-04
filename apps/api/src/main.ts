@@ -7,7 +7,7 @@ import { loadEnv } from './core/config/env.js';
 /** Starts the Tamil Taxi API on /v1 (REST) and /rt (Socket.IO). */
 async function bootstrap(): Promise<void> {
   const env = loadEnv();
-  const app = await NestFactory.create(AppModule, { rawBody: true }); // raw body: Didit webhook signatures
+  const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('v1', { exclude: ['health', 'health/ready'] });
   app.enableCors({ origin: env.corsOrigins.includes('*') ? true : [...env.corsOrigins] });
   app.enableShutdownHooks();

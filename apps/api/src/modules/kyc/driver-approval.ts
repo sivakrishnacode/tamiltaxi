@@ -3,8 +3,8 @@ import { DriverStatus, IdentityStatus, KycDocType, KycStatus } from '../../gener
 /** Documents every driver uploads for admin review. */
 export const REQUIRED_DOCS: readonly KycDocType[] = [KycDocType.VEHICLE_RC, KycDocType.INSURANCE];
 /**
- * The identity check by hand (instead of Didit): an admin verifies the licence and Aadhaar, and approves the profile
- * photo as the face that matches them. (`SELFIE` stays in the enum, unused since 3 Nov 2026.)
+ * The identity check by hand: an admin verifies the licence and Aadhaar, and approves the profile photo as the face
+ * that matches them. (`SELFIE` stays in the enum, unused since 3 Nov 2026.)
  */
 export const IDENTITY_DOCS: readonly KycDocType[] = [KycDocType.DRIVING_LICENCE, KycDocType.AADHAAR];
 
@@ -13,15 +13,12 @@ export type PhotoState = 'APPROVED' | 'PENDING' | 'NONE';
 /** Everything a driver can upload. */
 export const UPLOAD_DOCS: readonly KycDocType[] = [...REQUIRED_DOCS, ...IDENTITY_DOCS];
 
-/** How identities are checked: Didit's automatic check, or an admin looking at the licence, Aadhaar and selfie. */
-export type IdentityMode = 'DIDIT' | 'MANUAL';
-
 /**
- * Who must pass the identity step. With Didit, every driver (an app that can't reach Didit falls back to the manual
- * documents). By hand, only drivers whose app can upload them: it reports its version, older apps don't.
+ * Who must pass the identity step: drivers whose app can upload the licence and Aadhaar. It reports its version
+ * (0.1.2 on); older apps don't, and those drivers are approved on RC and insurance alone.
  */
-export function isIdentityRequiredFor(mode: IdentityMode, appVersion: string | null): boolean {
-  return mode === 'DIDIT' || appVersion !== null;
+export function isIdentityRequiredFor(appVersion: string | null): boolean {
+  return appVersion !== null;
 }
 
 /**
@@ -40,7 +37,7 @@ export function manualIdentityStatus(docs: readonly { type: KycDocType; status: 
 
 /**
  * A driver's status from their documents and identity check. APPROVED needs every required document verified
- * and (when Didit is set up) an approved identity; any rejection → REJECTED; otherwise PENDING. ON_HOLD is an
+ * and (when [isIdentityRequired]) an approved identity; any rejection → REJECTED; otherwise PENDING. ON_HOLD is an
  * admin decision and never changes here, and already-approved drivers stay approved until something is rejected.
  * With [isAutoApprove] off (setting `driverAutoApprove`), a driver who passes every check stays PENDING ("ready to
  * approve") until an admin approves them.
@@ -63,7 +60,7 @@ export function nextDriverStatus(params: {
 export type CheckState = 'DONE' | 'REVIEW' | 'TODO' | 'FAILED';
 
 export interface ApprovalChecklist {
-  /** RC, insurance, then IDENTITY when Didit is set up. */
+  /** RC, insurance, then IDENTITY when the driver's app can upload the licence and Aadhaar. */
   readonly checks: readonly { readonly key: KycDocType | 'IDENTITY'; readonly state: CheckState }[];
   /** Every check done: approved at once, or waiting for an admin when auto-approval is off. */
   readonly isReady: boolean;

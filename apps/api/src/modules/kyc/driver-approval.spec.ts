@@ -18,7 +18,7 @@ describe('nextDriverStatus', () => {
     expect(nextDriverStatus({ current: DriverStatus.PENDING, docs: docs(VERIFIED, VERIFIED), identity: IdentityStatus.IN_REVIEW, isIdentityRequired: true })).toBe(DriverStatus.PENDING);
   });
 
-  it('does not need identity when Didit is not set up', () => {
+  it('does not need identity from an app that cannot upload it', () => {
     expect(nextDriverStatus({ current: DriverStatus.PENDING, docs: docs(VERIFIED, VERIFIED), identity: IdentityStatus.NOT_STARTED, isIdentityRequired: false })).toBe(DriverStatus.APPROVED);
   });
 
@@ -54,7 +54,7 @@ describe('approvalChecklist', () => {
     expect(c.isRejected).toBe(false);
   });
 
-  it('skips identity without Didit and treats a missing row as to do', () => {
+  it('skips identity when not required and treats a missing row as to do', () => {
     const c = approvalChecklist({ docs: [{ type: KycDocType.VEHICLE_RC, status: VERIFIED }], identity: IdentityStatus.NOT_STARTED, isIdentityRequired: false });
     expect(c.checks.map((x) => x.state)).toEqual(['DONE', 'TODO']);
     expect(approvalChecklist({ docs: docs(VERIFIED, VERIFIED), identity: IdentityStatus.DECLINED, isIdentityRequired: false }).isReady).toBe(true);
@@ -80,9 +80,8 @@ describe('identity check by hand', () => {
     expect(manualIdentityStatus(both(KycStatus.NOT_UPLOADED), 'APPROVED')).toBeNull();
   });
 
-  it('asks every driver with Didit, and by hand only apps that can upload (they send their version)', () => {
-    expect(isIdentityRequiredFor('DIDIT', null)).toBe(true);
-    expect(isIdentityRequiredFor('MANUAL', '0.1.2')).toBe(true);
-    expect(isIdentityRequiredFor('MANUAL', null)).toBe(false);
+  it('asks only drivers whose app can upload the documents (it sends its version)', () => {
+    expect(isIdentityRequiredFor('0.1.2')).toBe(true);
+    expect(isIdentityRequiredFor(null)).toBe(false);
   });
 });

@@ -416,7 +416,7 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
   async offerDetails(booked: Trip, driverId: string): Promise<OfferDetails> {
     const pickup = { lat: booked.pickupLat, lng: booked.pickupLng };
     const [passenger, at, useRoad, driver] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: booked.passengerId }, select: { name: true, identityStatus: true } }),
+      this.prisma.user.findUnique({ where: { id: booked.passengerId }, select: { name: true } }),
       this.location.position(driverId),
       this.settings.get('useRoadEta'),
       this.prisma.driver.findUnique({ where: { id: driverId }, select: { vehicleKind: true } }),
@@ -427,8 +427,8 @@ export class DispatchService implements OnModuleInit, OnModuleDestroy {
       trip: { ...trip, otp: '', riderPhone: null },
       // Booked for someone else: the driver sees the rider; the account holder is "booked by".
       passenger: booked.riderName
-        ? { name: booked.riderName, isVerified: false, bookedBy: passenger?.name ?? undefined }
-        : { name: passenger?.name ?? 'Tamil Taxi customer', isVerified: passenger?.identityStatus === 'APPROVED' },
+        ? { name: booked.riderName, bookedBy: passenger?.name ?? undefined }
+        : { name: passenger?.name ?? 'Tamil Taxi customer' },
       pickupKm: at ? Math.round(roadKm(at, pickup) * 10) / 10 : null,
       pickupEtaMin: at ? await this.eta.minutes({ from: at, to: pickup, vehicleKind: trip.vehicleKind, useRoad }) : null,
     };
@@ -521,9 +521,8 @@ export function asVehicle(trip: Trip, driverKind: VehicleKind | undefined): Trip
 
 export interface OfferDetails {
   trip: Trip;
-  /** isVerified: the rider passed the optional Didit check (a badge on the request card). */
   /** The rider: the account holder, or who they booked for ([bookedBy] = the account holder's name). No phone. */
-  passenger: { name: string; isVerified: boolean; bookedBy?: string };
+  passenger: { name: string; bookedBy?: string };
   pickupKm: number | null;
   pickupEtaMin: number | null;
 }

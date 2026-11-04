@@ -1,7 +1,6 @@
 // End-to-end: needs Postgres + Redis (`docker compose up -d postgres redis` and `npm run prisma:deploy -w @tamiltaxi/api`).
-import { createHmac } from 'node:crypto';
 
-import { type INestApplication, ServiceUnavailableException } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { cellToLatLng } from 'h3-js';
 import request from 'supertest';
@@ -23,9 +22,7 @@ import { DEMAND_RES, DemandService, SURGE_CELLS_KEY } from '../src/modules/geo/d
 import { cellAt } from '../src/modules/geo/h3.util.js';
 import { haversineMeters } from '../src/modules/fares/fare-engine.js';
 import { DriverLocationService } from '../src/modules/drivers/driver-location.service.js';
-import { DiditClient } from '../src/modules/kyc/didit.client.js';
 import { istHourOf } from '../src/modules/safety/night-window.js';
-import type { DiditDecision } from '../src/modules/kyc/didit.js';
 
 const GANDHIPURAM = { lat: 11.0183, lng: 76.9725, placeId: 'gandhipuram', name: 'Gandhipuram Central Bus Stand' };
 const BROOKEFIELDS = { lat: 11.009, lng: 76.96, placeId: 'brookefields', name: 'Brookefields Mall' };
@@ -43,36 +40,10 @@ function phone(): string {
   return `9${String(Math.floor(Math.random() * 1e9)).padStart(9, '0')}`;
 }
 
-const WEBHOOK_SECRET = 'whsec_e2e';
-/** A stored photo so drivers approved directly in the database may go online (photo required with Didit on). */
+/** A stored photo so drivers approved directly in the database may go online (photo required on apps from 0.1.2). */
 const E2E_PHOTO = '00000000-0000-4000-8000-00000000e2e0.jpg';
 /** Smallest valid JPEG header bytes: enough for storage (it only checks the type). */
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9]);
-
-/** Stands in for Didit: sessions are per user, decisions are set by the test. */
-const fakeDidit = {
-  isEnabled: true,
-  decisions: new Map<string, DiditDecision>(),
-  /** Set to make the next sessions fail like Didit out of credits. */
-  isOutOfCredits: false,
-  createSession: async (p: { userId: string }) => {
-    if (fakeDidit.isOutOfCredits) throw new ServiceUnavailableException('Verification is busy right now. Please try again later');
-    return { sessionId: `sess-${p.userId}`, sessionToken: `tok-${p.userId}`, status: 'Not Started' };
-  },
-  decision: async (sessionId: string) => fakeDidit.decisions.get(sessionId) ?? { session_id: sessionId, status: 'In Progress' },
-  image: async (url: string) => (url.startsWith('https://') ? { buffer: JPEG, mimetype: 'image/jpeg' } : null),
-  /** Next face-match result for a profile photo. */
-  nextMatch: { score: 97 as number | null, faces: 1, isMatch: true },
-  faceMatch: async () => fakeDidit.nextMatch,
-};
-
-/** Signs a webhook body like Didit (X-Signature-V2 over sorted compact JSON). */
-function signed(body: Record<string, unknown>): { headers: Record<string, string>; body: Record<string, unknown> } {
-  const sort = (v: unknown): unknown =>
-    Array.isArray(v) ? v.map(sort) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sort((v as Record<string, unknown>)[k])])) : v;
-  const sig = createHmac('sha256', WEBHOOK_SECRET).update(JSON.stringify(sort(body))).digest('hex');
-  return { headers: { 'x-signature-v2': sig, 'x-timestamp': String(Math.floor(Date.now() / 1000)) }, body };
-}
 
 describe('Tamil Taxi API (e2e)', () => {
   let app: INestApplication;
@@ -85,12 +56,7 @@ describe('Tamil Taxi API (e2e)', () => {
     process.env.OTP_DEV_MODE = 'true';
     process.env.ADMIN_PHONES = ADMIN_PHONE;
     process.env.GOOGLE_MAPS_API_KEY = ''; // no paid Google calls in tests
-    // Didit is "set up" with a fake client, so drivers need an identity check to be approved.
-    process.env.DIDIT_API_KEY = 'e2e';
-    process.env.DIDIT_WEBHOOK_SECRET = WEBHOOK_SECRET;
-    process.env.DIDIT_DRIVER_WORKFLOW_ID = 'wf-driver';
-    process.env.DIDIT_RIDER_WORKFLOW_ID = 'wf-rider';
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(DiditClient).useValue(fakeDidit).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('v1', { exclude: ['health', 'health/ready'] });
     await app.init();
@@ -2182,6 +2148,8 @@ describe('Tamil Taxi API (e2e)', () => {
         .expect(201);
       const driver = { Authorization: `Bearer ${reg.body.accessToken as string}` };
       const driverId = reg.body.driver.id as string;
+      // A 0.1.2 app (it reports its version), whose identity check by hand is already passed.
+      await http.get('/v1/kyc/me').set(driver).set('x-app-version', '0.1.2').expect(200);
       await prisma.user.update({ where: { id: reg.body.driver.userId as string }, data: { identityStatus: 'APPROVED' } });
 
       // Waiting on the driver until the documents are in; verified documents leave them ready, not approved.
@@ -2258,7 +2226,7 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(activity[0].actor.phone).toBe(`+91${ADMIN_PHONE}`);
   });
 
-  it('approves a driver after the Didit identity check and the RC + insurance review', async () => {
+  it('approves a driver from an older app after the RC + insurance review, then reviews the profile photo', async () => {
     const driverUser = await login();
     const plate = randomPlate();
     const reg = await http
@@ -2268,70 +2236,27 @@ describe('Tamil Taxi API (e2e)', () => {
       .expect(201);
     const driver = { Authorization: `Bearer ${reg.body.accessToken as string}` };
     const driverId = reg.body.driver.id as string;
-    const userId = reg.body.driver.userId as string;
 
     // RC and insurance, plus the licence and Aadhaar of the identity check by hand (no police or selfie photos).
     const docs = await http.get('/v1/drivers/me/documents').set(driver).expect(200);
     expect(docs.body.map((d: { type: string }) => d.type).sort()).toEqual(['AADHAAR', 'DRIVING_LICENCE', 'INSURANCE', 'VEHICLE_RC']);
     await http.post('/v1/drivers/me/documents/POLICE_VERIFICATION').set(driver).attach('file', Buffer.from('x'), 'p.jpg').expect(400);
+    // An app that sends no version (up to 0.1.1) can't upload the licence and Aadhaar: no identity step for it.
+    expect((await http.get('/v1/kyc/me').set(driver).expect(200)).body).toMatchObject({ isEnabled: false, isRequired: false, status: 'NOT_STARTED' });
+    // The automatic check is gone.
+    await http.post('/v1/kyc/session').set(driver).expect(404);
 
-    // The app gets a token for the in-app SDK; the same unfinished session is reused.
-    const started = await http.post('/v1/kyc/session').set(driver).expect(201);
-    expect(started.body).toEqual({ sessionId: `sess-${userId}`, sessionToken: `tok-${userId}` });
-    await http.post('/v1/kyc/session').set(driver).expect(201);
-    expect(await prisma.identityVerification.count({ where: { userId } })).toBe(1);
-
-    // Admin verifies both documents: still pending until identity passes.
-    await http.post('/v1/auth/otp').send({ phone: ADMIN_PHONE }).expect(200);
-    const admin = { Authorization: `Bearer ${(await http.post('/v1/auth/verify').send({ phone: ADMIN_PHONE, code: '123456', app: 'admin' })).body.accessToken}` };
-    for (const type of ['VEHICLE_RC', 'INSURANCE']) {
-      await http.post(`/v1/drivers/me/documents/${type}`).set(driver).attach('file', JPEG, { filename: 'doc.jpg', contentType: 'image/jpeg' }).expect(201);
-      await http.post(`/v1/admin/drivers/${driverId}/documents/${type}`).set(admin).send({ status: 'VERIFIED' }).expect(201);
-    }
+    const admin = await adminAuth();
+    await http.post('/v1/drivers/me/documents/VEHICLE_RC').set(driver).attach('file', JPEG, { filename: 'doc.jpg', contentType: 'image/jpeg' }).expect(201);
+    await http.post(`/v1/admin/drivers/${driverId}/documents/VEHICLE_RC`).set(admin).send({ status: 'VERIFIED' }).expect(201);
     expect((await http.get('/v1/drivers/me').set(driver).expect(200)).body.status).toBe('PENDING');
-
-    // Unsigned or badly signed webhooks are refused.
-    const event = {
-      event_id: `evt-${userId}`,
-      webhook_type: 'status.updated',
-      session_id: `sess-${userId}`,
-      status: 'Approved',
-      vendor_data: userId,
-      decision: {
-        status: 'Approved',
-        id_verifications: [
-          { document_type: 'Driving License', document_number: 'TN3820190012345', full_name: 'Murugan Selvam', date_of_birth: '1990-04-12', warnings: [] },
-          { document_type: 'Identity Card', document_number: '1234 5678 9012', full_name: 'Murugan Selvam', warnings: [] },
-        ],
-        liveness_checks: [{ status: 'Approved', reference_image: 'https://media.didit.test/face/selfie.jpg' }],
-      },
-    };
-    await http.post('/v1/kyc/didit/webhook').send(event).expect(401);
-    const hook = signed(event);
-    await http.post('/v1/kyc/didit/webhook').set(hook.headers).send(hook.body).expect(200);
-    await http.post('/v1/kyc/didit/webhook').set(hook.headers).send(hook.body).expect(200); // duplicate: ignored
-
-    const me = await http.get('/v1/kyc/me').set(driver).expect(200);
-    expect(me.body).toMatchObject({
-      isEnabled: true,
-      status: 'APPROVED',
-      fullName: 'Murugan Selvam',
-      documentLast4: '2345',
-      documents: [
-        { type: 'Driving License', last4: '2345' },
-        { type: 'Identity Card', last4: '9012' },
-      ],
-    });
+    await http.post('/v1/drivers/me/documents/INSURANCE').set(driver).attach('file', JPEG, { filename: 'doc.jpg', contentType: 'image/jpeg' }).expect(201);
+    await http.post(`/v1/admin/drivers/${driverId}/documents/INSURANCE`).set(admin).send({ status: 'VERIFIED' }).expect(201);
     expect((await http.get('/v1/drivers/me').set(driver).expect(200)).body.status).toBe('APPROVED');
     // Approved: the gender (who gets Butterfly rides) is fixed; sending the same one is fine.
     await http.patch('/v1/drivers/me').set(driver).send({ gender: 'FEMALE' }).expect(403);
     await http.patch('/v1/drivers/me').set(driver).send({ gender: 'PREFER_NOT_TO_SAY', upiId: 'murugan@oksbi' }).expect(200);
-    await http.post('/v1/kyc/session').set(driver).expect(409);
-
-    // The approved live selfie is kept as the reference face; the profile photo is taken separately.
-    const profile = (await http.get('/v1/drivers/me').set(driver).expect(200)).body;
-    expect(profile.selfieFile).toMatch(/\.jpg$/);
-    expect(profile.photoFile).toBeNull();
+    expect((await http.get('/v1/drivers/me').set(driver).expect(200)).body.photoFile).toBeNull();
 
     // Every profile photo waits for an admin, who approves it; then riders see it.
     const up = await http.post('/v1/drivers/me/photo').set(driver).attach('file', JPEG, { filename: 'p.jpg', contentType: 'image/jpeg' }).expect(200);
@@ -2350,7 +2275,7 @@ describe('Tamil Taxi API (e2e)', () => {
     await http.get(`/v1/drivers/${driverId}/photo`).set(stranger).expect(404);
   });
 
-  it('checks the licence, Aadhaar and profile photo by hand when Didit is out of credits or switched off', async () => {
+  it('checks the licence, Aadhaar and profile photo by hand for apps from 0.1.2', async () => {
     const admin = await adminAuth();
     const register = async (name: string) => {
       const reg = await http
@@ -2366,23 +2291,13 @@ describe('Tamil Taxi API (e2e)', () => {
     const status = async (auth: Record<string, string>) => (await http.get('/v1/drivers/me').set(auth).expect(200)).body.status as string;
     const newApp = { 'x-app-version': '0.1.2' };
 
-    // With Didit out of credits, a new app hears IDENTITY_MANUAL and goes on with the documents.
+    // A new app sends its version: the driver must pass the check by hand.
     const kumar = await register('Kumar R');
-    fakeDidit.isOutOfCredits = true;
-    try {
-      const refused = await http.post('/v1/kyc/session').set(kumar.auth).set(newApp).expect(503);
-      expect(refused.body.code).toBe('IDENTITY_MANUAL');
-      // An older app keeps the old message.
-      const old = await http.post('/v1/kyc/session').set(kumar.auth).expect(503);
-      expect(old.body.code).toBeUndefined();
-    } finally {
-      fakeDidit.isOutOfCredits = false;
-    }
+    expect((await http.get('/v1/kyc/me').set(kumar.auth).set(newApp).expect(200)).body).toMatchObject({ isEnabled: false, isRequired: true });
     // The driver hears only about a rejection, or that everything is approved.
     const notifier = app.get(NotifierService);
-    const spies = (['kycReviewed', 'photoReviewed', 'photoSubmitted', 'identityChanged'] as const).map((m) => vi.spyOn(notifier, m));
-    const heard = () => spies.flatMap((spy, i) => spy.mock.calls.filter(([p]) => JSON.stringify(p).includes(kumar.id) || JSON.stringify(p).includes(kumarUser)).map(([p]) => ({ via: ['kyc', 'photo', 'photoSubmitted', 'identity'][i], ...(p as object) })));
-    const kumarUser = (await prisma.driver.findUniqueOrThrow({ where: { id: kumar.id } })).userId;
+    const spies = (['kycReviewed', 'photoReviewed', 'photoSubmitted'] as const).map((m) => vi.spyOn(notifier, m));
+    const heard = () => spies.flatMap((spy, i) => spy.mock.calls.filter(([p]) => JSON.stringify(p).includes(kumar.id)).map(([p]) => ({ via: ['kyc', 'photo', 'photoSubmitted'][i], ...(p as object) })));
     try {
       for (const type of ['VEHICLE_RC', 'INSURANCE']) {
         await upload(kumar.auth, type);
@@ -2402,10 +2317,8 @@ describe('Tamil Taxi API (e2e)', () => {
       await http.post('/v1/drivers/me/photo').set(kumar.auth).attach('file', JPEG, { filename: 'p.jpg', contentType: 'image/jpeg' }).expect(200);
       expect(await status(kumar.auth)).toBe('PENDING');
       await http.post(`/v1/admin/drivers/${kumar.id}/photo`).set(admin).send({ isApproved: true }).expect(200);
-      const kumarMe = (await http.get('/v1/drivers/me').set(kumar.auth).expect(200)).body;
-      expect(kumarMe.status).toBe('APPROVED');
-      // The approved photo is the daily-selfie face (no Didit selfie).
-      expect(kumarMe.selfieFile).toBe(kumarMe.photoFile);
+      expect(await status(kumar.auth)).toBe('APPROVED');
+      expect((await http.get('/v1/kyc/me').set(kumar.auth).set(newApp).expect(200)).body.status).toBe('APPROVED');
       // Uploads, each verification and the photo approval said nothing; the approval itself did, once.
       expect(heard().slice(1)).toEqual([expect.objectContaining({ via: 'kyc', status: 'APPROVED' })]);
     } finally {
@@ -2414,56 +2327,9 @@ describe('Tamil Taxi API (e2e)', () => {
     // There is no selfie upload any more.
     await http.post('/v1/drivers/me/documents/SELFIE').set(kumar.auth).attach('file', JPEG, { filename: 's.jpg', contentType: 'image/jpeg' }).expect(400);
 
-    // Switched to the check by hand: new apps must do it, older apps (no version) are approved on RC + insurance.
-    await http.put('/v1/admin/settings').set(admin).send({ manualIdentityCheck: true }).expect(200);
-    try {
-      const anbu = await register('Anbu S');
-      const view = (await http.get('/v1/kyc/me').set(anbu.auth).set(newApp).expect(200)).body;
-      expect(view).toMatchObject({ isEnabled: false, mode: 'MANUAL', isRequired: true });
-      expect((await http.post('/v1/kyc/session').set(anbu.auth).set(newApp).expect(409)).body.code).toBe('IDENTITY_MANUAL');
-      for (const type of ['VEHICLE_RC', 'INSURANCE']) {
-        await upload(anbu.auth, type);
-        await verify(anbu.id, type);
-      }
-      expect(await status(anbu.auth)).toBe('PENDING');
-
-      const old = await register('Bala T');
-      expect((await http.get('/v1/kyc/me').set(old.auth).expect(200)).body).toMatchObject({ isEnabled: false, mode: 'MANUAL', isRequired: false });
-      for (const type of ['VEHICLE_RC', 'INSURANCE']) {
-        await upload(old.auth, type);
-        await verify(old.id, type);
-      }
-      expect(await status(old.auth)).toBe('APPROVED');
-    } finally {
-      await http.put('/v1/admin/settings').set(admin).send({ manualIdentityCheck: false }).expect(200);
-    }
   });
 
-  it('passes the daily selfie when Didit is unavailable, so it never keeps a driver offline', async () => {
-    const reg = await http
-      .post('/v1/drivers')
-      .set('Authorization', `Bearer ${await login()}`)
-      .send({ name: 'Sekar P', workType: 'RIDES', vehicleKind: 'BIKE', vehicleModel: 'Hero Splendor', vehicleColor: 'Red', plate: randomPlate(), upiId: 'sekar@okaxis' })
-      .expect(201);
-    const driver = { Authorization: `Bearer ${reg.body.accessToken as string}` };
-    // A real stored file as the reference face (an uploaded RC photo), so only the face match fails.
-    await http.post('/v1/drivers/me/documents/VEHICLE_RC').set(driver).attach('file', JPEG, { filename: 'rc.jpg', contentType: 'image/jpeg' }).expect(201);
-    const rc = await prisma.kycDocument.findUniqueOrThrow({ where: { driverId_type: { driverId: reg.body.driver.id, type: 'VEHICLE_RC' } } });
-    await prisma.driver.update({ where: { id: reg.body.driver.id }, data: { selfieFile: rc.fileUrl } });
-    const faceMatch = fakeDidit.faceMatch;
-    fakeDidit.faceMatch = async () => {
-      throw new ServiceUnavailableException('Photo check is unavailable right now');
-    };
-    try {
-      const res = await http.post('/v1/drivers/me/selfie-check').set(driver).attach('file', JPEG, { filename: 's.jpg', contentType: 'image/jpeg' });
-      expect(res.status).toBeLessThan(300);
-      expect(res.body.passed).toBe(true);
-    } finally {
-      fakeDidit.faceMatch = faceMatch;
-    }
-  });
-
-  it('needs the verified photo before an approved driver can go online', async () => {
+  it('needs the approved photo before an approved driver on a new app can go online', async () => {
     const driverUser = await login();
     const reg = await http
       .post('/v1/drivers')
@@ -2471,47 +2337,16 @@ describe('Tamil Taxi API (e2e)', () => {
       .send({ name: 'Ravi M', workType: 'RIDES', vehicleKind: 'BIKE', vehicleModel: 'Hero Splendor', vehicleColor: 'Black', plate: randomPlate(), upiId: 'ravi@okaxis' })
       .expect(201);
     const driver = { Authorization: `Bearer ${reg.body.accessToken as string}` };
-    await prisma.driver.update({ where: { id: reg.body.driver.id }, data: { status: 'APPROVED' } });
+    await prisma.driver.update({ where: { id: reg.body.driver.id }, data: { status: 'APPROVED', appVersion: '0.1.2' } });
     const res = await http.post('/v1/drivers/me/online').set(driver).send({ lat: 11.019, lng: 76.973 }).expect(403);
     expect(res.body.code).toBe('PHOTO_REQUIRED');
   });
 
-  it('sends a driver approved without a driving licence to review', async () => {
-    const driverUser = await login();
-    const reg = await http
-      .post('/v1/drivers')
-      .set('Authorization', `Bearer ${driverUser}`)
-      .send({ name: 'Anand K', workType: 'RIDES', vehicleKind: 'BIKE', vehicleModel: 'TVS Jupiter', vehicleColor: 'Blue', plate: randomPlate(), upiId: 'anand@okaxis' })
-      .expect(201);
-    const driver = { Authorization: `Bearer ${reg.body.accessToken as string}` };
-    const { sessionId } = (await http.post('/v1/kyc/session').set(driver).expect(201)).body as { sessionId: string };
-    fakeDidit.decisions.set(sessionId, { session_id: sessionId, status: 'Approved', id_verifications: [{ document_type: 'Identity Card', document_number: '1234 5678 9012' }] });
-    const res = await http.post('/v1/kyc/sync').set(driver).expect(200);
-    expect(res.body.status).toBe('IN_REVIEW');
-  });
-
-  it('gives riders an optional Verified badge via sync when the SDK closes', async () => {
+  it('has no identity check for riders', async () => {
     const rider = { Authorization: `Bearer ${await login()}` };
-    expect((await http.get('/v1/kyc/me').set(rider).expect(200)).body.status).toBe('NOT_STARTED');
-    const { sessionId } = (await http.post('/v1/kyc/session').set(rider).expect(201)).body as { sessionId: string };
-    fakeDidit.decisions.set(sessionId, {
-      session_id: sessionId,
-      status: 'Declined',
-      face_matches: [{ status: 'Declined', warnings: [{ short_description: 'Face does not match the ID', log_type: 'error' }] }],
-    });
-    const declined = await http.post('/v1/kyc/sync').set(rider).expect(200);
-    expect(declined.body).toMatchObject({ status: 'DECLINED', reasons: ['Selfie: Face does not match the ID'] });
-    fakeDidit.decisions.set(sessionId, { session_id: sessionId, status: 'Approved', id_verifications: [{ document_type: 'Aadhaar', document_number: '1234 5678 9012' }] });
-    const approved = await http.post('/v1/kyc/sync').set(rider).expect(200);
-    expect(approved.body).toMatchObject({ status: 'APPROVED', documentLast4: '9012' });
-    expect((await http.get('/v1/me').set(rider).expect(200)).body.identityStatus).toBe('APPROVED');
-
-    // A newer session that only expires (e.g. "Try again" opened and closed) keeps the approval.
-    const userId = (await http.get('/v1/me').set(rider).expect(200)).body.id as string;
-    await prisma.identityVerification.create({ data: { userId, purpose: 'RIDER', sessionId: `later-${userId}` } });
-    const expired = signed({ event_id: `evt-exp-${userId}`, webhook_type: 'status.updated', session_id: `later-${userId}`, status: 'Expired', vendor_data: userId });
-    await http.post('/v1/kyc/didit/webhook').set(expired.headers).send(expired.body).expect(200);
-    expect((await http.get('/v1/kyc/me').set(rider).expect(200)).body.status).toBe('APPROVED');
+    expect((await http.get('/v1/kyc/me').set(rider).expect(200)).body).toMatchObject({ isEnabled: false, isRequired: false, status: 'NOT_STARTED' });
+    await http.post('/v1/kyc/session').set(rider).expect(404);
+    await http.post('/v1/kyc/didit/webhook').send({}).expect(404);
   });
 
   it('driver Redis keys expire: an app that dies without going offline leaves nothing behind for ever', async () => {

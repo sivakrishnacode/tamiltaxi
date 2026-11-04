@@ -3,7 +3,7 @@
 # at launch set API_HOST / ADMIN_HOST in .env to the real domain.
 {$API_HOST} {
 	encode gzip
-	# REST (/v1), health, Socket.IO (/rt, websockets are proxied as-is) and the Didit webhook.
+	# REST (/v1), health and Socket.IO (/rt, websockets are proxied as-is).
 	reverse_proxy api:3000
 }
 

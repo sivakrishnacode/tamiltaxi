@@ -81,7 +81,7 @@ enum KycDocType {
   VEHICLE_RC
   INSURANCE
   POLICE_VERIFICATION
-  /// A selfie for the identity check by hand (setting `manualIdentityCheck`, or when Didit can't be used).
+  /// Unused since 3 Nov 2026: the approved profile photo is the face the licence and Aadhaar are matched to.
   SELFIE
 }
 
@@ -92,18 +92,13 @@ enum KycStatus {
   REJECTED
 }
 
-/// Selfie + ID check with Didit (drivers: required; riders: optional "Verified" badge).
+/// The driver's identity check by hand: the licence and Aadhaar verified by an admin, with the profile photo.
 enum IdentityStatus {
   NOT_STARTED
   IN_PROGRESS
   IN_REVIEW
   APPROVED
   DECLINED
-}
-
-enum IdentityPurpose {
-  DRIVER
-  RIDER
 }
 
 enum TripKind {
@@ -296,7 +291,7 @@ model User {
   rideOtp            String?
   isBlocked          Boolean                @default(false)
   blockedReason      String?
-  /// Latest Didit identity check result (mirrors the newest IdentityVerification).
+  /// Drivers' identity check by hand (kyc/driver-approval.service.ts `syncManualIdentity`). Riders: NOT_STARTED.
   identityStatus     IdentityStatus         @default(NOT_STARTED)
   identityVerifiedAt DateTime?
   /// The account was deleted (DELETE /me or an admin): personal details wiped, [phone] is a tombstone `deleted:<id>`
@@ -310,7 +305,6 @@ model User {
   trips              Trip[]                 @relation("PassengerTrips")
   tickets            SupportTicket[]
   devices            DeviceToken[]
-  identityChecks     IdentityVerification[]
   cancellationDues   CancellationDue[]
   sosAlerts          Sos[]
   /// Admin notes about this person (driver or rider), and the ones this admin wrote.
@@ -321,32 +315,6 @@ model User {
 
   /// Admin lists: riders / accounts by role, newest first.
   @@index([role, createdAt])
-}
-
-/// One Didit verification session. Only the last 4 digits of the document number are kept.
-model IdentityVerification {
-  id             String          @id @default(cuid())
-  userId         String
-  purpose        IdentityPurpose
-  sessionId      String          @unique
-  status         IdentityStatus  @default(NOT_STARTED)
-  /// Didit's exact status string ("Approved", "In Review", "Kyc Expired", …).
-  providerStatus String          @default("Not Started")
-  documentType   String?
-  documentLast4  String?
-  /// Every scanned ID as [{type, last4}] (drivers: licence + Aadhaar).
-  documents      Json?
-  fullName       String?
-  dateOfBirth    String?
-  warnings       Json?
-  /// What the user must fix (declined steps, plain words); shown in the apps.
-  reasons        Json?
-  decidedAt      DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt])
 }
 
 model EmergencyContact {
@@ -401,22 +369,16 @@ model Driver {
   ratingCount       Int                @default(0)
   ridesCount        Int                @default(0)
   status            DriverStatus       @default(PENDING)
-  /// Profile photo riders see on their trip (taken in the app, matched to [selfieFile]). Private storage file.
+  /// Profile photo riders see on their trip (taken in the app, approved by an admin). Private storage file.
   photoFile         String?
   photoUpdatedAt    DateTime?
-  /// The live selfie from the approved Didit check: the reference a new profile photo is matched against.
-  selfieFile        String?
   /// The driver app's version (header `x-app-version`, sent since 0.1.2). Null: an older app, which can't upload the
-  /// licence, Aadhaar and selfie, so the identity check by hand isn't asked of it.
+  /// licence and Aadhaar, so the identity check by hand isn't asked of it.
   appVersion        String?
-  /// A new photo whose face match was unclear, waiting for an admin (Didit unreachable, or a low score).
+  /// A new photo waiting for an admin.
   pendingPhotoFile  String?
-  /// Face-match score (0–100) of the last photo checked.
-  photoMatchScore   Float?
   /// Why an admin rejected the last photo.
   photoRejectReason String?
-  /// Last passed daily selfie check (setting `dailySelfieCheckEnabled`): a live selfie matched to [selfieFile].
-  selfieCheckedAt   DateTime?
   isOnline          Boolean            @default(false)
   /// Temporarily paused until then (too many cancellations, [DriverBlock]); can't go online, dispatch skips them.
   blockedUntil      DateTime?
