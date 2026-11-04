@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
@@ -52,7 +54,7 @@ void main() {
       high('b', const LatLng(11.016, 76.963), 1.3),
       high('c', const LatLng(11.06, 77.03), 1.0),
     ]);
-    expect(demandLabels(map, zoom: 11.5), isEmpty, reason: 'whole-city view');
+    expect(demandLabels(map, zoom: 11), isEmpty, reason: 'zoomed out past the city');
     final city = demandLabels(map, zoom: 13);
     expect(city.map((m) => m.point), [const LatLng(11.016, 76.963), const LatLng(11.06, 77.03)],
         reason: 'the surging one of the close pair wins');
@@ -93,8 +95,72 @@ void main() {
       expect(hotspotAt(_map(), const LatLng(11.5, 76.92)), isNull);
     });
 
+    test("zoomed out to the city: short labels, the zone's name", () {
+      final texts = [for (final m in demandLabels(map, zoom: 12, vehicle: VehicleKind.bike)) ((m.child as Center).child! as DemandLabel)];
+      expect(texts.map((l) => l.text), contains('1.2x · Surge now'));
+      expect(texts.every((l) => l.compact), isTrue);
+    });
+
+    test("a small zone's label sits on top of it, a big one's in the middle", () {
+      final pickup = MapZone(id: 'gate', name: 'Airport', kind: MapZoneKind.pickupPoint, centre: const LatLng(11.03, 77.04),
+          outline: [hexDiskOutline(const LatLng(11.03, 77.04), 76, 1)]);
+      final labels = demandLabels(DemandMap(at: DateTime(2026, 11, 4), zones: [pickup]), zoom: 14);
+      expect(labels.single.alignment, Alignment.topCenter);
+      expect(labels.single.point.latitude, greaterThan(pickup.centre.latitude));
+      final big = demandLabels(map, zoom: 16, vehicle: VehicleKind.bike);
+      expect(big.first.alignment, Alignment.center);
+      expect(big.first.point, const LatLng(11.08, 76.98));
+    });
+
     test('multipliers read short', () {
       expect([multiplierLabel(1.3), multiplierLabel(1.25), multiplierLabel(1.5)], ['1.3x', '1.25x', '1.5x']);
+    });
+  });
+
+  group('zone outlines are drawn smooth', () {
+    const centre = LatLng(11.0, 76.96);
+    double area(List<LatLng> ring) {
+      final mx = 111320 * math.cos(centre.latitude * math.pi / 180);
+      var sum = 0.0;
+      for (var i = 0; i < ring.length; i++) {
+        final a = ring[i], b = ring[(i + 1) % ring.length];
+        sum += (a.longitude * mx) * (b.latitude * 110574) - (b.longitude * mx) * (a.latitude * 110574);
+      }
+      return sum.abs() / 2;
+    }
+
+    // Every turn the same way (points on a straight run, within a square metre, don't count).
+    bool convex(List<LatLng> ring) {
+      final mx = 111320 * math.cos(centre.latitude * math.pi / 180);
+      final turns = <double>{};
+      for (var i = 0; i < ring.length; i++) {
+        final a = ring[i], b = ring[(i + 1) % ring.length], c = ring[(i + 2) % ring.length];
+        final cross = (b.longitude - a.longitude) * mx * (c.latitude - b.latitude) * 110574 -
+            (b.latitude - a.latitude) * 110574 * (c.longitude - b.longitude) * mx;
+        if (cross.abs() > 1) turns.add(cross.sign);
+      }
+      return turns.length == 1;
+    }
+
+    test("a hexagon cluster's zig-zag edge is gone, its size kept", () {
+      final edge = hexDiskOutline(centre, 76, 1); // 7 res-10 hexagons: the H3 "flower"
+      expect(convex(edge), isFalse, reason: 'the H3 outline steps in and out');
+      final drawn = smoothOutline(edge);
+      expect(convex(drawn), isTrue);
+      expect(area(drawn) / area(edge), closeTo(1, 0.01));
+    });
+
+    test('one hexagon becomes a rounded hexagon', () {
+      final hex = hexagonAround(centre, 531);
+      final drawn = smoothOutline(hex);
+      expect(drawn.length, greaterThan(hex.length));
+      expect(convex(drawn), isTrue);
+      expect(area(drawn) / area(hex), closeTo(1, 0.01));
+    });
+
+    test('a closed ring (first point repeated) is handled like an open one', () {
+      final edge = hexDiskOutline(centre, 200, 1);
+      expect(smoothOutline([...edge, edge.first]).length, smoothOutline(edge).length);
     });
   });
 }

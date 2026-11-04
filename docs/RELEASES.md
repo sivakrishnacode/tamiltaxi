@@ -94,7 +94,10 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ### Next release: 0.1.3 (code 5)
 
-Nothing yet.
+- Home map: zones look clean. Their outline was drawn hexagon edge by hexagon edge and looked like a scribble; now
+  it is a smooth shape the zone's size. Busy areas are coral like the demand hexes (were brown), pickup points a
+  lighter blue, thinner edges and a light tint. Zone names show when zoomed out to the city too (short: "Airport",
+  "Singanallur"), and a small zone's name sits just above it instead of covering it.
 
 ### 0.1.2 (code 4) · 4 Nov 2026
 

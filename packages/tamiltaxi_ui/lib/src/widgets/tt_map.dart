@@ -741,6 +741,7 @@ class DemandLabel extends StatelessWidget {
     required this.text,
     this.icon = Symbols.local_fire_department_rounded,
     this.color = TtColors.coral600,
+    this.compact = false,
   });
   final String text;
 
@@ -748,19 +749,25 @@ class DemandLabel extends StatelessWidget {
   final IconData icon;
   final Color color;
 
+  /// Smaller, for the zoomed-out city view where many share the screen.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: compact
+            ? const EdgeInsets.fromLTRB(8, 4, 10, 4)
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: const BoxDecoration(color: Colors.white, borderRadius: TtRadii.pillRadius, boxShadow: TtShadows.soft),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: color, fill: 1),
+            Icon(icon, size: compact ? 14 : 16, color: color, fill: 1),
             const SizedBox(width: 4),
             Flexible(
               child: Text(text,
                   overflow: TextOverflow.ellipsis,
-                  style: context.type.bodySmallMedium.copyWith(color: color, fontWeight: FontWeight.w600)),
+                  style: (compact ? context.type.caption : context.type.bodySmallMedium)
+                      .copyWith(color: color, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
