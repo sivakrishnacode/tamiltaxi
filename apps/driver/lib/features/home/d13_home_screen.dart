@@ -56,8 +56,17 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
   /// Height of the panels over the map (Google logo padding).
   double _panelHeight = 0;
 
-  /// Map zoom in half steps: the "High demand" labels follow it without rebuilding Home on every camera frame.
-  final _labelZoom = ValueNotifier<double>(14.5);
+  /// The map camera for the labels, in half zoom steps and moved only after a pan of about 80 px: the labels follow
+  /// it without rebuilding Home on every camera frame. No centre before the camera first moves (the car's is used).
+  final _labelCamera = ValueNotifier<({double zoom, LatLng? centre})>((zoom: 14.5, centre: null));
+
+  void _onCamera(TtCamera camera) {
+    final zoom = (camera.zoom * 2).floor() / 2;
+    final was = _labelCamera.value;
+    if (zoom != was.zoom || was.centre == null || screenDistance(was.centre!, camera.center, zoom) > 80) {
+      _labelCamera.value = (zoom: zoom, centre: camera.center);
+    }
+  }
 
   HomeVariant get _v => widget.variant;
   bool get _live => _v == HomeVariant.live;
@@ -94,7 +103,7 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
   @override
   void dispose() {
     _lifecycle?.dispose();
-    _labelZoom.dispose();
+    _labelCamera.dispose();
     super.dispose();
   }
 
@@ -396,13 +405,21 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
             : (online && !gpsLost ? DemandMap.demo(quiet: quiet) : null);
     final vehicle = profile.vehicleKind;
     final polygons = demandPolygons(demand, vehicle: vehicle);
-    final map = ValueListenableBuilder<double>(
-      valueListenable: _labelZoom,
-      builder: (context, labelZoom, _) => LiveVehicleMap(
+    final map = ValueListenableBuilder(
+      valueListenable: _labelCamera,
+      builder: (context, camera, _) => LiveVehicleMap(
         key: ValueKey('home-map-$quiet'),
         polygons: polygons,
-        labels: gpsLost ? const [] : demandLabels(demand, zoom: labelZoom, vehicle: vehicle),
-        onZoom: demand == null ? null : (z) => _labelZoom.value = (z * 2).floor() / 2,
+        labels: gpsLost
+            ? const []
+            : demandLabels(
+                demand,
+                zoom: camera.zoom,
+                near: camera.centre ??
+                    (_showcase ? Seed.driverHome : ref.read(driverSessionProvider.notifier).vehicle.value?.position),
+                vehicle: vehicle,
+              ),
+        onCamera: demand == null ? null : _onCamera,
         onTap: demand == null || gpsLost || _showcase ? null : (p) => _showArea(demand, p, vehicle),
         vehicleType: vehicleType,
         fixedPosition: _showcase ? Seed.driverHome : null,

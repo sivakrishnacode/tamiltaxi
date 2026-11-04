@@ -26,7 +26,7 @@ class LiveVehicleMap extends ConsumerWidget {
     this.mapPadding = EdgeInsets.zero,
     this.polygons = const [],
     this.labels = const [],
-    this.onZoom,
+    this.onCamera,
     this.onTap,
   });
 
@@ -55,8 +55,8 @@ class LiveVehicleMap extends ConsumerWidget {
   /// Extra labels on the map (e.g. "High demand" on the hottest hexes).
   final List<Marker> labels;
 
-  /// The camera's zoom whenever it moves (e.g. to place zoom-dependent labels).
-  final ValueChanged<double>? onZoom;
+  /// The camera whenever it moves (e.g. to place labels by zoom and what is in view).
+  final ValueChanged<TtCamera>? onCamera;
 
   /// A tap on the map (not on a marker), with the point: e.g. to open the zone it fell in.
   final ValueChanged<LatLng>? onTap;
@@ -89,7 +89,7 @@ class LiveVehicleMap extends ConsumerWidget {
             ? const []
             : [MapVehicle(position: pos, type: vehicleType, heading: heading, large: true)],
         polygons: polygons,
-        onPositionChanged: onZoom == null ? null : (camera, _) => onZoom!(camera.zoom),
+        onPositionChanged: onCamera == null ? null : (camera, _) => onCamera!(camera),
         onTap: onTap,
         extraMarkers: [
           ...labels,

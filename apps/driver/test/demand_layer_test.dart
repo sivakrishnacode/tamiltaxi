@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import 'package:flutter/widgets.dart';
+import 'package:flutter_map/flutter_map.dart' show Marker;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_driver/features/home/widgets/demand_layer.dart';
@@ -101,66 +100,33 @@ void main() {
       expect(texts.every((l) => l.compact), isTrue);
     });
 
-    test("a small zone's label sits on top of it, a big one's in the middle", () {
+    test("a zone's label sits on its top edge, in the middle when that edge is out of view", () {
       final pickup = MapZone(id: 'gate', name: 'Airport', kind: MapZoneKind.pickupPoint, centre: const LatLng(11.03, 77.04),
           outline: [hexDiskOutline(const LatLng(11.03, 77.04), 76, 1)]);
-      final labels = demandLabels(DemandMap(at: DateTime(2026, 11, 4), zones: [pickup]), zoom: 14);
+      final labels = demandLabels(DemandMap(at: DateTime(2026, 11, 4), zones: [pickup]), zoom: 14, near: pickup.centre);
       expect(labels.single.alignment, Alignment.topCenter);
       expect(labels.single.point.latitude, greaterThan(pickup.centre.latitude));
-      final big = demandLabels(map, zoom: 16, vehicle: VehicleKind.bike);
+      // The big surge zone's top edge is ~1 km above the camera: at zoom 16, far off screen.
+      final big = demandLabels(map, zoom: 16, near: const LatLng(11.08, 76.98), vehicle: VehicleKind.bike);
       expect(big.first.alignment, Alignment.center);
       expect(big.first.point, const LatLng(11.08, 76.98));
     });
 
+    test('only labels in view take the places: the zone under the camera is never left out', () {
+      MapZone pickup(int i) => MapZone(id: 'p$i', name: 'Gate $i', kind: MapZoneKind.pickupPoint,
+          centre: LatLng(11.3, 76.9 + i * 0.05), outline: [hexDiskOutline(LatLng(11.3, 76.9 + i * 0.05), 76, 1)]);
+      const here = LatLng(11.0165, 76.969);
+      final busy = MapZone(id: 'busy', name: 'Gandhipuram', kind: MapZoneKind.demand, centre: here,
+          outline: [hexDiskOutline(here, 531, 0)]);
+      final crowded = DemandMap(at: DateTime(2026, 11, 4), zones: [for (var i = 0; i < 5; i++) pickup(i), busy]);
+      String text(Marker m) => ((m.child as Center).child! as DemandLabel).text;
+      expect(demandLabels(crowded, zoom: 14.6).map(text), isNot(contains('Busy · Gandhipuram')),
+          reason: 'without the camera, five pickup points far away fill the places');
+      expect(demandLabels(crowded, zoom: 14.6, near: here).map(text), ['Busy · Gandhipuram']);
+    });
+
     test('multipliers read short', () {
       expect([multiplierLabel(1.3), multiplierLabel(1.25), multiplierLabel(1.5)], ['1.3x', '1.25x', '1.5x']);
-    });
-  });
-
-  group('zone outlines are drawn smooth', () {
-    const centre = LatLng(11.0, 76.96);
-    double area(List<LatLng> ring) {
-      final mx = 111320 * math.cos(centre.latitude * math.pi / 180);
-      var sum = 0.0;
-      for (var i = 0; i < ring.length; i++) {
-        final a = ring[i], b = ring[(i + 1) % ring.length];
-        sum += (a.longitude * mx) * (b.latitude * 110574) - (b.longitude * mx) * (a.latitude * 110574);
-      }
-      return sum.abs() / 2;
-    }
-
-    // Every turn the same way (points on a straight run, within a square metre, don't count).
-    bool convex(List<LatLng> ring) {
-      final mx = 111320 * math.cos(centre.latitude * math.pi / 180);
-      final turns = <double>{};
-      for (var i = 0; i < ring.length; i++) {
-        final a = ring[i], b = ring[(i + 1) % ring.length], c = ring[(i + 2) % ring.length];
-        final cross = (b.longitude - a.longitude) * mx * (c.latitude - b.latitude) * 110574 -
-            (b.latitude - a.latitude) * 110574 * (c.longitude - b.longitude) * mx;
-        if (cross.abs() > 1) turns.add(cross.sign);
-      }
-      return turns.length == 1;
-    }
-
-    test("a hexagon cluster's zig-zag edge is gone, its size kept", () {
-      final edge = hexDiskOutline(centre, 76, 1); // 7 res-10 hexagons: the H3 "flower"
-      expect(convex(edge), isFalse, reason: 'the H3 outline steps in and out');
-      final drawn = smoothOutline(edge);
-      expect(convex(drawn), isTrue);
-      expect(area(drawn) / area(edge), closeTo(1, 0.01));
-    });
-
-    test('one hexagon becomes a rounded hexagon', () {
-      final hex = hexagonAround(centre, 531);
-      final drawn = smoothOutline(hex);
-      expect(drawn.length, greaterThan(hex.length));
-      expect(convex(drawn), isTrue);
-      expect(area(drawn) / area(hex), closeTo(1, 0.01));
-    });
-
-    test('a closed ring (first point repeated) is handled like an open one', () {
-      final edge = hexDiskOutline(centre, 200, 1);
-      expect(smoothOutline([...edge, edge.first]).length, smoothOutline(edge).length);
     });
   });
 }

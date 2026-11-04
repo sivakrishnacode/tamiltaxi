@@ -94,10 +94,10 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ### Next release: 0.1.3 (code 5)
 
-- Home map: zones look clean. Their outline was drawn hexagon edge by hexagon edge and looked like a scribble; now
-  it is a smooth shape the zone's size. Busy areas are coral like the demand hexes (were brown), pickup points a
-  lighter blue, thinner edges and a light tint. Zone names show when zoomed out to the city too (short: "Airport",
-  "Singanallur"), and a small zone's name sits just above it instead of covering it.
+- Home map: zones look cleaner. A thin 1 px hexagon edge (was 3 px) with a light tint; busy areas are coral like the
+  demand hexes (were brown), pickup points a lighter blue. Zone names show when zoomed out to the city too (short:
+  "Airport", "Singanallur"), and sit on the zone's top edge instead of covering it or the car. The zone the driver
+  is in always gets its label: zones off screen no longer use up the 5 places.
 
 ### 0.1.2 (code 4) · 4 Nov 2026
 
