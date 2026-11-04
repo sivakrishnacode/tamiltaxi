@@ -1,4 +1,4 @@
-import { cellToBoundary, getResolution, gridDisk, isValidCell, latLngToCell } from 'h3-js';
+import { cellToBoundary, cellToParent, getResolution, gridDisk, isValidCell, latLngToCell } from 'h3-js';
 
 /** Recommended resolution: 8 ≈ 0.74 km² per hexagon (~460 m edge). */
 export const DEFAULT_H3_RESOLUTION = 8;
@@ -26,6 +26,30 @@ export function validateCells(cells: readonly string[], resolution: number): { v
 /** Cell containing a point. */
 export function cellAt(lat: number, lng: number, resolution: number): string {
   return latLngToCell(lat, lng, resolution);
+}
+
+/**
+ * Finest hexes a zone may use: res 10 (≈ 150 m across: a gate, a bus stand). A zone's cells share one resolution, the
+ * city's or finer, so it can leave out streets the city's hexes would take in.
+ */
+export const MAX_ZONE_RESOLUTION = 10;
+
+const zoneSets = new WeakMap<readonly string[], { res: number; cells: Set<string> }>();
+
+/** Whether a zone with [cells] holds [point], tested at the zone's own resolution. */
+export function zoneHolds(cells: readonly string[], point: { lat: number; lng: number }): boolean {
+  if (!cells.length) return false;
+  let entry = zoneSets.get(cells);
+  if (!entry) {
+    entry = { res: getResolution(cells[0]), cells: new Set(cells) };
+    zoneSets.set(cells, entry);
+  }
+  return entry.cells.has(latLngToCell(point.lat, point.lng, entry.res));
+}
+
+/** [cells] at [resolution] or coarser: finer ones become their parents (deduplicated), coarser ones stay. */
+export function atMostResolution(cells: readonly string[], resolution: number): string[] {
+  return [...new Set(cells.map((c) => (getResolution(c) > resolution ? cellToParent(c, resolution) : c)))];
 }
 
 /** A lat/lng rectangle (south-west [low], north-east [high]), as Places `locationRestriction.rectangle` takes it. */

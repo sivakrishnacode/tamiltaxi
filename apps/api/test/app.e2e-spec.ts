@@ -2,7 +2,7 @@
 
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { cellToLatLng } from 'h3-js';
+import { cellToChildren, cellToLatLng, cellToParent } from 'h3-js';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module.js';
@@ -2381,6 +2381,30 @@ describe('Tamil Taxi API (e2e)', () => {
       for (const id of zoneIds) await http.delete(`/v1/admin/zones/${id}`).set(admin).expect(204);
       await http.delete(`/v1/admin/cities/${other}`).set(admin).expect(204);
       await app.get(RedisService).del('drivermap:v5');
+    }
+  });
+
+  it('zones can use finer hexes than the city: a res 10 no-pickup zone stops only its own small hexes', async () => {
+    const admin = await adminAuth();
+    const id = `e2e-fine-${Date.now()}`;
+    const city = (await http.post('/v1/admin/cities').set(admin).send({ id, name: 'Fine town', state: 'Tamil Nadu', centerLat: 11.1085, centerLng: 77.3411, radiusKm: 1 }).expect(201)).body as { serviceCells: string[] };
+    try {
+      const [hex] = city.serviceCells;
+      const kids = cellToChildren(hex, 10);
+      const pt = (cell: string) => {
+        const [lat, lng] = cellToLatLng(cell);
+        return `lat=${lat}&lng=${lng}`;
+      };
+      const zone = (cells: string[]) => http.post(`/v1/admin/cities/${id}/zones`).set(admin).send({ name: 'Gate', kind: 'NO_SERVICE', blockDrops: false, cells });
+      // Coarser than the city, or mixed sizes: refused.
+      await zone([cellToParent(hex, 7)]).expect(400);
+      await zone([kids[0], cellToChildren(hex, 9)[1]]).expect(400);
+      await zone([kids[0]]).expect(201);
+      expect((await http.get(`/v1/geo/check?${pt(kids[0])}`).expect(200)).body).toMatchObject({ cityId: id, isServiceable: false, canDrop: true });
+      // The same city hexagon, outside the small one: pickups still fine.
+      expect((await http.get(`/v1/geo/check?${pt(kids[30])}`).expect(200)).body).toMatchObject({ cityId: id, isServiceable: true });
+    } finally {
+      await http.delete(`/v1/admin/cities/${id}`).set(admin).expect(204);
     }
   });
 

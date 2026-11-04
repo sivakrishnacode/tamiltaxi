@@ -234,6 +234,8 @@ OSRM routing (§6).
 
 Issue: #12 · Labels: plan, api, admin
 
+- [ ] e2e: the driver-ranking test ("ranks equidistant drivers…") sometimes fails when it runs after the other test
+  files (passes alone and on clean state); make it independent of the drivers and stats the earlier files leave
 - [ ] GPS path: admin settings for the thresholds, snap-to-road for a nicer path, a per-driver mock-GPS count
 - [ ] Cancellations: decide the fee policy (then show it before riders cancel), a way to waive a due, per-city
   thresholds, a pause appeal flow

@@ -1,12 +1,12 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
-import { cellToParent } from 'h3-js';
+import { cellToParent, getResolution } from 'h3-js';
 
 import { JobsService } from '../../core/jobs/jobs.service.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
 import { DriverStatus, ZoneKind } from '../../generated/prisma/enums.js';
 import { MISSED_SQL } from '../admin/admin-missed.service.js';
-import { cellAt } from '../geo/h3.util.js';
+import { atMostResolution, cellAt } from '../geo/h3.util.js';
 import { isZoneLive } from '../geo/zone-schedule.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { SettingsService } from '../settings/settings.service.js';
@@ -105,10 +105,13 @@ export class ZoneNudgesService implements OnModuleInit, OnApplicationBootstrap {
 
     let sent = 0;
     for (const zone of zones) {
-      const res = zone.city.h3Resolution;
+      // The zone's own resolution (the city's or finer); waiting trips (pickups at res 8) by the res 8 hexes it touches.
+      const res = zone.cells.length ? getResolution(zone.cells[0]) : zone.city.h3Resolution;
       const cells = new Set(zone.cells);
-      const toZone = (cell: string) => (res < TRIP_RES ? cellToParent(cell, res) : cell);
-      const waiting = rows.filter((r) => cells.has(toZone(r.cell))).reduce((a, r) => a + Number(r.waiting), 0);
+      const tripRes = Math.min(res, TRIP_RES);
+      const tripCells = new Set(atMostResolution(zone.cells, tripRes));
+      const toZone = (cell: string) => (tripRes < TRIP_RES ? cellToParent(cell, tripRes) : cell);
+      const waiting = rows.filter((r) => tripCells.has(toZone(r.cell))).reduce((a, r) => a + Number(r.waiting), 0);
       const freeInside = free.filter((p) => cells.has(cellAt(p.lat, p.lng, res))).length;
       if (!isBusy(waiting, freeInside)) continue;
       if ((await this.redis.set(`nudge:zone:${zone.id}`, '1', 'EX', ZONE_COOLDOWN_S, 'NX')) !== 'OK') continue;

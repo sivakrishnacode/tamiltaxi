@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { cellToParent, latLngToCell } from 'h3-js';
+import { cellToParent, getResolution, latLngToCell } from 'h3-js';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
+import { atMostResolution } from '../geo/h3.util.js';
 import { MISSED_SQL } from './admin-missed.service.js';
 import { AdminOpsService } from './admin-ops.service.js';
 
@@ -54,17 +55,19 @@ export class AdminCityStatsService {
         GROUP BY 1`,
       this.ops.live(),
     ]);
-    // Trips and drivers in the city's own resolution (trips store res 8).
-    const toCity = (cell: string) => (city.h3Resolution < TRIP_RES ? cellToParent(cell, city.h3Resolution) : cell);
+    // Trips store their pickup at res 8: they are compared at the coarser of that and the city's resolution, and an
+    // area drawn finer (a res 9 city, a fine zone) counts the res 8 hexes it touches. Drivers count exactly.
+    const tripRes = Math.min(city.h3Resolution, TRIP_RES);
+    const toCity = (cell: string) => (tripRes < TRIP_RES ? cellToParent(cell, tripRes) : cell);
     const byCell = new Map<string, Row[]>();
     for (const r of rows) {
       const c = toCity(r.cell);
       byCell.set(c, [...(byCell.get(c) ?? []), r]);
     }
-    const driverCells = live.drivers.map((d) => latLngToCell(d.lat, d.lng, city.h3Resolution));
     const area = (cells: readonly string[]): AreaStats => {
       const set = new Set(cells);
-      const mine = [...set].flatMap((c) => byCell.get(c) ?? []);
+      const res = cells.length ? getResolution(cells[0]) : city.h3Resolution;
+      const mine = atMostResolution(cells, tripRes).flatMap((c) => byCell.get(c) ?? []);
       const sum = (pick: (r: Row) => bigint | number | null) => mine.reduce((a, r) => a + Number(pick(r) ?? 0), 0);
       const waited = sum((r) => r.waited);
       return {
@@ -74,7 +77,7 @@ export class AdminCityStatsService {
         completed7d: sum((r) => r.completed),
         missed7d: sum((r) => r.missed),
         avgWaitMin: waited ? Math.round((sum((r) => r.waitsec) / waited / 60) * 10) / 10 : null,
-        onlineNow: driverCells.filter((c) => set.has(c)).length,
+        onlineNow: live.drivers.filter((d) => set.has(latLngToCell(d.lat, d.lng, res))).length,
       };
     };
     return { ...area(city.serviceCells), zones: city.zones.map((z) => ({ zoneId: z.id, ...area(z.cells) })) };

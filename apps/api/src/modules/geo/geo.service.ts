@@ -6,7 +6,7 @@ import { VehicleKind, ZoneKind } from '../../generated/prisma/enums.js';
 import { DEFAULT_PRICING, effectivePricing, type ModePricing } from '../fares/pricing.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { DemandService } from './demand.service.js';
-import { cellAt, cellsBounds, type LatLngBounds } from './h3.util.js';
+import { cellAt, cellsBounds, type LatLngBounds, zoneHolds } from './h3.util.js';
 import { isZoneLive } from './zone-schedule.js';
 
 interface CityIndex {
@@ -89,7 +89,8 @@ export class GeoService {
     for (const { city, service } of cities) {
       const cell = cellAt(point.lat, point.lng, city.h3Resolution);
       if (!service.has(cell)) continue;
-      const zones = city.zones.filter((z) => z.cells.includes(cell) && isZoneLive(z, now));
+      // Each zone at its own resolution (the city's or finer).
+      const zones = city.zones.filter((z) => zoneHolds(z.cells, point) && isZoneLive(z, now));
       const blocks = zones.filter((z) => z.kind === ZoneKind.NO_SERVICE);
       const surges = zones.filter((z) => z.kind === ZoneKind.SURGE);
       // Highest of: admin surge zones (or the platform default) and live demand-vs-supply surge.

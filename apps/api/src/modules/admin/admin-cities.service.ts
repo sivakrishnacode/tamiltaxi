@@ -9,7 +9,9 @@ import { type RentalPackage, RENTAL_PACKAGES } from '../fares/ride-modes.js';
 import { GeoService } from '../geo/geo.service.js';
 import { MapsService } from '../maps/maps.service.js';
 import { NotifierService } from '../notifications/notifier.service.js';
-import { cellsForCircle, DEFAULT_H3_RESOLUTION, validateCells } from '../geo/h3.util.js';
+import { getResolution, isValidCell } from 'h3-js';
+
+import { cellsForCircle, DEFAULT_H3_RESOLUTION, MAX_ZONE_RESOLUTION, validateCells } from '../geo/h3.util.js';
 import type { CreateCityDto, UpdateCityDto } from './dto/city.dto.js';
 import type { FareRuleDto } from './dto/fare-rule.dto.js';
 import type { CreateZoneDto, SurgeNowDto, UpdateZoneDto } from './dto/zone.dto.js';
@@ -112,7 +114,7 @@ export class AdminCitiesService implements OnApplicationBootstrap {
   async createZone(cityId: string, dto: CreateZoneDto): Promise<Zone> {
     const city = await this.prisma.city.findUniqueOrThrow({ where: { id: cityId } });
     checkZoneRules(dto);
-    const cells = this.checkedCells(dto.cells, city.h3Resolution);
+    const cells = this.zoneCells(dto.cells, city.h3Resolution);
     const zone = await this.prisma.zone.create({ data: { ...dto, cells, cityId } });
     this.geo.invalidate();
     return zone;
@@ -121,7 +123,7 @@ export class AdminCitiesService implements OnApplicationBootstrap {
   async updateZone(id: string, dto: UpdateZoneDto): Promise<Zone> {
     const zone = await this.prisma.zone.findUniqueOrThrow({ where: { id }, include: { city: true } });
     checkZoneRules({ ...zone, startsAt: zone.startsAt?.toISOString() ?? null, endsAt: zone.endsAt?.toISOString() ?? null, ...dto });
-    const cells = dto.cells ? this.checkedCells(dto.cells, zone.city.h3Resolution) : undefined;
+    const cells = dto.cells ? this.zoneCells(dto.cells, zone.city.h3Resolution) : undefined;
     const updated = await this.prisma.zone.update({ where: { id }, data: { ...dto, cells } });
     this.geo.invalidate();
     return updated;
@@ -233,6 +235,15 @@ export class AdminCitiesService implements OnApplicationBootstrap {
     if (!isPricingSection(section)) throw new BadRequestException('Unknown pricing section');
     await this.prisma.cityModePricing.updateMany({ where: { cityId }, data: { [section]: Prisma.DbNull } });
     this.geo.invalidate();
+  }
+
+  /** A zone's cells: one resolution for all, the city's ([cityRes]) or finer up to [MAX_ZONE_RESOLUTION]. */
+  private zoneCells(cells: string[], cityRes: number): string[] {
+    const res = cells.length && isValidCell(cells[0]) ? getResolution(cells[0]) : cityRes;
+    if (res < cityRes || res > MAX_ZONE_RESOLUTION) {
+      throw new BadRequestException(`Zone hexagons must be resolution ${cityRes} to ${MAX_ZONE_RESOLUTION} (the city's or finer)`);
+    }
+    return this.checkedCells(cells, res);
   }
 
   private checkedCells(cells: string[], resolution: number): string[] {

@@ -1,4 +1,6 @@
-import { cellAt, cellsBounds, cellsForCircle, validateCells } from './h3.util.js';
+import { cellToChildren } from 'h3-js';
+
+import { atMostResolution, cellAt, cellsBounds, cellsForCircle, validateCells, zoneHolds } from './h3.util.js';
 
 describe('h3 utils', () => {
   it('covers an 18 km circle around Coimbatore at resolution 8', () => {
@@ -20,5 +22,23 @@ describe('h3 utils', () => {
     expect(b!.high.lat).toBeGreaterThan(11.0168 + 0.16);
     expect(b!.high.lng - b!.low.lng).toBeLessThan(0.45);
     expect(cellsBounds([])).toBeNull();
+  });
+
+  it('tests a zone at its own resolution: a fine zone holds only its small hexes', () => {
+    const big = cellAt(11.0183, 76.9725, 8);
+    const [first, ...rest] = cellToChildren(big, 10);
+    const fine = [first];
+    const [lat, lng] = [11.0183, 76.9725];
+    expect(zoneHolds([big], { lat, lng })).toBe(true);
+    const inFirst = cellAt(lat, lng, 10) === first;
+    expect(zoneHolds(fine, { lat, lng })).toBe(inFirst);
+    expect(rest.length).toBe(48);
+    expect(zoneHolds([], { lat, lng })).toBe(false);
+  });
+
+  it('brings finer cells up to a resolution, once each', () => {
+    const big = cellAt(11.0183, 76.9725, 8);
+    expect(atMostResolution(cellToChildren(big, 9), 8)).toEqual([big]);
+    expect(atMostResolution([big], 9)).toEqual([big]);
   });
 });

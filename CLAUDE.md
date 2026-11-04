@@ -244,8 +244,8 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
   each line rounded down. No peak by default (`currentMultiplier` 1.0): demo quotes Bike ₹35, Scooty ₹39, Auto ₹110,
   Auto Priority ₹132, Mini ₹132, Sedan ₹158, SUV ₹210 (tiers: `using.tech.md` 6f; `CAB` is "Mini"). Autos charge
   the Tamil Nadu government fare (G.O. Ms. No. 366, 27 Oct 2026: ₹50 for 1.8 km, then ₹25 a km).
-- **H3:** res 8 for service areas, zones, the driver index and heatmaps; res 7 for demand and surge; res 9/8/7 for
-  learned ETA.
+- **H3:** res 8 for service areas, the driver index and heatmaps; zones use their city's resolution or finer (to res
+  10, per zone); res 7 for demand and surge; res 9/8/7 for learned ETA.
 - **Android:** Impeller is forced to OpenGL ES (Vulkan lagged on MediaTek/Mali). Release APKs use the debug keys; Play bundles use the upload key in `android/key.properties` (git-ignored).
 - **Local Redis runs on port 6380** on this machine (set in `.env`).
 - **Staging:** single EC2 at `65.0.233.253`: `https://api.tamiltaxi.co.in/v1`, `https://admin.tamiltaxi.co.in` (Caddy, compose profile `https`; DNS at GoDaddy). The sslip.io names (`api.65-0-233-253.sslip.io`, which apps up to 0.1.1 call) are still served; old `:3000` / `:3001` still open. Images are built locally and loaded over
@@ -282,3 +282,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 1 Nov 2026 | Key facts: autos at the Tamil Nadu government fare; demo quotes updated |
 | 4 Nov 2026 | Key facts: staging API and admin on `tamiltaxi.co.in` (sslip.io names still served) |
 | 4 Nov 2026 | API modules: kyc is the identity check by hand (Didit removed) |
+| 4 Nov 2026 | Key facts: zones may use finer hexagons than their city (to res 10) |
