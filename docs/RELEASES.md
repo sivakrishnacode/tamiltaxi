@@ -28,7 +28,22 @@ pre-releases on GitHub.
 
 ## Tamil Taxi (rider) · `com.tamiltaxi.passenger`
 
-### Next release: 0.1.2 (code 3)
+### Next release: 0.1.3 (code 4)
+
+Nothing yet.
+
+### 0.1.2 (code 3) · 4 Nov 2026
+
+Release: `passenger-v0.1.2+3` at `104ae0d`
+
+- **Track:** Production (India). **Status:** bundle built 4 Nov 2026, `dist/tamiltaxi-passenger-0.1.2-3.aab`
+  (upload key, 64.9 MB, down from 103.1 MB without the Didit SDK); to upload in Play Console. Before sending it for
+  review, take "Optional identity check for a Verified badge" out of the store description and update the
+  **Data safety** form (Other info: gender only; Photos: parcel photo and support screenshot; no microphone; see
+  play-store/passenger.md).
+- **Built from** `104ae0d`.
+- **Release notes:** "A lighter app: a smaller download and no identity check to do. Clearer maps: towns no longer
+  show as dark patches at mid zoom. Tamil Taxi now connects to its own address, tamiltaxi.co.in."
 
 - Maps: towns no longer show as dark grey patches at mid zoom (built-up areas are left out of the map style).
 - Talks to the server at `api.tamiltaxi.co.in` instead of the sslip.io address.

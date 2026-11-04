@@ -51,6 +51,25 @@ The next driver upload. What goes in it is listed under **Tamil Taxi Driver › 
 
 ---
 
+## Rider 0.1.2
+
+> The next Tamil Taxi (rider) upload to Google Play
+
+### Ship Tamil Taxi (rider) 0.1.2 to Google Play
+
+Labels: rider, release
+
+What goes in it is listed under **Tamil Taxi (rider) › 0.1.2** in [RELEASES.md](RELEASES.md): no identity check,
+the map fix and the new API address.
+
+- [x] Raise `version:` in `apps/passenger/pubspec.yaml` to `0.1.2+3`
+- [x] Build the bundle: `cd apps/passenger && ../../scripts/flutter.sh build appbundle` (upload key)
+- [ ] Take the Verified-badge line out of the store description and update the Data safety form, then upload it to
+  Production (India) with the release notes in RELEASES.md
+- [x] In RELEASES.md, turn "Next release" into the 0.1.2 entry with its `Release:` line
+
+---
+
 ## Driver 0.1.2
 
 > The next Tamil Taxi Driver upload to Google Play
