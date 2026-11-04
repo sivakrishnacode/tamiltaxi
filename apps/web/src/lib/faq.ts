@@ -39,8 +39,8 @@ export const faqs: readonly { q: string; a: string }[] = [
   {
     q: "How do I become a driver?",
     a:
-      `Install ${site.apps.driver.name} and sign up with your phone number. You'll do an identity check with your ` +
-      "Aadhaar, driving licence and a selfie, then add photos of your vehicle's RC and insurance. Once you're " +
+      `Install ${site.apps.driver.name} and sign up with your phone number. For the identity check, add photos of ` +
+      "your Aadhaar and driving licence and your profile photo, then photos of your vehicle's RC and insurance. Once you're " +
       "approved, go online to get requests.",
   },
   {

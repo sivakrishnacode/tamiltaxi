@@ -142,6 +142,8 @@ so it has no versions: changes wait here until the next push.
   each app's listing (`site.onPlayStore`).
 - The download buttons are Google's official "Get it on Google Play" badge, and the footer links both apps ("For
   riders" / "For drivers"; it had only the rider app), with Google's trademark line.
+- Privacy and terms (dated 4 November 2026), the home page and the FAQ: the driver identity check is done by hand
+  (licence and Aadhaar matched to the profile photo); no Didit, no live or daily selfie, no rider Verified badge.
 
 ---
 

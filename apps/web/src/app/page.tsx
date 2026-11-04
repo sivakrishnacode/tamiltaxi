@@ -134,7 +134,7 @@ const safety: Feature[] = [
   {
     icon: ShieldCheck,
     title: "Verified drivers",
-    body: "Every driver passes an identity check with Aadhaar, driving licence and a selfie.",
+    body: "Every driver passes an identity check: our team matches their Aadhaar and driving licence to their photo.",
   },
   { icon: KeyRound, title: "A ride code to start", body: "The trip starts only when you give the driver your ride code." },
   { icon: Share2, title: "Share your trip", body: "Send a live link so family can follow along until you arrive." },
@@ -500,8 +500,8 @@ export default function Home() {
               <div className="mt-10 flex flex-wrap items-center gap-4">
                 <PlayButton app="driver" />
                 <p className="max-w-xs text-sm text-navy-500">
-                  Sign up in the app: an identity check with your Aadhaar, driving licence and a selfie, then photos of
-                  your RC and insurance.
+                  Sign up in the app: photos of your Aadhaar and driving licence with your profile photo for the identity
+                  check, then photos of your RC and insurance.
                 </p>
               </div>
             </div>

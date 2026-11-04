@@ -16,7 +16,7 @@ export type LegalSection = {
 export type LegalDoc = { title: string; updated: string; intro: string; sections: readonly LegalSection[] };
 
 /** The date on both documents and on the apps' legal screens. */
-export const legalUpdated = "16 October 2026";
+export const legalUpdated = "4 November 2026";
 
 export const privacy: LegalDoc = {
   title: "Privacy policy",
@@ -46,7 +46,7 @@ export const privacy: LegalDoc = {
         "Your name, mobile number, gender, vehicle details (type, model, colour and number plate) and the UPI ID " +
           "riders pay you on.",
         "Photos of your vehicle RC and insurance.",
-        "Your identity check: your driving licence and Aadhaar, scanned by Didit, and a live selfie.",
+        "Photos of your driving licence and Aadhaar, for your identity check.",
         "Your profile photo.",
         "Your location while you are online or on a job, and the route of each trip.",
         "Your trips, ratings, cancellations, booking preferences and, if you add them, emergency contacts.",
@@ -55,13 +55,10 @@ export const privacy: LegalDoc = {
     {
       heading: "Identity checks",
       paragraphs: [
-        "Identity checks are run by Didit (didit.me) inside the app: they scan your ID and take a live selfie. " +
-          "Drivers scan their driving licence and Aadhaar and must pass the check before going online. For riders " +
-          "it is optional, with any Indian ID, and adds a Verified badge.",
-        "From the check we keep the result, your name and date of birth as read from the ID and the last 4 digits " +
-          "of each document number, never the full number. For drivers we also keep the live selfie: your profile " +
-          "photo, and the quick selfie we may ask for before you go online, are compared with it by Didit to " +
-          "confirm that it is you.",
+        "Drivers upload photos of their driving licence and Aadhaar in the app. Our team checks them by hand and " +
+          "compares them with the driver's profile photo, and a driver must pass this check before going online. " +
+          "No outside identity-check service is used, and riders are not asked for an ID.",
+        "We keep the photos and the result of the check.",
       ],
     },
     {
@@ -78,7 +75,7 @@ export const privacy: LegalDoc = {
     {
       heading: "What the other person on your trip sees",
       paragraphs: [
-        "Your driver sees your name, phone number, pickup and drop, and whether you are verified. If you ask for a " +
+        "Your driver sees your name, phone number, pickup and drop. If you ask for a " +
           "woman driver (Pink Taxi), your driver sees that it is a Pink Taxi ride.",
         "Riders see their driver's name, photo, rating, phone number, vehicle, number plate and UPI ID, and the " +
           "driver's location during the trip. Phone numbers are shared so that you can call each other about the " +
@@ -100,9 +97,8 @@ export const privacy: LegalDoc = {
       list: [
         "Location (both apps): to find drivers, show pickups and track trips.",
         "Notifications (both apps): trip updates and, for drivers, new requests.",
-        "Camera (both apps): the identity check; in the driver app also photos of your RC and insurance, your " +
-          "profile photo and the selfie before you go online; in the rider app also a parcel photo or a screenshot " +
-          "for a support ticket, if you add one.",
+        "Camera (both apps): in the driver app, photos of your RC, insurance, driving licence and Aadhaar and your " +
+          "profile photo; in the rider app, a parcel photo or a screenshot for a support ticket, if you add one.",
         "Display over other apps and full-screen alerts (driver app): the floating bubble and the incoming-request " +
           "screen, so that you see requests while you use other apps.",
       ],
@@ -118,7 +114,6 @@ export const privacy: LegalDoc = {
         "Amazon Web Services: our servers and file storage, in Mumbai, India.",
         "Google Maps Platform: maps, address search and routes.",
         "Firebase Cloud Messaging (Google): notifications.",
-        "Didit: identity checks and selfie matching.",
         "WATX: sign-in codes, sent on WhatsApp.",
       ],
     },
@@ -228,10 +223,9 @@ export const terms: LegalDoc = {
     {
       heading: "Drivers",
       paragraphs: [
-        "Every driver is an independent service provider. To drive you must pass an identity check (your driving " +
-          "licence, Aadhaar and a live selfie, checked by Didit) and keep a valid vehicle RC and insurance. Before " +
-          "you go online we may ask for a quick selfie, compared with your identity-check selfie, to confirm it is " +
-          "you.",
+        "Every driver is an independent service provider. To drive you must pass an identity check (our team " +
+          "compares your driving licence and Aadhaar with your profile photo) and keep a valid vehicle RC and " +
+          "insurance.",
       ],
     },
     {
@@ -257,7 +251,7 @@ export const deletion = {
     "Your name, mobile number and email are removed from the account.",
     "Your saved places and emergency contacts.",
     "Your devices and their notification tokens.",
-    "Drivers: the photos of your documents, your profile photo and your identity-check selfie.",
+    "Drivers: the photos of your documents and your profile photo.",
   ],
   kept: [
     "Drivers: everything on the account is kept for 6 months after the request, for police enquiries, and " +
