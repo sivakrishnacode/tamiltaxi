@@ -195,7 +195,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `e28e30a` (API and admin).
+API (no database change).
+
+- A blocked or deleted account's session gets **401** `ACCOUNT_BLOCKED` (was 403), so the apps sign out and show the
+  welcome screen instead of retrying for ever ("Could not load your documents"); signing in again says the
+  account is blocked. Works with the apps already on Play (they drop a session on 401).
 
 ### 4 Nov 2026 (second) · API and admin at `e28e30a`
 

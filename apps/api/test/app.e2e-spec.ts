@@ -1721,7 +1721,7 @@ describe('Tamil Taxi API (e2e)', () => {
     // Blocked: fixes are ignored at once (the cache entry is dropped, not left to expire).
     await http.patch(`/v1/admin/users/${me.userId}`).set(admin).send({ isBlocked: true, blockedReason: 'Test block' }).expect(200);
     expect(await redis.get(`driver:state:${me.id}`)).toBeNull();
-    await http.post('/v1/drivers/me/locations').set(driver).send({ fixes: [{ lat: 11.0192, lng: 76.973 }] }).expect(403);
+    await http.post('/v1/drivers/me/locations').set(driver).send({ fixes: [{ lat: 11.0192, lng: 76.973 }] }).expect(401);
     await app.get(DriverStateCache).get(me.id);
     expect(await redis.get(`driver:state:${me.id}`)).toBe('1|BIKE|1');
     await http.patch(`/v1/admin/users/${me.userId}`).set(admin).send({ isBlocked: false }).expect(200);
@@ -1965,7 +1965,8 @@ describe('Tamil Taxi API (e2e)', () => {
     // Blocking takes effect on the next request.
     const me = (await http.get('/v1/me').set('Authorization', `Bearer ${passenger}`).expect(200)).body;
     await http.patch(`/v1/admin/users/${me.id}`).set(admin).send({ isBlocked: true, blockedReason: 'Test block' }).expect(200);
-    await http.get('/v1/me').set('Authorization', `Bearer ${passenger}`).expect(403);
+    // 401, so the apps sign out instead of retrying; signing in again says the account is blocked.
+    expect((await http.get('/v1/me').set('Authorization', `Bearer ${passenger}`).expect(401)).body.code).toBe('ACCOUNT_BLOCKED');
     await http.patch(`/v1/admin/users/${me.id}`).set(admin).send({ isBlocked: false }).expect(200);
     await http.get('/v1/me').set('Authorization', `Bearer ${passenger}`).expect(200);
 

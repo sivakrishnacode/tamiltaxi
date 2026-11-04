@@ -417,8 +417,8 @@ describe('Tamil Taxi features (e2e)', () => {
 
       await http.delete('/v1/me').set(rider.auth).expect(204);
 
-      // Signed out everywhere at once.
-      await http.get('/v1/me').set(rider.auth).expect(403);
+      // Signed out everywhere at once (401, so the apps drop the session).
+      expect((await http.get('/v1/me').set(rider.auth).expect(401)).body.code).toBe('ACCOUNT_BLOCKED');
       expect(await redis.get(accessKey(rider.userId))).toBeNull();
       // The retained row cannot be unblocked or edited, and losing Redis state cannot restore its old token.
       await http.patch(`/v1/admin/users/${rider.userId}`).set(await adminAuth()).send({ isBlocked: false }).expect(404);
@@ -487,7 +487,7 @@ describe('Tamil Taxi features (e2e)', () => {
       await http.delete(`/v1/admin/users/${me.id}`).set(admin).expect(400);
       await http.delete(`/v1/admin/users/${rider.userId}`).set(admin).expect(204);
       await http.delete(`/v1/admin/users/${rider.userId}`).set(admin).expect(404);
-      await http.get('/v1/me').set(rider.auth).expect(403);
+      await http.get('/v1/me').set(rider.auth).expect(401);
       const history = (await http.get(`/v1/admin/users/${rider.userId}/activity`).set(admin).expect(200)).body as { summary: string }[];
       expect(history.map((h) => h.summary)).toContain('Account deleted by an admin');
     });

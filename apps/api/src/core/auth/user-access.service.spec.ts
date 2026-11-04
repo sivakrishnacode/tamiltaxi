@@ -97,12 +97,12 @@ describe('UserAccessService', () => {
     expect(findUnique).toHaveBeenCalledTimes(1);
   });
 
-  it('403 for a blocked account (the Redis flag, or the database when the flag is gone), 401 for a deleted one', async () => {
+  it('401 ACCOUNT_BLOCKED for a blocked account (the Redis flag, or the database when the flag is gone), 401 for a deleted one', async () => {
     const flagged = setup({ role: Role.PASSENGER, isBlocked: false, driver: null });
     flagged.store.set(blockedFlagKey('u1'), '1');
-    await expect(flagged.access.resolve(token)).rejects.toMatchObject({ status: 403 });
+    await expect(flagged.access.resolve(token)).rejects.toMatchObject({ status: 401, response: { code: 'ACCOUNT_BLOCKED' } });
     const inDb = setup({ role: Role.PASSENGER, isBlocked: true, driver: null });
-    await expect(inDb.access.resolve(token)).rejects.toMatchObject({ status: 403 });
+    await expect(inDb.access.resolve(token)).rejects.toMatchObject({ status: 401, response: { code: 'ACCOUNT_BLOCKED' } });
     expect(inDb.store.has(accessKey('u1'))).toBe(false);
     await expect(setup(null).access.resolve(token)).rejects.toMatchObject({ status: 401 });
   });

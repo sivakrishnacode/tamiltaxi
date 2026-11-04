@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { AdminLevel, Role } from '../../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -26,6 +26,12 @@ export const blockedFlagKey = (userId: string): string => `user:blocked:${userId
 export const ACCESS_TTL_S = 600;
 
 export const BLOCKED_MESSAGE = 'Your account is blocked. Contact support.';
+
+/**
+ * A blocked (or deleted) account's token: 401 with `ACCOUNT_BLOCKED`, so the apps sign out (they only drop a session
+ * on 401) instead of retrying for ever; signing in again then says why (auth.service).
+ */
+const blocked = (): UnauthorizedException => new UnauthorizedException({ message: BLOCKED_MESSAGE, code: 'ACCOUNT_BLOCKED' });
 
 /**
  * What a token may do now. Its role is the app it signed in to ([loginRole]), checked against the account: an
@@ -67,10 +73,10 @@ export class UserAccessService {
     private readonly redis: RedisService,
   ) {}
 
-  /** The caller for [token]: 401 when the account is gone, 403 when it is blocked. */
+  /** The caller for [token]: 401 when the account is gone or blocked. */
   async resolve(token: JwtPayload): Promise<AuthUser> {
-    const [blocked, cached] = await this.redis.mget(blockedFlagKey(token.sub), accessKey(token.sub));
-    if (blocked) throw new ForbiddenException(BLOCKED_MESSAGE);
+    const [isBlocked, cached] = await this.redis.mget(blockedFlagKey(token.sub), accessKey(token.sub));
+    if (isBlocked) throw blocked();
     const account = cached ? UserAccessService.decode(cached) : await this.load(token.sub);
     return { userId: token.sub, ...effectiveAccess(token, account) };
   }
@@ -95,7 +101,7 @@ export class UserAccessService {
     });
     if (!user || user.deletedAt) throw new UnauthorizedException('Your account no longer exists. Please sign in again.');
     // Blocked in the database but the Redis flag is gone (e.g. Redis was flushed): still blocked, nothing cached.
-    if (user.isBlocked) throw new ForbiddenException(BLOCKED_MESSAGE);
+    if (user.isBlocked) throw blocked();
     const account = {
       role: user.role,
       driverId: user.driver?.id ?? null,
