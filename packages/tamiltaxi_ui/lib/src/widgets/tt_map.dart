@@ -752,24 +752,31 @@ class DemandLabel extends StatelessWidget {
   /// Smaller, for the zoomed-out city view where many share the screen.
   final bool compact;
 
+  // The phone's large-text setting grows it only a little: it belongs to the map, and a big one hides the area.
   @override
-  Widget build(BuildContext context) => Container(
-        padding: compact
-            ? const EdgeInsets.fromLTRB(8, 4, 10, 4)
-            : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: TtRadii.pillRadius, boxShadow: TtShadows.soft),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: compact ? 14 : 16, color: color, fill: 1),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(text,
-                  overflow: TextOverflow.ellipsis,
-                  style: (compact ? context.type.caption : context.type.bodySmallMedium)
-                      .copyWith(color: color, fontWeight: FontWeight.w600)),
-            ),
-          ],
+  Widget build(BuildContext context) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.15,
+        child: Container(
+          padding: compact
+              ? const EdgeInsets.fromLTRB(6, 3, 8, 3)
+              : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration:
+              const BoxDecoration(color: Colors.white, borderRadius: TtRadii.pillRadius, boxShadow: TtShadows.soft),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: compact ? 12 : 16, color: color, fill: 1),
+              SizedBox(width: compact ? 3 : 4),
+              Flexible(
+                child: Text(text,
+                    overflow: TextOverflow.ellipsis,
+                    style: (compact
+                            ? context.type.caption.copyWith(fontSize: 11, height: 14 / 11)
+                            : context.type.bodySmallMedium)
+                        .copyWith(color: color, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
         ),
       );
 }

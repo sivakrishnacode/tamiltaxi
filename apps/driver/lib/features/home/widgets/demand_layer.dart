@@ -126,23 +126,28 @@ List<MapPolygon> demandPolygons(DemandMap? map, {VehicleKind? vehicle}) {
 /// Most labels on the map at once.
 const int kMaxLabels = 5;
 
-/// How far from the camera's centre (logical px) a label still counts as on screen; one farther out doesn't take
-/// one of the [kMaxLabels] places.
-const Size _inView = Size(400, 600);
+/// How far from the camera's centre (logical px) a label still counts as on screen, about half a phone's map and a
+/// little more; one farther out doesn't take one of the [kMaxLabels] places.
+const Size _inView = Size(230, 360);
 
-/// [above]: the label sits on top of [at] (a zone's top edge) instead of centred on it.
+/// [above]: the label sits on top of [at] (an area's top edge) instead of centred on it.
 typedef _Label = ({LatLng at, bool above, String text, IconData icon, Color color});
 
-/// A zone whose top edge is more than this above the camera's centre (logical px), probably off screen, has its label
-/// in the middle instead.
+/// An area whose top edge is more than this above the camera's centre (logical px), probably off screen, has its
+/// label in the middle instead.
 const double _topInView = 300;
 
-_Label _zoneLabel(MapZone z, {required double zoom, required bool short, LatLng? near}) {
-  final top = _topOf(z);
+/// Where an area's label goes: on [top] (its top edge), or at [centre] when that edge is probably off screen.
+({LatLng at, bool above}) _spot(LatLng top, LatLng centre, double zoom, LatLng? near) {
   final above = near == null || _world(near, zoom).dy - _world(top, zoom).dy <= _topInView;
+  return (at: above ? top : centre, above: above);
+}
+
+_Label _zoneLabel(MapZone z, {required double zoom, required bool short, LatLng? near}) {
+  final spot = _spot(_topOf(z), z.centre, zoom, near);
   return (
-    at: above ? top : z.centre,
-    above: above,
+    at: spot.at,
+    above: spot.above,
     text: short
         ? switch (z) {
             MapZone(kind: MapZoneKind.surge, name: '') => zoneTitle(z),
@@ -156,16 +161,46 @@ _Label _zoneLabel(MapZone z, {required double zoom, required bool short, LatLng?
   );
 }
 
+/// A high-demand hex's label, on its top edge: "High demand", with its live surge.
+_Label _hotLabel(Hotspot h, {required double zoom, LatLng? near}) {
+  final spot = _spot(_hexTop(h), h.centre, zoom, near);
+  return (
+    at: spot.at,
+    above: spot.above,
+    text: h.isSurging ? 'High demand · ${multiplierLabel(h.multiplier)}' : 'High demand',
+    icon: Symbols.local_fire_department_rounded,
+    color: TtColors.coral600,
+  );
+}
+
 /// The zone's northernmost point: the label goes just above it, so it hides neither the zone nor the car inside.
 LatLng _topOf(MapZone z) {
   final points = [for (final ring in z.outline) ...ring];
   return points.isEmpty ? z.centre : points.reduce((a, b) => b.latitude > a.latitude ? b : a);
 }
 
+/// About how much room a label's pill takes on screen (logical px), from [DemandLabel]'s padding and type.
+Size _pillSize(String text, {required bool short}) =>
+    short ? Size(28 + 6.0 * text.length, 20) : Size(44 + 7.2 * text.length, 30);
+
+/// [ring]'s bounding box on screen at [zoom] (world px).
+Rect _screenBox(List<LatLng> ring, double zoom) {
+  var box = Rect.zero;
+  for (final (i, p) in ring.indexed) {
+    final w = _world(p, zoom);
+    box = i == 0 ? Rect.fromPoints(w, w) : box.expandToInclude(Rect.fromPoints(w, w));
+  }
+  return box;
+}
+
+/// A label may cover at most this share of a zone or demand hex: zoomed out, where they are small, it would hide them.
+const double _maxCover = 0.2;
+
 /// Labels at [zoom] (the map camera's): the surge zones ("Surge 1.3x · Gandhipuram"), the hottest demand hexes
 /// ("High demand", with their live surge), then no-service zones, pickup points and busy zones; none below
-/// [kLabelMinZoom], short ones (the zone's name) below [kFullLabelZoom], at most [kMaxLabels], and a label that would
-/// overlap one already placed is dropped. With [near] (the camera's centre), only labels in view count.
+/// [kLabelMinZoom], short ones (the zone's name) below [kFullLabelZoom], at most [kMaxLabels]. Each sits on its area's
+/// top edge; one that would overlap a label already placed, or hide more than a fifth of a zone or demand hex, is
+/// dropped. With [near] (the camera's centre), only labels in view count.
 List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, LatLng? near, VehicleKind? vehicle}) {
   if (map == null || zoom < kLabelMinZoom) return const [];
   final short = zoom < kFullLabelZoom;
@@ -177,19 +212,22 @@ List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, LatLng? near, Veh
   _Label zone(MapZone z) => _zoneLabel(z, zoom: zoom, short: short, near: near);
   final candidates = <_Label>[
     for (final z in kind(MapZoneKind.surge)..sort((a, b) => b.multiplier.compareTo(a.multiplier))) zone(z),
-    for (final h in hot)
-      (
-        at: h.centre,
-        above: false,
-        text: h.isSurging ? 'High demand · ${multiplierLabel(h.multiplier)}' : 'High demand',
-        icon: Symbols.local_fire_department_rounded,
-        color: TtColors.coral600,
-      ),
+    for (final h in hot) _hotLabel(h, zoom: zoom, near: near),
     for (final z in kind(MapZoneKind.noService)) zone(z),
     for (final z in kind(MapZoneKind.pickupPoint)) zone(z),
     for (final z in kind(MapZoneKind.demand)) zone(z),
   ];
   final centre = near == null ? null : _world(near, zoom);
+  // What a label must not hide: the zones on the map and the demand hexes.
+  final areas = [
+    for (final z in zones)
+      for (final ring in z.outline) _screenBox(ring, zoom),
+    for (final h in map.hotspots) _screenBox(h.boundary, zoom),
+  ];
+  bool hides(Rect label) => areas.any((a) {
+        final cut = a.intersect(label);
+        return cut.width > 0 && cut.height > 0 && cut.width * cut.height > _maxCover * a.width * a.height;
+      });
   final placed = <_Label>[];
   final spots = <Offset>[];
   for (final c in candidates) {
@@ -198,6 +236,8 @@ List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, LatLng? near, Veh
     if (centre != null && ((p.dx - centre.dx).abs() > _inView.width || (p.dy - centre.dy).abs() > _inView.height)) {
       continue;
     }
+    final pill = _pillSize(c.text, short: short);
+    if (hides(Rect.fromCenter(center: p, width: pill.width, height: pill.height))) continue;
     if (spots.every((q) => (p.dx - q.dx).abs() >= box.width || (p.dy - q.dy).abs() >= box.height)) {
       placed.add(c);
       spots.add(p);
@@ -214,6 +254,11 @@ List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, LatLng? near, Veh
       ),
   ];
 }
+
+/// A demand hex's top edge, straight above its centre.
+LatLng _hexTop(Hotspot h) => h.boundary.isEmpty
+    ? h.centre
+    : LatLng(h.boundary.map((p) => p.latitude).reduce(math.max), h.centre.longitude);
 
 /// Distance between [a] and [b] on screen at [zoom], in logical px.
 double screenDistance(LatLng a, LatLng b, double zoom) => (_world(a, zoom) - _world(b, zoom)).distance;

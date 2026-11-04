@@ -38,10 +38,11 @@ void main() {
     expect(nested.first.fillColor.a, greaterThan(nested.last.fillColor.a));
   });
 
-  test('labels only on high-demand hexes, with the surge', () {
+  test("labels only on high-demand hexes, with the surge, on the hex's top edge above its centre", () {
     final labels = demandLabels(_map());
     expect(labels, hasLength(1));
-    expect(labels.single.point, const LatLng(11.05, 76.95));
+    expect(labels.single.point, const LatLng(11.1, 76.95));
+    expect(labels.single.alignment, Alignment.topCenter);
   });
 
   test('labels: none zoomed out to the city; neighbouring ones never overlap', () {
@@ -55,7 +56,7 @@ void main() {
     ]);
     expect(demandLabels(map, zoom: 11), isEmpty, reason: 'zoomed out past the city');
     final city = demandLabels(map, zoom: 13);
-    expect(city.map((m) => m.point), [const LatLng(11.016, 76.963), const LatLng(11.06, 77.03)],
+    expect(city.map((m) => m.point), [const LatLng(11.1, 76.963), const LatLng(11.1, 77.03)],
         reason: 'the surging one of the close pair wins');
     expect(demandLabels(map, zoom: 16), hasLength(3), reason: 'far enough apart once zoomed in');
   });
@@ -123,6 +124,21 @@ void main() {
       expect(demandLabels(crowded, zoom: 14.6).map(text), isNot(contains('Busy · Gandhipuram')),
           reason: 'without the camera, five pickup points far away fill the places');
       expect(demandLabels(crowded, zoom: 14.6, near: here).map(text), ['Busy · Gandhipuram']);
+    });
+
+    test('zoomed out, a label never hides a zone: one over a small zone just north of it is left out', () {
+      const gate = LatLng(11.0, 76.95);
+      final airport = MapZone(id: 'gate', name: 'Airport', kind: MapZoneKind.pickupPoint, centre: gate,
+          outline: [hexDiskOutline(gate, 76, 1)]);
+      // About 700 m north of the airport zone's top edge: where its label goes when zoomed out to the city.
+      const north = LatLng(11.008, 76.95);
+      final busy = MapZone(id: 'busy', name: 'Gandhipuram', kind: MapZoneKind.demand, centre: north,
+          outline: [hexDiskOutline(north, 76, 1)]);
+      final pair = DemandMap(at: DateTime(2026, 11, 4), zones: [airport, busy]);
+      String text(Marker m) => ((m.child as Center).child! as DemandLabel).text;
+      expect(demandLabels(pair, zoom: 12).map(text), ['Gandhipuram']);
+      expect(demandLabels(pair, zoom: 16).map(text), ['Pickup point · Airport', 'Busy · Gandhipuram'],
+          reason: 'zoomed in, the zones are far apart on screen');
     });
 
     test('multipliers read short', () {
