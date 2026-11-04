@@ -13,6 +13,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- KYC document photos (image_picker camera). -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- The camera permission alone makes Play require a back camera (tablets, Chromebooks and cars without one
+         drop out); the photos also work with the front camera, so it stays optional, as the Didit SDK had it. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <!-- Floating Tamil Taxi bubble and full-screen requests over other apps while online (asked on D-03c). Its
          overlay runs as a special-use foreground service. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
