@@ -134,6 +134,8 @@ so it has no versions: changes wait here until the next push.
   favicon and social preview image (the old "TamilTaxi" wordmark and kolam icons are gone).
 - Both apps are live on Google Play: the "Coming soon to Google Play" buttons now say "Get it on Google Play" and open
   each app's listing (`site.onPlayStore`).
+- The download buttons are Google's official "Get it on Google Play" badge, and the footer links both apps ("For
+  riders" / "For drivers"; it had only the rider app), with Google's trademark line.
 
 ---
 

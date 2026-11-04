@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { playStoreUrl, site, type AppKey } from "@/lib/site";
 
 function PlayIcon() {
@@ -8,35 +10,38 @@ function PlayIcon() {
   );
 }
 
+/** Only for the "Coming soon" pill: the official badge is always black. */
 const styles = {
-  primary: "bg-coral-600 text-white hover:bg-coral-700",
-  secondary: "border border-navy-300 bg-white text-navy-900 hover:border-navy-500",
+  primary: "bg-coral-600 text-white",
+  secondary: "border border-navy-300 bg-white text-navy-900",
   /** On the dark bands (hero, footer). */
-  light: "bg-white text-navy-950 hover:bg-navy-100",
-  outline: "border border-white/30 text-white hover:border-white/60",
+  light: "bg-white text-navy-950",
+  outline: "border border-white/30 text-white",
 };
 
-/** "Get it on Google Play" once the apps are published ([site.onPlayStore]); "Coming soon" until then. */
+/**
+ * Google's official "Get it on Google Play" badge (public/badges/google-play.png, the English PNG from
+ * play.google.com/intl/en_us/badges with its transparent margin trimmed, art unchanged) once the apps are published
+ * ([site.onPlayStore]); a "Coming soon to Google Play" pill until then.
+ */
 export function PlayButton({ app, variant = "primary" }: { app: AppKey; variant?: keyof typeof styles }) {
-  const base = "inline-flex items-center gap-3 rounded-full px-5 py-3 text-left";
-  const label = (
-    <span className="flex flex-col leading-tight">
-      <span className="text-xs opacity-80">{site.onPlayStore ? "Get it on" : "Coming soon to"}</span>
-      <span className="text-base font-semibold">Google Play</span>
-    </span>
-  );
   if (!site.onPlayStore) {
     return (
-      <span className={`${base} ${styles[variant]} pointer-events-none opacity-90`} aria-disabled="true">
+      <span
+        className={`inline-flex items-center gap-3 rounded-full px-5 py-3 text-left opacity-90 ${styles[variant]}`}
+        aria-disabled="true"
+      >
         <PlayIcon />
-        {label}
+        <span className="flex flex-col leading-tight">
+          <span className="text-xs opacity-80">Coming soon to</span>
+          <span className="text-base font-semibold">Google Play</span>
+        </span>
       </span>
     );
   }
   return (
-    <a href={playStoreUrl(app)} className={`${base} ${styles[variant]}`} aria-label={`Get ${site.apps[app].name} on Google Play`}>
-      <PlayIcon />
-      {label}
+    <a href={playStoreUrl(app)} className="inline-block shrink-0" aria-label={`Get ${site.apps[app].name} on Google Play`}>
+      <Image src="/badges/google-play.png" alt="" width={564} height={168} className="h-12 w-auto" />
     </a>
   );
 }

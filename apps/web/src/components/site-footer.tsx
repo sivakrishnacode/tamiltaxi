@@ -86,8 +86,18 @@ export function SiteFooter() {
         </nav>
 
         <div className="mt-14 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-3">
-            <PlayButton app="rider" variant="outline" />
+          <div className="flex flex-wrap gap-x-6 gap-y-5">
+            {(
+              [
+                { app: "rider", label: "For riders" },
+                { app: "driver", label: "For drivers" },
+              ] as const
+            ).map((a) => (
+              <div key={a.app} className="space-y-2">
+                <p className="text-xs font-medium text-white/60">{a.label}</p>
+                <PlayButton app={a.app} variant="outline" />
+              </div>
+            ))}
           </div>
           <p className="inline-flex items-center gap-1.5 self-start rounded-full bg-white/10 px-3 py-1.5 text-sm">
             <MapPin className="size-4 text-coral-500" aria-hidden="true" />
@@ -97,6 +107,7 @@ export function SiteFooter() {
 
         <div className="mt-10 space-y-2 border-t border-white/10 pt-6 text-xs text-white/50">
           <p>{site.independence}</p>
+          <p>Google Play and the Google Play logo are trademarks of Google LLC.</p>
           <p>
             © {new Date().getFullYear()} {site.name} · Open source under AGPL-3.0
           </p>
