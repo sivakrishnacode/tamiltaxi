@@ -130,24 +130,26 @@ const int kMaxLabels = 5;
 /// little more; one farther out doesn't take one of the [kMaxLabels] places.
 const Size _inView = Size(230, 360);
 
-/// [above]: the label sits on top of [at] (an area's top edge) instead of centred on it.
-typedef _Label = ({LatLng at, bool above, String text, IconData icon, Color color});
+/// A label sits on top of [at]: its area's top edge, or the highest point of the area still in view.
+typedef _Label = ({LatLng at, String text, IconData icon, Color color});
 
-/// An area whose top edge is more than this above the camera's centre (logical px), probably off screen, has its
-/// label in the middle instead.
-const double _topInView = 300;
+/// How far above the camera's centre (logical px) Home's map is surely in view, under its top card (about 190 px
+/// on a phone): a label sits no higher.
+const double _topInView = 150;
 
-/// Where an area's label goes: on [top] (its top edge), or at [centre] when that edge is probably off screen.
-({LatLng at, bool above}) _spot(LatLng top, LatLng centre, double zoom, LatLng? near) {
-  final above = near == null || _world(near, zoom).dy - _world(top, zoom).dy <= _topInView;
-  return (at: above ? top : centre, above: above);
+/// Where an area's label goes: on [top] (its top edge) when that is in view; else as high as is still in view, above
+/// the area's [centre] (inside the area, clear of the car and the top card), unless the area is mostly out of view.
+LatLng _spot(LatLng top, LatLng centre, double zoom, LatLng? near) {
+  if (near == null) return top;
+  final limit = _world(near, zoom).dy - _topInView;
+  final t = _world(top, zoom), c = _world(centre, zoom);
+  if (t.dy >= limit || c.dy <= limit) return top;
+  return _unworld(Offset(c.dx, limit), zoom);
 }
 
 _Label _zoneLabel(MapZone z, {required double zoom, required bool short, LatLng? near}) {
-  final spot = _spot(_topOf(z), z.centre, zoom, near);
   return (
-    at: spot.at,
-    above: spot.above,
+    at: _spot(zoneTop(z), z.centre, zoom, near),
     text: short
         ? switch (z) {
             MapZone(kind: MapZoneKind.surge, name: '') => zoneTitle(z),
@@ -163,10 +165,8 @@ _Label _zoneLabel(MapZone z, {required double zoom, required bool short, LatLng?
 
 /// A high-demand hex's label, on its top edge: "High demand", with its live surge.
 _Label _hotLabel(Hotspot h, {required double zoom, LatLng? near}) {
-  final spot = _spot(_hexTop(h), h.centre, zoom, near);
   return (
-    at: spot.at,
-    above: spot.above,
+    at: _spot(hexTop(h), h.centre, zoom, near),
     text: h.isSurging ? 'High demand · ${multiplierLabel(h.multiplier)}' : 'High demand',
     icon: Symbols.local_fire_department_rounded,
     color: TtColors.coral600,
@@ -174,7 +174,7 @@ _Label _hotLabel(Hotspot h, {required double zoom, LatLng? near}) {
 }
 
 /// The zone's northernmost point: the label goes just above it, so it hides neither the zone nor the car inside.
-LatLng _topOf(MapZone z) {
+LatLng zoneTop(MapZone z) {
   final points = [for (final ring in z.outline) ...ring];
   return points.isEmpty ? z.centre : points.reduce((a, b) => b.latitude > a.latitude ? b : a);
 }
@@ -232,7 +232,7 @@ List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, LatLng? near, Veh
   final spots = <Offset>[];
   for (final c in candidates) {
     if (placed.length == kMaxLabels) break;
-    final p = _world(c.at, zoom) - Offset(0, c.above ? _labelHeight / 2 : 0);
+    final p = _world(c.at, zoom) - const Offset(0, _labelHeight / 2);
     if (centre != null && ((p.dx - centre.dx).abs() > _inView.width || (p.dy - centre.dy).abs() > _inView.height)) {
       continue;
     }
@@ -249,14 +249,21 @@ List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, LatLng? near, Veh
         point: c.at,
         width: 280,
         height: _labelHeight,
-        alignment: c.above ? Alignment.topCenter : Alignment.center,
+        alignment: Alignment.topCenter,
         child: Center(child: DemandLabel(text: c.text, icon: c.icon, color: c.color, compact: short)),
       ),
   ];
 }
 
+/// [_world]'s inverse.
+LatLng _unworld(Offset w, double zoom) {
+  final scale = 256 * math.pow(2, zoom).toDouble();
+  final n = math.pi * (1 - 2 * w.dy / scale);
+  return LatLng(math.atan((math.exp(n) - math.exp(-n)) / 2) * 180 / math.pi, w.dx / scale * 360 - 180);
+}
+
 /// A demand hex's top edge, straight above its centre.
-LatLng _hexTop(Hotspot h) => h.boundary.isEmpty
+LatLng hexTop(Hotspot h) => h.boundary.isEmpty
     ? h.centre
     : LatLng(h.boundary.map((p) => p.latitude).reduce(math.max), h.centre.longitude);
 

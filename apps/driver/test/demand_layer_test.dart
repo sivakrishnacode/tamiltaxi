@@ -101,16 +101,19 @@ void main() {
       expect(texts.every((l) => l.compact), isTrue);
     });
 
-    test("a zone's label sits on its top edge, in the middle when that edge is out of view", () {
+    test("a zone's label sits on its top edge; when that is out of view, as high as is in view, inside the zone", () {
       final pickup = MapZone(id: 'gate', name: 'Airport', kind: MapZoneKind.pickupPoint, centre: const LatLng(11.03, 77.04),
           outline: [hexDiskOutline(const LatLng(11.03, 77.04), 76, 1)]);
       final labels = demandLabels(DemandMap(at: DateTime(2026, 11, 4), zones: [pickup]), zoom: 14, near: pickup.centre);
       expect(labels.single.alignment, Alignment.topCenter);
       expect(labels.single.point.latitude, greaterThan(pickup.centre.latitude));
-      // The big surge zone's top edge is ~1 km above the camera: at zoom 16, far off screen.
-      final big = demandLabels(map, zoom: 16, near: const LatLng(11.08, 76.98), vehicle: VehicleKind.bike);
-      expect(big.first.alignment, Alignment.center);
-      expect(big.first.point, const LatLng(11.08, 76.98));
+      // The big surge zone's top edge is ~2 km above the camera: at zoom 16, far off screen.
+      const camera = LatLng(11.08, 76.98);
+      final big = demandLabels(map, zoom: 16, near: camera, vehicle: VehicleKind.bike);
+      expect(big.first.alignment, Alignment.topCenter);
+      expect(big.first.point.longitude, closeTo(76.98, 1e-9), reason: 'above the zone centre');
+      expect(big.first.point.latitude, inExclusiveRange(camera.latitude, 11.1), reason: 'inside the zone');
+      expect(screenDistance(big.first.point, camera, 16), closeTo(150, 0.5), reason: 'as high as is surely in view');
     });
 
     test('only labels in view take the places: the zone under the camera is never left out', () {
