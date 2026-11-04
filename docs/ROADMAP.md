@@ -76,8 +76,10 @@ Issue: #4 · Labels: launch, web, infra
 
 - [ ] Website on the domain (the Play listings link to its privacy, terms and delete-account pages)
 - [ ] Support email works
-- [ ] API and admin on the domain instead of sslip.io
+- [x] API and admin on the domain instead of sslip.io (4 Nov 2026: `api.` and `admin.tamiltaxi.co.in`)
 - [ ] Update the Play listings and the apps' links
+- [ ] Didit webhook on `api.tamiltaxi.co.in`
+- [ ] Stop serving the sslip.io names once no one runs an app older than 0.1.2
 
 ### Launch-grade operations: backups, uptime alerts, logs (SD-16)
 

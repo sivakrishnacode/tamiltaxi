@@ -149,6 +149,16 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 Nothing yet: staging runs `3dd117c` (API and admin).
 
+### 4 Nov 2026 · API and admin on tamiltaxi.co.in (settings only, code at `3dd117c`)
+
+Release: `staging-2026-11-04` at `3dd117c`
+
+Server settings, no code or database change.
+
+- The API is at `https://api.tamiltaxi.co.in` and the admin at `https://admin.tamiltaxi.co.in`. The sslip.io names
+  keep working: the apps up to 0.1.1 call `api.65-0-233-253.sslip.io`.
+- Live trip share links now open on `admin.tamiltaxi.co.in`.
+
 ### 3 Nov 2026 (seventh) · API and admin at `3dd117c`
 
 Release: `staging-2026-11-03.7` at `3dd117c`

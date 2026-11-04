@@ -248,7 +248,7 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
   learned ETA.
 - **Android:** Impeller is forced to OpenGL ES (Vulkan lagged on MediaTek/Mali). Release APKs use the debug keys; Play bundles use the upload key in `android/key.properties` (git-ignored).
 - **Local Redis runs on port 6380** on this machine (set in `.env`).
-- **Staging:** single EC2 at `65.0.233.253`: `https://api.65-0-233-253.sslip.io/v1`, `https://admin.65-0-233-253.sslip.io` (Caddy, compose profile `https`; old `:3000` / `:3001` still open). Images are built locally and loaded over
+- **Staging:** single EC2 at `65.0.233.253`: `https://api.tamiltaxi.co.in/v1`, `https://admin.tamiltaxi.co.in` (Caddy, compose profile `https`; DNS at GoDaddy). The sslip.io names (`api.65-0-233-253.sslip.io`, which apps up to 0.1.1 call) are still served; old `:3000` / `:3001` still open. Images are built locally and loaded over
   SSH. For redeploy steps see `using.tech.md` §9b.
 
 ---
@@ -280,3 +280,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 17 Oct 2026 | Rule 1.2: GitHub SOP `docs/GITHUB.md`; planned work in `docs/ROADMAP.md` (synced to milestones and issues) |
 | 18 Oct 2026 | Rule 1.2: API / admin changes under Staging › Next deploy; found problems become ROADMAP items; owner names release dates |
 | 1 Nov 2026 | Key facts: autos at the Tamil Nadu government fare; demo quotes updated |
+| 4 Nov 2026 | Key facts: staging API and admin on `tamiltaxi.co.in` (sslip.io names still served) |
