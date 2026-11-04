@@ -426,13 +426,9 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
     } else if (quiet) {
       basePanel = _QuietPanel(onGoOffline: _goOfflineOrShowcase);
     } else if (online) {
+      // Slim, so the map has the room: one status row with a small Go offline, then Go To / Stay In.
       basePanel = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        OnlineStatusRow(
-          title: "You're online",
-          subtitle: missed
-              ? 'Keep the app open and volume up.'
-              : (_api ? 'Keep the app open. Requests pop up here.' : 'Move towards Gandhipuram for faster requests.'),
-        ),
+        _OnlineRow(onGoOffline: _goOfflineOrShowcase),
         // Go To / Stay In: two buttons, or the one that is on (with Change / Off).
         if (!_showcase) ...[
           const SizedBox(height: TtSpacing.m),
@@ -443,8 +439,6 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
           const SizedBox(height: TtSpacing.m),
           FiltersOnRow(summary: prefs.tripFilterSummary, onEdit: _act(() => context.push(Routes.bookingPreferences))!),
         ],
-        const SizedBox(height: TtSpacing.l),
-        TtButton.secondary(label: 'Go offline', onPressed: _goOfflineOrShowcase),
       ]);
     } else {
       basePanel = _OfflinePanel(
@@ -477,13 +471,15 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
                   km: near.km,
                   onDirections: () => openNavigation(context, near.hotspot.centre),
                 ),
-                const Divider(height: TtSpacing.xl),
+                const Divider(height: TtSpacing.l),
                 child!,
               ]);
             },
             child: basePanel,
           );
 
+    // Online and waiting: tighter padding, as the panel is slim.
+    final slim = online && job == null && !gpsLost && !quiet;
     return Scaffold(
       backgroundColor: TtColors.background,
       body: Column(
@@ -537,7 +533,10 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
                               onDismiss: _live ? null : () => setState(() => _missedDismissed = true),
                             ),
                           ),
-                        BottomPanel(child: panel),
+                        BottomPanel(
+                          padding: slim ? const EdgeInsets.fromLTRB(TtSpacing.gutter, TtSpacing.l, TtSpacing.gutter, TtSpacing.m) : null,
+                          child: panel,
+                        ),
                       ],
                     ),
                   ),
@@ -723,3 +722,30 @@ const _demoCancelRate = DriverCancelRate(
   title: "You've cancelled 2 of your last 5 rides",
   body: "If you cancel 50% of your rides, you can't go online for 24 h. Only accept rides you can reach",
 );
+
+/// Online: the green dot and "You're online", with a small Go offline.
+class _OnlineRow extends StatelessWidget {
+  const _OnlineRow({required this.onGoOffline});
+
+  final VoidCallback onGoOffline;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    return Row(children: [
+      Container(
+        width: 22,
+        height: 22,
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(color: TtColors.successTint, shape: BoxShape.circle),
+        child: Container(width: 12, height: 12, decoration: const BoxDecoration(color: TtColors.success, shape: BoxShape.circle)),
+      ),
+      const SizedBox(width: TtSpacing.m),
+      Expanded(
+        child: Text("You're online", style: t.bodySemibold.copyWith(fontSize: 17)),
+      ),
+      const SizedBox(width: TtSpacing.m),
+      TtButton.secondary(label: 'Go offline', onPressed: onGoOffline, expand: false, height: 44),
+    ]);
+  }
+}

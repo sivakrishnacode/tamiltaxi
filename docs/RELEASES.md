@@ -88,6 +88,8 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 - Home map: the admin **zones** live now, outlined and labelled (surge in violet with its multiplier, busy areas, no
   pickups / drops in red, pickup points in blue); a surge for other vehicles isn't shown. **Tap** a zone or a demand
   hex for what it means, when it runs and Directions.
+- Home panel is slimmer while online ("You're online" and a small Go offline on one row, then Go To / Stay In), so
+  the map has more room.
 - A new profile photo shows "being checked" until an admin approves it, and it can be taken any time (it used to wait
   for the identity check, so a driver approved without one could never add the photo needed to go online).
 
