@@ -75,7 +75,22 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ## Tamil Taxi Driver · `com.tamiltaxi.driver`
 
-### Next release: 0.1.2 (code 3)
+### Next release: 0.1.3 (code 4)
+
+Nothing yet.
+
+### 0.1.2 (code 3) · 4 Nov 2026
+
+Release: `driver-v0.1.2+3` at `d84e246`
+
+- **Track:** Production (India). **Status:** bundle built 4 Nov 2026, `dist/tamiltaxi-driver-0.1.2-3.aab` (upload
+  key, 64.4 MB, down from 102.6 MB without the Didit SDK); to upload in Play Console. Before sending it for review, update the driver's **Data safety** form (no
+  ID-check scans or selfie, no microphone; see play-store/driver.md).
+- **Built from** `d84e246`.
+- **Release notes:** "Simpler sign-up: upload your driving licence and Aadhaar, and our team checks them with your
+  profile photo. No selfie before going online. The Home map now shows surge, busy areas, no-pickup zones and
+  pickup points: tap one to see the fare, the hours and directions. A slimmer Home panel leaves more room for the
+  map."
 
 - Registration: the identity check is by hand only (Didit is gone). The driver uploads the driving licence and
   Aadhaar, and the profile photo is the face an admin matches to them. The Didit SDK is out of the app (a smaller

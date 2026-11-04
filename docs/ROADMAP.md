@@ -51,6 +51,26 @@ The next driver upload. What goes in it is listed under **Tamil Taxi Driver › 
 
 ---
 
+## Driver 0.1.2
+
+> The next Tamil Taxi Driver upload to Google Play
+
+### Ship Tamil Taxi Driver 0.1.2 to Google Play
+
+Labels: driver, release
+
+What goes in it is listed under **Tamil Taxi Driver › 0.1.2** in [RELEASES.md](RELEASES.md): the identity check by
+hand only, no daily selfie, the zones on the Home map and the slimmer Home panel.
+
+- [x] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.2+3`
+- [x] Build the bundle: `cd apps/driver && ../../scripts/flutter.sh build appbundle` (upload key)
+- [ ] Update the Data safety form (no ID-check scans or selfie, no microphone), then upload it to Production
+  (India) with the release notes in RELEASES.md
+- [ ] On a Play install: register by hand (licence, Aadhaar, profile photo), see the zones on Home and tap one
+- [x] In RELEASES.md, turn "Next release" into the 0.1.2 entry with its `Release:` line
+
+---
+
 ## Production launch
 
 > Both apps on Google Play production in India, with launch-grade operations
