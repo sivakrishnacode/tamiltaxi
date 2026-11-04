@@ -28,9 +28,52 @@ Color _levelColor(HotspotLevel level) => switch (level) {
       HotspotLevel.some => _some,
     };
 
+/// Each admin zone kind's colour (outline, label and details sheet) and icon.
+Color zoneColor(MapZoneKind kind) => switch (kind) {
+      MapZoneKind.surge => const Color(0xFF7C3AED), // violet: apart from the orange demand heat
+      MapZoneKind.demand => const Color(0xFFB45309), // amber, darker than the demand hexes
+      MapZoneKind.noService => TtColors.error,
+      MapZoneKind.pickupPoint => const Color(0xFF1D4ED8), // blue
+    };
+
+IconData zoneIcon(MapZoneKind kind) => switch (kind) {
+      MapZoneKind.surge => Symbols.trending_up_rounded,
+      MapZoneKind.demand => Symbols.local_fire_department_rounded,
+      MapZoneKind.noService => Symbols.block_rounded,
+      MapZoneKind.pickupPoint => Symbols.hail_rounded,
+    };
+
+/// "1.3x", "1.25x".
+String multiplierLabel(double m) {
+  final s = m.toStringAsFixed(2);
+  return '${s.endsWith('0') ? s.substring(0, s.length - 1) : s}x';
+}
+
+/// What a no-service zone stops, in a few words.
+String noServiceLabel(MapZone z) => z.blocksPickups && z.blocksDrops
+    ? 'No pickups or drops'
+    : z.blocksPickups
+        ? 'No pickups'
+        : 'No drops';
+
+/// The zone's kind in a few words, as its label and sheet title say it: "Surge 1.3x", "No pickups", "Pickup point".
+String zoneTitle(MapZone z) => switch (z.kind) {
+      MapZoneKind.surge => 'Surge ${multiplierLabel(z.multiplier)}',
+      MapZoneKind.demand => 'Busy area',
+      MapZoneKind.noService => noServiceLabel(z),
+      MapZoneKind.pickupPoint => 'Pickup point',
+    };
+
+/// The admin zones that matter to a driver of [vehicle] (null: all): a surge for other vehicles only is left out.
+List<MapZone> zonesFor(DemandMap? map, VehicleKind? vehicle) => [
+      for (final z in map?.zones ?? const <MapZone>[])
+        if (vehicle == null || z.appliesTo(vehicle)) z,
+    ];
+
 /// Polygons for [map]: the service-area edge, each demand hex filled by its level, and inside it the busy nested
-/// hexes shaded by their own share of pickups.
-List<MapPolygon> demandPolygons(DemandMap? map) {
+/// hexes shaded by their own share of pickups; on top, the admin zones that matter to a driver of [vehicle], each
+/// outlined in its kind's colour.
+List<MapPolygon> demandPolygons(DemandMap? map, {VehicleKind? vehicle}) {
   if (map == null) return const [];
   return [
     for (final ring in map.serviceArea)
@@ -60,35 +103,82 @@ List<MapPolygon> demandPolygons(DemandMap? map) {
           minZoom: kNestedMinZoom,
         ),
     ],
+    for (final z in zonesFor(map, vehicle))
+      for (final ring in z.outline)
+        MapPolygon(
+          points: ring,
+          // Outline-led, so the demand heat still reads underneath.
+          fillColor: zoneColor(z.kind).withValues(alpha: z.kind == MapZoneKind.noService ? 0.14 : 0.07),
+          strokeColor: zoneColor(z.kind),
+          strokeWidth: 3,
+          zIndex: 3,
+          minZoom: kHotspotMinZoom,
+        ),
   ];
 }
 
-/// "High demand" (or the surge, e.g. "1.2x") on the hottest hexes at [zoom] (the map camera's): none below
-/// [kLabelMinZoom], and a label that would overlap one already placed is dropped (hottest first, surge first).
-List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6}) {
+/// Most labels on the map at once.
+const int kMaxLabels = 5;
+
+typedef _Label = ({LatLng at, String text, IconData icon, Color color});
+
+_Label _zoneLabel(MapZone z) => (
+      at: z.centre,
+      text: [z.kind == MapZoneKind.demand ? 'Busy' : zoneTitle(z), if (z.name.isNotEmpty) z.name].join(' · '),
+      icon: zoneIcon(z.kind),
+      color: zoneColor(z.kind),
+    );
+
+/// Labels at [zoom] (the map camera's): the surge zones ("Surge 1.3x · Gandhipuram"), the hottest demand hexes
+/// ("High demand", with their live surge), then no-service zones, pickup points and busy zones; none below
+/// [kLabelMinZoom], at most [kMaxLabels], and a label that would overlap one already placed is dropped.
+List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, VehicleKind? vehicle}) {
   if (map == null || zoom < kLabelMinZoom) return const [];
+  final zones = zonesFor(map, vehicle);
+  List<MapZone> kind(MapZoneKind k) => [for (final z in zones) if (z.kind == k) z];
   final hot = map.hotspots.where((h) => h.level == HotspotLevel.high).toList()
     ..sort((a, b) => b.multiplier.compareTo(a.multiplier));
-  final placed = <Offset>[];
-  for (final h in hot) {
-    if (placed.length == 4) break;
-    final p = _world(h.centre, zoom);
-    final clear = placed.every((q) => (p.dx - q.dx).abs() >= _labelBox.width || (p.dy - q.dy).abs() >= _labelBox.height);
-    if (clear) placed.add(p);
+  final candidates = <_Label>[
+    for (final z in kind(MapZoneKind.surge)..sort((a, b) => b.multiplier.compareTo(a.multiplier))) _zoneLabel(z),
+    for (final h in hot)
+      (
+        at: h.centre,
+        text: h.isSurging ? 'High demand · ${multiplierLabel(h.multiplier)}' : 'High demand',
+        icon: Symbols.local_fire_department_rounded,
+        color: TtColors.coral600,
+      ),
+    for (final z in kind(MapZoneKind.noService)) _zoneLabel(z),
+    for (final z in kind(MapZoneKind.pickupPoint)) _zoneLabel(z),
+    for (final z in kind(MapZoneKind.demand)) _zoneLabel(z),
+  ];
+  final placed = <_Label>[];
+  final spots = <Offset>[];
+  for (final c in candidates) {
+    if (placed.length == kMaxLabels) break;
+    final p = _world(c.at, zoom);
+    if (spots.every((q) => (p.dx - q.dx).abs() >= _labelBox.width || (p.dy - q.dy).abs() >= _labelBox.height)) {
+      placed.add(c);
+      spots.add(p);
+    }
   }
   return [
-    for (final h in hot)
-      if (placed.contains(_world(h.centre, zoom)))
-        Marker(
-        point: h.centre,
-        width: 200,
+    for (final c in placed)
+      Marker(
+        point: c.at,
+        width: 280,
         height: 40,
-        child: Center(
-          child: DemandLabel(text: h.isSurging ? 'High demand · ${h.multiplier.toStringAsFixed(1)}x' : 'High demand'),
-        ),
+        child: Center(child: DemandLabel(text: c.text, icon: c.icon, color: c.color)),
       ),
   ];
 }
+
+/// The zone a tap at [p] fell in: the smallest one (they draw on top), among those that matter to [vehicle].
+MapZone? zoneAt(DemandMap? map, LatLng p, {VehicleKind? vehicle}) =>
+    zonesFor(map, vehicle).reversed.where((z) => z.contains(p)).firstOrNull;
+
+/// The demand hex a tap at [p] fell in.
+Hotspot? hotspotAt(DemandMap? map, LatLng p) =>
+    map?.hotspots.where((h) => pointInRing(p, h.boundary)).firstOrNull;
 
 /// Web-Mercator position in logical px (256 px world at zoom 0, as Google and flutter_map use).
 Offset _world(LatLng p, double zoom) {

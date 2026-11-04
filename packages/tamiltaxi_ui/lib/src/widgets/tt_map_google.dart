@@ -453,6 +453,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
                       onMapCreated: _onCreated,
                       onCameraMove: _onCameraMove,
                       onCameraIdle: () => _programmaticMove = false,
+                      onTap: m.onTap == null ? null : (p) => m.onTap!(_l(p)),
                       markers: _markers(),
                       polylines: {
                         if (m.route.length >= 2)

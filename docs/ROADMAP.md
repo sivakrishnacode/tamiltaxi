@@ -203,8 +203,9 @@ Issue: #12 · Labels: plan, api, admin
 - [ ] CI: APK build artifacts
 - [ ] Document expiry: let a driver upload the renewed RC or insurance before the old one expires (the app offers
   Re-upload only once it is rejected)
-- [ ] Zone rules in the apps: show a no-pickup-only zone as such (the Play builds treat every no-service zone as
-  stopping both), a vehicle-only surge on the driver map, and a Surge now banner with its end time
+- [ ] Zone rules in the apps: show a no-pickup-only zone as such in the rider app (the Play builds treat every
+  no-service zone as stopping both), and a Surge now banner with its end time (driver map: zones, vehicle-only
+  surges and a Surge now's end time are in driver 0.1.2)
 - [ ] Pickup points: an entry or parking fee as its own fare line (the apps must show it, or the breakdown won't add
   up), the meeting spot on the rider's screens, and a first-come driver queue (drivers waiting inside get the next
   pickup there in turn, like airport queues)

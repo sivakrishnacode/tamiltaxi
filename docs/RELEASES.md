@@ -85,6 +85,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 - Maps: towns no longer show as dark grey patches at mid zoom (built-up areas are left out of the map style).
 - Talks to the server at `api.tamiltaxi.co.in` instead of the sslip.io address.
 - No daily selfie before going online (S-13 and D-09 removed), and no Verified badge on request cards.
+- Home map: the admin **zones** live now, outlined and labelled (surge in violet with its multiplier, busy areas, no
+  pickups / drops in red, pickup points in blue); a surge for other vehicles isn't shown. **Tap** a zone or a demand
+  hex for what it means, when it runs and Directions.
 - A new profile photo shows "being checked" until an admin approves it, and it can be taken any time (it used to wait
   for the identity check, so a driver approved without one could never add the photo needed to go online).
 

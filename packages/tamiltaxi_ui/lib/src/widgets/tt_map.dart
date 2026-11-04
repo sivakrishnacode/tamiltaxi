@@ -129,6 +129,7 @@ class TtMap extends StatelessWidget {
     this.interactive = true,
     this.controller,
     this.onPositionChanged,
+    this.onTap,
     this.extraMarkers = const [],
     this.showAttribution = true,
     this.attributionAlignment = Alignment.bottomLeft,
@@ -170,6 +171,9 @@ class TtMap extends StatelessWidget {
   final bool interactive;
   final TtMapController? controller;
   final void Function(TtCamera camera, bool hasGesture)? onPositionChanged;
+
+  /// A tap on the map itself (not on a marker), with the point tapped: e.g. which zone it fell in.
+  final ValueChanged<LatLng>? onTap;
   final List<Marker> extraMarkers;
   final bool showAttribution;
   final Alignment attributionAlignment;
@@ -647,6 +651,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
               ? null
               : (camera, hasGesture) =>
                   m.onPositionChanged!(TtCamera(center: camera.center, zoom: camera.zoom), hasGesture),
+          onTap: m.onTap == null ? null : (_, point) => m.onTap!(point),
           interactionOptions: InteractionOptions(
             flags: m.interactive ? InteractiveFlag.all & ~InteractiveFlag.rotate : InteractiveFlag.none,
           ),
@@ -731,8 +736,17 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
 
 /// "High demand: Gandhipuram" chip shown under a demand zone.
 class DemandLabel extends StatelessWidget {
-  const DemandLabel({super.key, required this.text});
+  const DemandLabel({
+    super.key,
+    required this.text,
+    this.icon = Symbols.local_fire_department_rounded,
+    this.color = TtColors.coral600,
+  });
   final String text;
+
+  /// The leading icon and the colour of it and the text (zone labels use their kind's).
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -741,12 +755,12 @@ class DemandLabel extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Symbols.local_fire_department_rounded, size: 16, color: TtColors.coral600, fill: 1),
+            Icon(icon, size: 16, color: color, fill: 1),
             const SizedBox(width: 4),
             Flexible(
               child: Text(text,
                   overflow: TextOverflow.ellipsis,
-                  style: context.type.bodySmallMedium.copyWith(color: TtColors.coral600, fontWeight: FontWeight.w600)),
+                  style: context.type.bodySmallMedium.copyWith(color: color, fontWeight: FontWeight.w600)),
             ),
           ],
         ),

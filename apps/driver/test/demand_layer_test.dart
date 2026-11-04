@@ -1,6 +1,8 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_driver/features/home/widgets/demand_layer.dart';
+import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
 const _ring = [LatLng(11, 76.9), LatLng(11.1, 76.9), LatLng(11.1, 77)];
 
@@ -60,5 +62,39 @@ void main() {
   test('no data yet: nothing drawn', () {
     expect(demandPolygons(null), isEmpty);
     expect(demandLabels(null), isEmpty);
+  });
+
+  group('admin zones', () {
+    const big = [LatLng(11.0, 76.9), LatLng(11.0, 77.0), LatLng(11.1, 77.0), LatLng(11.1, 76.9)];
+    const small = [LatLng(11.04, 76.94), LatLng(11.04, 76.96), LatLng(11.06, 76.96), LatLng(11.06, 76.94)];
+    final map = DemandMap(at: DateTime(2026, 11, 4), zones: const [
+      MapZone(id: 'city', name: 'Surge now', kind: MapZoneKind.surge, multiplier: 1.2, centre: LatLng(11.08, 76.98), outline: [big]),
+      MapZone(id: 'autos', name: 'Peelamedu', kind: MapZoneKind.surge, multiplier: 1.5, vehicleKinds: [VehicleKind.auto], centre: LatLng(11.02, 76.92), outline: [big]),
+      MapZone(id: 'stand', name: 'Bus stand', kind: MapZoneKind.noService, blocksPickups: true, centre: LatLng(11.05, 76.95), outline: [small]),
+    ]);
+
+    test('drawn on top in their colour; a surge for other vehicles only is left out', () {
+      final zones = demandPolygons(map, vehicle: VehicleKind.bike).where((p) => p.zIndex == 3).toList();
+      expect(zones, hasLength(2));
+      expect(demandPolygons(map, vehicle: VehicleKind.auto).where((p) => p.zIndex == 3), hasLength(3));
+      expect(zones.first.strokeColor.toARGB32() & 0xFFFFFF, zoneColor(MapZoneKind.surge).toARGB32() & 0xFFFFFF);
+    });
+
+    test('labelled by what they mean, surges first', () {
+      final texts = [for (final m in demandLabels(map, zoom: 16, vehicle: VehicleKind.bike)) ((m.child as Center).child! as DemandLabel).text];
+      expect(texts, ['Surge 1.2x · Surge now', 'No pickups · Bus stand']);
+    });
+
+    test('a tap opens the smallest zone it fell in, else the demand hex', () {
+      expect(zoneAt(map, const LatLng(11.05, 76.95), vehicle: VehicleKind.bike)?.id, 'stand');
+      expect(zoneAt(map, const LatLng(11.09, 76.99), vehicle: VehicleKind.bike)?.id, 'city');
+      expect(zoneAt(map, const LatLng(11.3, 76.99), vehicle: VehicleKind.bike), isNull);
+      expect(hotspotAt(_map(), const LatLng(11.05, 76.92))?.cell, 'a');
+      expect(hotspotAt(_map(), const LatLng(11.5, 76.92)), isNull);
+    });
+
+    test('multipliers read short', () {
+      expect([multiplierLabel(1.3), multiplierLabel(1.25), multiplierLabel(1.5)], ['1.3x', '1.25x', '1.5x']);
+    });
   });
 }

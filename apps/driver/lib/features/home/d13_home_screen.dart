@@ -23,6 +23,7 @@ import '../states/s11_missed_request_banner.dart';
 import '../states/s16_gps_weak_banner.dart';
 import 'widgets/demand_chip.dart';
 import 'widgets/demand_layer.dart';
+import 'widgets/zone_sheet.dart';
 import 'widgets/direction_panel.dart';
 import 'widgets/home_parts.dart';
 import 'widgets/navy_header.dart';
@@ -145,6 +146,17 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
       return;
     }
     await goOnlineOrExplain(context, ref);
+  }
+
+  /// The zone (else the demand hex) a map tap fell in, in a sheet; nothing outside them.
+  void _showArea(DemandMap demand, LatLng at, VehicleKind vehicle) {
+    final zone = zoneAt(demand, at, vehicle: vehicle);
+    if (zone != null) {
+      showZoneSheet(context, zone);
+      return;
+    }
+    final hotspot = hotspotAt(demand, at);
+    if (hotspot != null) showHotspotSheet(context, hotspot);
   }
 
   void _goOffline() {
@@ -374,21 +386,24 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
     }
 
     // ------------------------------------------------------------------ map
-    // Where orders come from (demand hexes, nested hexes when zoomed in) and the service area when zoomed out;
-    // hidden during a job. Live: the API's H3 hexes. Mock and gallery: the seeded busy areas as hexes, while online.
+    // Where orders come from (demand hexes, nested hexes when zoomed in), the admin zones live now (surge, busy, no
+    // service, pickup points; a surge for other vehicles left out) and the service area when zoomed out; hidden
+    // during a job. Tap a zone or hex for its details. Live: the API's. Mock and gallery: the seeded ones, online.
     final demand = job != null
         ? null
         : _api
             ? ref.watch(demandMapProvider)
             : (online && !gpsLost ? DemandMap.demo(quiet: quiet) : null);
-    final polygons = demandPolygons(demand);
+    final vehicle = profile.vehicleKind;
+    final polygons = demandPolygons(demand, vehicle: vehicle);
     final map = ValueListenableBuilder<double>(
       valueListenable: _labelZoom,
       builder: (context, labelZoom, _) => LiveVehicleMap(
         key: ValueKey('home-map-$quiet'),
         polygons: polygons,
-        labels: gpsLost ? const [] : demandLabels(demand, zoom: labelZoom),
+        labels: gpsLost ? const [] : demandLabels(demand, zoom: labelZoom, vehicle: vehicle),
         onZoom: demand == null ? null : (z) => _labelZoom.value = (z * 2).floor() / 2,
+        onTap: demand == null || gpsLost || _showcase ? null : (p) => _showArea(demand, p, vehicle),
         vehicleType: vehicleType,
         fixedPosition: _showcase ? Seed.driverHome : null,
         pulse: online && job == null,
