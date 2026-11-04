@@ -36,8 +36,10 @@ Nothing yet.
 
 Release: `passenger-v0.1.2+3` at `104ae0d`
 
-- **Track:** Production (India). **Status:** bundle built 4 Nov 2026, `dist/tamiltaxi-passenger-0.1.2-3.aab`
-  (upload key, 64.9 MB, down from 103.1 MB without the Didit SDK); to upload in Play Console. Before sending it for
+- **Track:** Production (India). **Status:** live on Google Play 4 Nov 2026 (public listing updated that day).
+  Bundle `dist/tamiltaxi-passenger-0.1.2-3.aab` (upload key, 64.9 MB, down from 103.1 MB without the Didit SDK).
+  The Closed testing (Alpha) track was paused the same day, so former testers get production (their phones showed
+  "(Beta)" and couldn't install). Before sending it for
   review, take "Optional identity check for a Verified badge" out of the store description and update the
   **Data safety** form (Other info: gender only; Photos: parcel photo and support screenshot; no microphone; see
   play-store/passenger.md).
@@ -98,8 +100,9 @@ Nothing yet.
 
 Release: `driver-v0.1.2+4` at `d4d3a5f`
 
-- **Track:** Production (India). **Status:** bundle built 4 Nov 2026, `dist/tamiltaxi-driver-0.1.2-4.aab` (upload
-  key, about 64 MB, down from 102.6 MB without the Didit SDK); to upload in Play Console. The first upload, code 3
+- **Track:** Production (India). **Status:** live on Google Play, released 4 Nov 2026 1:28 PM; 19,543 supported
+  devices. Bundle `dist/tamiltaxi-driver-0.1.2-4.aab` (upload key, about 64 MB, down from 102.6 MB without the Didit
+  SDK). The Closed testing (Alpha) track was paused the same day. The first upload, code 3
   (`d84e246`), lost 426 devices on Play's review screen: without the SDK the camera permission made a back camera
   required. Code 4 declares the camera optional again; code 3 is never released. Before sending it for review, update the driver's **Data safety** form (no
   ID-check scans or selfie, no microphone; see play-store/driver.md).

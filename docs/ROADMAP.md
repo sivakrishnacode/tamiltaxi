@@ -64,8 +64,9 @@ the map fix and the new API address.
 
 - [x] Raise `version:` in `apps/passenger/pubspec.yaml` to `0.1.2+3`
 - [x] Build the bundle: `cd apps/passenger && ../../scripts/flutter.sh build appbundle` (upload key)
-- [ ] Take the Verified-badge line out of the store description and update the Data safety form, then upload it to
-  Production (India) with the release notes in RELEASES.md
+- [ ] Take the Verified-badge line out of the store description and update the Data safety form
+- [x] Upload it to Production (India) with the release notes in RELEASES.md (live 4 Nov 2026)
+- [x] Pause the Closed testing (Alpha) track so former testers get production (4 Nov 2026)
 - [x] In RELEASES.md, turn "Next release" into the 0.1.2 entry with its `Release:` line
 
 ---
@@ -83,8 +84,8 @@ hand only, no daily selfie, the zones on the Home map and the slimmer Home panel
 
 - [x] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.2+4` (code 3 was uploaded with a device-support loss)
 - [x] Build the bundle: `cd apps/driver && ../../scripts/flutter.sh build appbundle` (upload key)
-- [ ] Update the Data safety form (no ID-check scans or selfie, no microphone), then upload it to Production
-  (India) with the release notes in RELEASES.md
+- [ ] Update the Data safety form (no ID-check scans or selfie, no microphone)
+- [x] Upload it to Production (India) with the release notes in RELEASES.md (live 4 Nov 2026, code 4)
 - [ ] On a Play install: register by hand (licence, Aadhaar, profile photo), see the zones on Home and tap one
 - [x] In RELEASES.md, turn "Next release" into the 0.1.2 entry with its `Release:` line
 
