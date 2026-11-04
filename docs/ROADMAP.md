@@ -81,7 +81,7 @@ Labels: driver, release
 What goes in it is listed under **Tamil Taxi Driver › 0.1.2** in [RELEASES.md](RELEASES.md): the identity check by
 hand only, no daily selfie, the zones on the Home map and the slimmer Home panel.
 
-- [x] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.2+3`
+- [x] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.2+4` (code 3 was uploaded with a device-support loss)
 - [x] Build the bundle: `cd apps/driver && ../../scripts/flutter.sh build appbundle` (upload key)
 - [ ] Update the Data safety form (no ID-check scans or selfie, no microphone), then upload it to Production
   (India) with the release notes in RELEASES.md
