@@ -16,6 +16,8 @@ import '../features/design_gallery/design_gallery_screen.dart';
 import '../features/design_gallery/gallery_registry.dart';
 import '../features/earnings/d23_earnings_screen.dart';
 import '../features/home/d13_home_screen.dart';
+import '../features/home/d14c_demand_areas_screen.dart';
+import '../features/home/widgets/demand_areas.dart';
 import '../features/jobs/d15_ride_request_screen.dart';
 import '../features/jobs/d16_navigate_pickup_screen.dart';
 import '../features/jobs/d17_ride_otp_screen.dart';
@@ -118,6 +120,10 @@ GoRouter createDriverRouter({
     _full(
       '/legal/:doc',
       (s) => LegalScreen(doc: s.pathParameters['doc'] ?? 'terms'),
+    ),
+    _full(
+      Routes.demandAreasPath,
+      (s) => D14cDemandAreasScreen(view: s.uri.queryParameters['show'] == 'busy' ? AreaView.busy : AreaView.surge),
     ),
     // Jobs
     _full(Routes.request, (_) => const D15RideRequestScreen()),

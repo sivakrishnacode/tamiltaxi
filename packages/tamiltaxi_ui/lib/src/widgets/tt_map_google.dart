@@ -230,6 +230,12 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     unawaited(c.moveCamera(gm.CameraUpdate.newLatLngZoom(_g(center), zoom)).catchError((Object _) {}));
   }
 
+  void _fitTo(List<LatLng> points) {
+    if (_size.isEmpty) return;
+    final (centre, zoom) = _fitCamera(points, _size);
+    _animateTo(centre, zoom);
+  }
+
   void _animateTo(LatLng center, double zoom) {
     final c = _controller;
     if (c == null) {

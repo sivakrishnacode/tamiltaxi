@@ -21,6 +21,8 @@ import '../jobs/widgets/job_map.dart';
 import '../states/s10_account_on_hold_screen.dart';
 import '../states/s11_missed_request_banner.dart';
 import '../states/s16_gps_weak_banner.dart';
+import 'widgets/area_chips.dart';
+import 'widgets/demand_areas.dart';
 import 'widgets/demand_chip.dart';
 import 'widgets/demand_layer.dart';
 import 'widgets/zone_sheet.dart';
@@ -430,6 +432,18 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
       ),
     );
 
+    // Over the map: Surge and High demand with how many areas each has, opening their lists (D-14c); not during a
+    // job or without GPS.
+    final now = DateTime.now();
+    final chips = demand == null || gpsLost || job != null
+        ? null
+        : AreaChips(
+            surge: areasFor(AreaView.surge, demand, vehicle: vehicle, now: now).length,
+            busy: areasFor(AreaView.busy, demand, vehicle: vehicle, now: now).length,
+            onSurge: _act(() => context.push(Routes.demandAreas(surge: true)))!,
+            onBusy: _act(() => context.push(Routes.demandAreas(surge: false)))!,
+          );
+
     // ---------------------------------------------------------- bottom panel
     final Widget basePanel;
     if (job != null) {
@@ -541,6 +555,11 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (chips != null)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(TtSpacing.gutter, 0, TtSpacing.gutter, TtSpacing.m),
+                            child: chips,
+                          ),
                         if (missed)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(TtSpacing.gutter, 0, TtSpacing.gutter, TtSpacing.l),

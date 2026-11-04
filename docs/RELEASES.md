@@ -101,6 +101,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 - Home map, zoomed out: labels are smaller and never cover a zone (a label over the zone next to its own is left
   out), the "High demand" label sits on its area's top edge instead of in the middle, and a phone set to large text
   makes them only a little bigger. Zones in view get their labels: ones off screen no longer take the places.
+- Surge and High demand: two chips over the Home map show how many areas each has now. Each opens a map of those
+  areas with a list, nearest first: the fare ("1.3x fare · ends in 1 h 54 min"), the distance and directions. With
+  no surge it says so and offers the busy areas.
 - Home map: a zone whose top edge is out of view (under the Today card) has its label as high as is still in view,
   inside the zone, instead of hidden under the card.
 - Go offline asks first ("Go offline?" with Stay online), so a tap while putting the phone in a pocket doesn't end

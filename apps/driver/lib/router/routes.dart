@@ -36,6 +36,10 @@ abstract final class Routes {
   static const plan = '/plan';
   static const account = '/account';
 
+  /// D-14c: the Surge or High demand areas (Home's chips).
+  static const demandAreasPath = '/demand-areas';
+  static String demandAreas({required bool surge}) => '$demandAreasPath?show=${surge ? 'surge' : 'busy'}';
+
   // Jobs (full-screen)
   static const request = '/driver/request';
   static const deliveryRequest = '/driver/delivery-request';

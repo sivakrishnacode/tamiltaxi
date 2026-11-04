@@ -11,6 +11,8 @@ import '../account/services_screen.dart';
 import '../earnings/d23_earnings_screen.dart';
 import '../earnings/d23b_trip_detail_sheet.dart';
 import '../home/d13_home_screen.dart';
+import '../home/d14c_demand_areas_screen.dart';
+import '../home/widgets/demand_areas.dart';
 import '../jobs/d15_ride_request_screen.dart';
 import '../jobs/d16_navigate_pickup_screen.dart';
 import '../jobs/d17_ride_otp_screen.dart';
@@ -97,6 +99,11 @@ final List<GalleryEntry> galleryEntries = [
   _e('D-14', 'Home · online, waiting', _p6, (_) => const D13HomeScreen(variant: HomeVariant.online, showcase: true)),
   _e('D-14b', 'Home · trip in progress banner', _p6,
       (_) => const D13HomeScreen(variant: HomeVariant.tripBanner, showcase: true)),
+  _e('D-14c', 'Surge areas', _p6, (_) => const D14cDemandAreasScreen(showcase: true)),
+  _e('D-14d', 'High demand areas', _p6,
+      (_) => const D14cDemandAreasScreen(view: AreaView.busy, showcase: true)),
+  _e('D-14e', 'Surge areas · none right now', _p6,
+      (_) => D14cDemandAreasScreen(showcase: true, sample: DemandMap.demo(quiet: true))),
   _e('D-15', 'Incoming ride request', _p6, (_) => const D15RideRequestScreen(showcase: true)),
   _e('D-15c', 'Incoming request · rental', _p6,
       (_) => const D15RideRequestScreen(showcase: true, sample: Seed.rentalRequest)),

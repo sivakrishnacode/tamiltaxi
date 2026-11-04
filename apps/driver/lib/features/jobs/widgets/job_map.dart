@@ -28,6 +28,7 @@ class LiveVehicleMap extends ConsumerWidget {
     this.labels = const [],
     this.onCamera,
     this.onTap,
+    this.controller,
   });
 
   final MapVehicleType vehicleType;
@@ -61,6 +62,9 @@ class LiveVehicleMap extends ConsumerWidget {
   /// A tap on the map (not on a marker), with the point: e.g. to open the zone it fell in.
   final ValueChanged<LatLng>? onTap;
 
+  /// Moves the camera from outside, e.g. to an area picked in a list ([TtMapController.fitTo]).
+  final TtMapController? controller;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (fixedPosition != null) return _map(fixedPosition!, 0);
@@ -91,6 +95,7 @@ class LiveVehicleMap extends ConsumerWidget {
         polygons: polygons,
         onPositionChanged: onCamera == null ? null : (camera, _) => onCamera!(camera),
         onTap: onTap,
+        controller: controller,
         extraMarkers: [
           ...labels,
           if (gpsLost) Marker(point: pos, width: 128, height: 128, child: const _GpsLostMarker()),

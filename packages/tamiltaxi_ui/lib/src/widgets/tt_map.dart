@@ -33,6 +33,7 @@ class TtCamera {
 class TtMapController {
   final MapController _flutterMap = MapController();
   _GoogleTtMapState? _google;
+  _FlutterTtMapState? _flutter;
 
   /// Moves the camera (no animation). Does nothing if the map is not laid out yet.
   void move(LatLng center, double zoom) {
@@ -58,8 +59,21 @@ class TtMapController {
     move(center, zoom);
   }
 
+  /// Glides the camera to show [points] inside the map's padding, even right after the user moved the map (unlike a
+  /// new [TtMap.fitPoints]): for something they just picked, e.g. an area in a list. Fewer than two points: nothing.
+  void fitTo(List<LatLng> points) {
+    if (points.length < 2) return;
+    final google = _google;
+    if (google != null) {
+      google._fitTo(points);
+      return;
+    }
+    _flutter?._fitTo(points);
+  }
+
   void dispose() {
     _google = null;
+    _flutter = null;
     _flutterMap.dispose();
   }
 }
@@ -596,7 +610,18 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
   @override
   void initState() {
     super.initState();
+    m.controller?._flutter = this;
     PaintingBinding.instance.systemFonts.addListener(_fontsLoaded);
+  }
+
+  void _fitTo(List<LatLng> points) {
+    try {
+      _mapController.fitCamera(
+        CameraFit.coordinates(coordinates: points, padding: _fitPaddingOf(m, context), maxZoom: 16),
+      );
+    } catch (_) {
+      // Map not laid out yet.
+    }
   }
 
   /// A font finished loading: measure the name chips again ([_PlaceChip.sizeFor]).
@@ -610,6 +635,10 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
   @override
   void didUpdateWidget(covariant _FlutterTtMap old) {
     super.didUpdateWidget(old);
+    if (old.map.controller != m.controller) {
+      if (old.map.controller?._flutter == this) old.map.controller!._flutter = null;
+      m.controller?._flutter = this;
+    }
     if (_fitKey(m) != _fitKey(old.map)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -627,6 +656,7 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
   @override
   void dispose() {
     PaintingBinding.instance.systemFonts.removeListener(_fontsLoaded);
+    if (m.controller?._flutter == this) m.controller!._flutter = null;
     _own?.dispose();
     super.dispose();
   }
