@@ -208,6 +208,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `e5f3f14` (API) and `cf87969` (admin).
+
+### 5 Nov 2026 · API at `e5f3f14`
+
+Release: `staging-2026-11-05` at `e5f3f14`
+
 API only (no database change).
 
 - **Live surge is harder to fake:** only riders with a finished ride or delivery count as demand, never a driver's
