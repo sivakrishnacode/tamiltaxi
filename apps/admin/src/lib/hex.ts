@@ -10,9 +10,19 @@ export function hexBoundary(cell: string): [number, number][] {
   return cellToBoundary(cell) as [number, number][];
 }
 
-/** The outer edges (and holes) of a set of cells as GeoJSON MultiPolygon coordinates ([lng, lat]). */
+/**
+ * The outer edges (and holes) of a set of cells as GeoJSON MultiPolygon coordinates ([lng, lat]). Cells of different
+ * resolutions (cities set up at different sizes, e.g. res 8 and res 9) are outlined per resolution: H3 can't merge them.
+ */
 export function cellsOutline(cells: readonly string[]): number[][][][] {
-  return cells.length ? cellsToMultiPolygon([...new Set(cells)], true) : [];
+  const byResolution = new Map<number, string[]>();
+  for (const cell of new Set(cells)) {
+    const res = getResolution(cell);
+    const group = byResolution.get(res);
+    if (group) group.push(cell);
+    else byResolution.set(res, [cell]);
+  }
+  return [...byResolution.values()].flatMap((group) => cellsToMultiPolygon(group, true));
 }
 
 export function cellAt(lat: number, lng: number, resolution: number): string {

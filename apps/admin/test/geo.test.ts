@@ -70,6 +70,12 @@ describe("h3 helpers", () => {
     expect(cellsOutline([])).toEqual([]);
   });
 
+  it("outlines cities set up at different resolutions (res 8 and 9) without throwing", () => {
+    const coimbatore = circleCells(11.0183, 76.9725, 1.5, 8);
+    const tiruppur = circleCells(11.1085, 77.3411, 1.5, 9);
+    expect(cellsOutline([...coimbatore, ...tiruppur])).toHaveLength(2);
+  });
+
   it("converts cells to km²", () => {
     expect(Math.round(cellsToKm2(1519, 8))).toBe(1120);
   });
