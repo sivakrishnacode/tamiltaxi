@@ -208,7 +208,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `cf87969` (API and admin).
+API only (no database change).
+
+- **Live surge is harder to fake:** only riders with a finished ride or delivery count as demand, never a driver's
+  own account; a booking the rider cancels within a minute, before any driver took it, is taken back out; and
+  drivers who went offline in the demand window still count as free drivers, so logging off together doesn't raise
+  fares.
 
 ### 4 Nov 2026 (fifth) · API and admin at `cf87969`
 

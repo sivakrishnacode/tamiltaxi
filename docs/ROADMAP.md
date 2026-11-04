@@ -213,6 +213,9 @@ Tick an item here when its SD-n is marked Done there.
 - [ ] SD-14 HTTP/2 and HTTP/3 for app calls
 - [ ] SD-15 Location stream (Redis Stream)
 - [ ] SD-17 Tell the driver who lost the race
+- [ ] SD-20 Rider location at booking (live demand counts riders who are there)
+- [ ] SD-21 Unusual-demand alerts in the admin
+- [ ] SD-22 Rider–driver link signals
 - [ ] SD-18 Reminder opt-out in the app
 - [ ] SD-19 Campaigns per city
 

@@ -13,7 +13,7 @@ import { type FareQuote, haversineMeters, waitingCharge, waitingTerms, withWaiti
 import { FARE_RULES, inTownKinds } from '../fares/fare-rules.js';
 import { isGoodsTruck } from '../fares/goods-modes.js';
 import { isCabTier, type ModeTerms, settleMode, withSettlement } from '../fares/ride-modes.js';
-import { DemandService } from '../geo/demand.service.js';
+import { DemandService, isQuickCancel } from '../geo/demand.service.js';
 import { GeoService } from '../geo/geo.service.js';
 import { cellAt } from '../geo/h3.util.js';
 import { FaresService } from '../fares/fares.service.js';
@@ -761,6 +761,10 @@ export class TripsService {
     }
     await this.dispatch.stop(tripId);
     await this.clearTripJobs(tripId);
+    // Booked and dropped at once, before any driver took it: not demand (a fake booking to make an area surge).
+    if (by === CancelledBy.PASSENGER && isQuickCancel(trip)) {
+      await this.demand.forgetRequest({ lat: trip.pickupLat, lng: trip.pickupLng }, trip.passengerId, trip.searchFrom);
+    }
     // The status matched, so this is the driver the trip had; free them only if they are still on it.
     if (trip.driverId) await this.location.releaseBusy(trip.driverId, tripId);
     const published = await this.publish(tripId, by);

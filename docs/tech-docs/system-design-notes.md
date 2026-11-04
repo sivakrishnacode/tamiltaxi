@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 10 Oct 2026 (offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
+Last updated: 5 Nov 2026 (live surge guarded against fake demand; SD-20 to SD-22 added; earlier, 10 Oct: offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
 
 ---
 
@@ -199,6 +199,25 @@ Learned: reminders only pay off if they are rare and right; we log each one (`Re
 hour" per kind in the admin, so we can switch off what doesn't convert. Gaps: no in-app opt-out (only the Android
 channel, SD-18); campaigns go to every rider, not per city (SD-19).
 
+### 5 Nov 2026: fake demand to make an area surge
+
+Source: the owner's question. Ride apps' surge has a well-known abuse: drivers book from spare phones (or log off
+together) so an area looks short of drivers and its fares go up. With 0% commission the whole surge goes to the
+driver, so the reason to try it is stronger here than on a commission app.
+
+| | Before | Now (5 Nov 2026) |
+|---|---|---|
+| Who counts as demand | Every rider who booked in the hex in the window, once each | Riders with a finished ride or delivery, never an account that is also a driver |
+| Booked and cancelled at once | Still counted for the whole window | Taken back out: a rider's cancel within 60 s of the search, before any driver took it |
+| Drivers logging off together | Fewer free drivers → higher ratio → surge | Drivers heard from in the hex within the window still count as supply, offline or not |
+| Hard limits | One count per rider, `surgeMinRequests`, cap `maxMultiplier` (1.5) | Unchanged |
+
+Learned: count only demand that is costly to fake. A finished trip costs a real fare, so it is a much better test of a
+real rider than a phone number. Supply should be measured over the same window as demand, so it can't drop out from
+under it in a minute. Cost: a driver who really ends their shift still counts for up to `demandWindowMin`, so surge
+starts a little later (riders pay less, never more). Brand-new riders still show on the driver map, through its
+last-hour bookings. Next: SD-20 to SD-22.
+
 ## 4. Optimization backlog
 
 Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week or more).
@@ -223,4 +242,7 @@ Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week o
 | SD-16 | **Launch-grade operations:** nightly `pg_dump` to S3 (already in the launch checklist), an external uptime check with alerts (free tier), JSON logs shipped off the box, and a restore drill | One box and no off-box backup means one disk failure loses everything | Before public launch | S–M |
 | SD-17 | **Tell the driver who lost the race:** send `trip.offer_closed` with a reason when another driver took the request, and show "Another driver took this ride" instead of a card that just vanishes (or a 409 "no longer available" after tapping Accept) | Losing races is normal with several drivers at once; a reason keeps drivers from thinking the app glitched | Drivers ask where requests went, or before raising `offerFanOut` | S |
 | SD-18 | **Reminder opt-out in the app:** an Account › Notifications switch for "Trip suggestions" (stored on the user, checked before every reminder and campaign), besides the Android channel | Riders who find reminders pushy can stop them without losing trip updates; Play policy friendly | First complaint about reminders, or before marketing pushes grow | S |
+| SD-20 | **Rider location at booking:** the rider app sends the phone's GPS fix (and Android's mock-location flag) with `POST /trips`; a booking counts toward live demand only when the phone is within ~2 km of the pickup and the fix isn't mocked. Booking for someone elsewhere still works, it just doesn't move surge | Demand should come from people who are there | Next rider app release that touches booking | S |
+| SD-21 | **Unusual-demand alerts in the admin:** flag hexes whose surge came with few finished trips, many quick cancels or many new accounts, and show them on Live / Missed rides | Lets an admin look before riders pay a surge that wasn't real | When live surge is on in a city with real volume | M |
+| SD-22 | **Rider–driver link signals:** flag rider accounts whose phone keeps being where a driver's phone is, or whose first trips were all with one driver; such riders stop counting as demand | The usual sign of a driver using a second phone | With SD-21 | M |
 | SD-19 | **Campaigns per city:** subscribe phones to a `passengers-<cityId>` topic (from their last pickup) and let a campaign pick cities | A Pongal push for Coimbatore shouldn't reach a second city with other festivals | When a second city goes live | S |

@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { gridDiskDistances } from 'h3-js';
+import { cellToParent, gridDiskDistances } from 'h3-js';
 
 import { RedisService } from '../../core/redis/redis.service.js';
 import type { VehicleKind } from '../../generated/prisma/enums.js';
 import { haversineMeters } from '../fares/fare-engine.js';
+import { DEMAND_RES, SEEN_TTL_S, seenDriversKey } from '../geo/demand.service.js';
 import { cellAt } from '../geo/h3.util.js';
 import { IDLE_KEY_TTL_S, lastTripEndKey, onlineSinceKey } from '../trips/driver-rank.js';
 import { ONLINE_SESSION_TTL_S, onlineSessionKey } from './driver-earnings.service.js';
@@ -69,17 +70,24 @@ export class DriverLocationService {
 
   /**
    * Moves the driver in the index. [at]: when the fix was taken (epoch ms, default now); [heading]: degrees from
-   * north when the phone knows it. Both are stored in `driver:alive` (`lat,lng,at[,heading]`).
+   * north when the phone knows it. Both are stored in `driver:alive` (`lat,lng,at[,heading]`). Also marks the driver
+   * as last heard from in their res-7 demand cell (`driver:area` remembers which, also past going offline, so a move
+   * takes them out of the old one): surge counts them as supply there for the demand window.
    */
   async update(params: { driverId: string; kind: VehicleKind; lat: number; lng: number; at?: number; heading?: number | null }): Promise<void> {
     const cell = cellAt(params.lat, params.lng, DRIVER_H3_RES);
-    const prev = await this.redis.get(`driver:cell:${params.driverId}`);
+    const area = cellToParent(cell, DEMAND_RES);
+    const [prev, prevArea] = await this.redis.mget(`driver:cell:${params.driverId}`, `driver:area:${params.driverId}`);
     const next = `${params.kind}|${cell}`;
     const tx = this.redis.multi();
     if (prev && prev !== next) {
       const [pk, pc] = prev.split('|');
       tx.srem(DriverLocationService.cellKey(pk as VehicleKind, pc), params.driverId);
     }
+    if (prevArea && prevArea !== area) tx.zrem(seenDriversKey(prevArea), params.driverId);
+    tx.zadd(seenDriversKey(area), Date.now(), params.driverId)
+      .expire(seenDriversKey(area), SEEN_TTL_S)
+      .set(`driver:area:${params.driverId}`, area, 'EX', SEEN_TTL_S);
     tx.sadd(DriverLocationService.cellKey(params.kind, cell), params.driverId)
       .expire(DriverLocationService.cellKey(params.kind, cell), INDEX_TTL_S)
       .set(`driver:cell:${params.driverId}`, next, 'EX', INDEX_TTL_S)

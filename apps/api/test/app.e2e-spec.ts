@@ -2099,23 +2099,40 @@ describe('Tamil Taxi API (e2e)', () => {
     const admin = { Authorization: `Bearer ${(await http.post('/v1/auth/verify').send({ phone: ADMIN_PHONE, code: '123456', app: 'admin' })).body.accessToken}` };
     const peelamedu = { lat: 11.029, lng: 77.027, name: 'Peelamedu' };
     const raceCourse = { lat: 10.999, lng: 76.978, name: 'Race Course' };
-    // Demand counts each passenger once per window: five different riders.
-    for (let i = 0; i < 5; i++) {
-      const rider = await login();
-      await http.post('/v1/trips').set('Authorization', `Bearer ${rider}`)
-        .send({ kind: 'RIDE', vehicleKind: 'AUTO', pickup: peelamedu, drop: raceCourse }).expect(201);
-    }
-    // No drivers near Peelamedu: demand ÷ supply is high → the cell (and, smoothed, its neighbours) surges.
-    const snap = await http.get('/v1/admin/demand?refresh=true').set(admin).expect(200);
+    const book = (rider: string) => http.post('/v1/trips').set('Authorization', `Bearer ${rider}`)
+      .send({ kind: 'RIDE', vehicleKind: 'AUTO', pickup: peelamedu, drop: raceCourse }).expect(201);
     // Peelamedu's own cell (other tests' bookings may make Gandhipuram busy too).
-    const hot = snap.body.cells.find((c: { cell: string }) => c.cell === cellAt(peelamedu.lat, peelamedu.lng, DEMAND_RES));
-    expect(hot.requests).toBeGreaterThanOrEqual(5);
+    const peelameduCell = async () => (await http.get('/v1/admin/demand?refresh=true').set(admin).expect(200)).body.cells
+      .find((c: { cell: string }) => c.cell === cellAt(peelamedu.lat, peelamedu.lng, DEMAND_RES));
+    // Demand counts each passenger once per window, and only riders with a finished trip: six new riders' bookings
+    // aren't demand (a spare-phone account must pay for a real trip before it can make an area surge).
+    const riders: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      const rider = await login();
+      const first = await book(rider);
+      await prisma.trip.update({ where: { id: first.body.id }, data: { status: 'COMPLETED' } });
+      riders.push(rider);
+    }
+    expect((await peelameduCell())?.requests ?? 0).toBe(0);
+    // With a finished ride each, five book again (demand); the sixth books and cancels at once (taken back out).
+    for (const rider of riders.slice(0, 5)) await book(rider);
+    const quick = await book(riders[5]);
+    await http.post(`/v1/trips/${quick.body.id}/cancel`).set('Authorization', `Bearer ${riders[5]}`).send({}).expect(200);
+    // No drivers near Peelamedu: demand ÷ supply is high → the cell (and, smoothed, its neighbours) surges.
+    const hot = await peelameduCell();
+    expect(hot.requests).toBe(5);
     expect(hot.level).toBe('high');
     expect(hot.multiplier).toBeGreaterThan(1.1);
     const here = await http.get(`/v1/geo/check?lat=${peelamedu.lat}&lng=${peelamedu.lng}`).expect(200);
     expect(here.body.multiplier).toBe(hot.multiplier);
     const publicDemand = await http.get('/v1/demand').expect(200);
     expect(publicDemand.body.cells.some((c: { cell: string }) => c.cell === hot.cell)).toBe(true);
+    // A driver who goes offline there still counts as supply for the window: logging off together can't raise surge.
+    const driver = await onlineDriver('BIKE', { lat: peelamedu.lat, lng: peelamedu.lng });
+    await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${driver}`).expect(200);
+    const after = await peelameduCell();
+    expect(after.freeDrivers).toBe(hot.freeDrivers + 1);
+    expect(after.multiplier).toBeLessThanOrEqual(hot.multiplier);
 
     // Learned speeds: rebuild from completed trips (the ride test completed one) and read the summary.
     const rebuilt = await http.post('/v1/admin/hex-stats/rebuild').set(admin).expect(200);
