@@ -68,6 +68,7 @@ opted in for 14 days in a row.
 - [x] Driver: production access granted (by 2 Nov 2026)
 - [x] Test data cleared from the server before launch: only admin accounts and config left (2 Nov 2026)
 - [ ] Remove the cleared test drivers' uploaded files from storage
+- [ ] Remove the Didit reference selfies left in storage (`kyc/`, their database rows were dropped 4 Nov 2026)
 - [x] Production release, India only; record it in RELEASES.md (both apps live 3 Nov 2026)
 
 ### Domain tamiltaxi.co.in: website, app links and support email
@@ -78,7 +79,6 @@ Issue: #4 · Labels: launch, web, infra
 - [ ] Support email works
 - [x] API and admin on the domain instead of sslip.io (4 Nov 2026: `api.` and `admin.tamiltaxi.co.in`)
 - [ ] Update the Play listings and the apps' links
-- [ ] Didit webhook on `api.tamiltaxi.co.in`
 - [ ] Stop serving the sslip.io names once no one runs an app older than 0.1.2
 
 ### Launch-grade operations: backups, uptime alerts, logs (SD-16)
@@ -90,12 +90,11 @@ Issue: #5 · Labels: launch, infra, api
 - [ ] JSON logs shipped off the box (CloudWatch)
 - [ ] A restore drill from a backup
 
-### Check on real phones: camera, daily selfie, push, uploads
+### Check on real phones: camera, push, uploads
 
 Issue: #6 · Labels: launch, rider, driver
 
 - [ ] Camera: KYC document photos, delivery and ticket photos
-- [ ] Daily selfie face match (`dailySelfieCheckEnabled`)
 - [ ] Push notifications on both apps (open, in the background, closed)
 - [ ] Photo uploads reach storage and open in the admin
 
@@ -203,7 +202,7 @@ Issue: #12 · Labels: plan, api, admin
 - [ ] Landmarks: a phone check of P-09 / D-16 with real landmarks
 - [ ] CI: APK build artifacts
 - [ ] Document expiry: let a driver upload the renewed RC or insurance before the old one expires (the app offers
-  Re-upload only once it is rejected); read the licence expiry from Didit
+  Re-upload only once it is rejected)
 - [ ] Zone rules in the apps: show a no-pickup-only zone as such (the Play builds treat every no-service zone as
   stopping both), a vehicle-only surge on the driver map, and a Surge now banner with its end time
 - [ ] Pickup points: an entry or parking fee as its own fare line (the apps must show it, or the breakdown won't add

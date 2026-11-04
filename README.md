@@ -36,7 +36,8 @@ project. The code is open so that anyone can check it, improve it, or run it in 
   driver's offer record
 - Demand-based surge (off by default), learned ETAs, and one fare engine shared with the apps
 - Guarded trip state machine, GPS breadcrumbs, route-deviation and stop checks, cancellation fault rules
-- FCM push notifications, Google Maps with an aggressive cache (plus an offline fallback), Didit identity checks
+- FCM push notifications, Google Maps with an aggressive cache (plus an offline fallback), driver identity
+  checks by hand (licence and Aadhaar matched to the profile photo)
 
 **Website (Next.js 16, static)**
 - Home page for riders and drivers, plus the privacy policy, terms and account deletion pages Google Play asks for
@@ -58,7 +59,6 @@ flowchart LR
   API --> R[(Redis 7<br/>driver index, dispatch, cache)]
   API -. push .-> FCM[Firebase FCM]
   API -. maps, optional .-> G[Google Maps Platform]
-  API -. identity checks, optional .-> DI[Didit]
 ```
 
 It all runs with Docker Compose on one small server (today one AWS t3.small). See

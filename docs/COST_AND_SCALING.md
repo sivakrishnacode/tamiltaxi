@@ -26,7 +26,7 @@ Last updated: 29 Sep 2026. Prices are list prices at $1 = ₹88. Recheck them be
 | Maps, place search, addresses | Google Maps Platform | ₹0 (inside the free monthly calls) |
 | Push notifications | Firebase Cloud Messaging | Free |
 | Live tracking, trip events | Socket.IO on our API | Free (no Google calls during a trip) |
-| Driver identity checks | Didit | 500 sessions/month free (about 250 new drivers) |
+| Driver identity checks | By hand in the admin panel (licence, Aadhaar, profile photo) | Free |
 | OTP SMS | Not live yet (dev OTP) | From launch: about ₹0.15–0.25 per OTP (MSG91 or similar) |
 
 Measured capacity of the t3.small: about 300–500 online drivers, 5 bookings/s at peak, 5,000–10,000 trips/day
@@ -117,7 +117,7 @@ pays off from about 500 trips/day.
   - Google's volume discounts above 100k calls/month are left out, so A at 5,000 trips/day is 20–30% high.
 - **AWS:** Mumbai on-demand prices.
 - **SMS:** one OTP for about every five trips.
-- **Not included:** Didit checks after the free 500, the domain, Play Store fees.
+- **Not included:** the domain, Play Store fees.
 
 For comparison, Namma Yatri reports about ₹2 per ride on maps after moving to OpenStreetMap, against ₹12–15 for
 other ride-hailing apps.

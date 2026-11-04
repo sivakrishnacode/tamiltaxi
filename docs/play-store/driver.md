@@ -64,7 +64,8 @@ Enter the password above as the 6-digit one-time code: it always works. This dri
 ```
 
 Check that the test drivers exist on the API first (`seed:test-drivers` is idempotent). A new number can't be used: a
-new driver must pass the Didit identity check before going online.
+new driver must pass the identity check by hand (an admin verifies the licence, Aadhaar and profile photo) before
+going online.
 
 ## Content rating, target audience, ads, news, government, financial, health, advertising ID
 
@@ -82,10 +83,10 @@ shared). Data types:
 | Personal info › Name | Required | | App functionality; Account management |
 | Personal info › Phone number | Required | | App functionality; Account management; Fraud prevention, security and compliance |
 | Personal info › User IDs | Required | | App functionality; Account management |
-| Personal info › Other info | Required | Gender, vehicle details (type, model, colour, plate), and from the ID check: name and date of birth on the ID, last 4 digits of the driving licence and Aadhaar | App functionality; Fraud prevention, security and compliance |
+| Personal info › Other info | Required | Gender, vehicle details (type, model, colour, plate) | App functionality; Fraud prevention, security and compliance |
 | Financial info › User payment info | Required | UPI ID that riders pay | App functionality |
 | Financial info › Other financial info | Required | Earnings per trip and day | App functionality |
-| Photos and videos › Photos | Required | RC and insurance photos, profile photo, identity-check document scans and selfie, the selfie before going online | App functionality; Fraud prevention, security and compliance |
+| Photos and videos › Photos | Required | RC, insurance, driving licence and Aadhaar photos, profile photo | App functionality; Fraud prevention, security and compliance |
 | Messages › Other in-app messages | Optional | Trip chat, Help & support | App functionality |
 | Contacts › Contacts | Optional | Emergency contact | App functionality |
 | App activity › Other user-generated content | Optional | Ratings and comments for riders, support tickets | App functionality; Fraud prevention, security and compliance |
@@ -93,7 +94,8 @@ shared). Data types:
 | Device or other IDs | Required | Notification token | App functionality |
 
 Not collected: as for the rider app, plus no Purchase history (drivers don't buy anything) and no In-app search
-history. The same Didit video / audio check applies.
+history. **From 0.1.2 (4 Nov 2026):** no Didit, so no third-party identity check; update the Data safety form
+(the Photos and Other info rows above) when that release goes up.
 
 ## Declarations only the driver app needs
 
@@ -131,7 +133,7 @@ to allow it (`apps/driver/lib/overlay/background_permissions.dart`).
   function); asked on D-03c with Android's own "Allow" dialog.
 - No `ACCESS_BACKGROUND_LOCATION`: location in the background runs through the location foreground service above, so
   there is no background-location declaration.
-- Camera and microphone: no form (the microphone comes with the Didit SDK).
+- Camera: no form. From 0.1.2 the app no longer has the microphone permission (it came with the Didit SDK).
 
 ## Release
 

@@ -199,7 +199,7 @@ Flutter app layout: `lib/router` (go_router 17, **pinned**: 18 needs `material_u
 controllers), `lib/features/<feature>/` (one file per screen, named after its frame ID, e.g. `P10ChooseVehicleScreen`),
 `lib/features/design_gallery/` (frame registry + demo controls).
 
-API modules: admin, app-config, auth, automations (reminder pushes and campaigns), drivers, fares, geo (H3), health, kyc (Didit identity checks), maps, notifications (FCM), places, promos (splash and Home banners), realtime, settings,
+API modules: admin, app-config, auth, automations (reminder pushes and campaigns), drivers, fares, geo (H3), health, kyc (identity checks by hand, document expiry), maps, notifications (FCM), places, promos (splash and Home banners), realtime, settings,
 subscriptions, support, trips, users.
 
 ---
@@ -281,3 +281,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 18 Oct 2026 | Rule 1.2: API / admin changes under Staging › Next deploy; found problems become ROADMAP items; owner names release dates |
 | 1 Nov 2026 | Key facts: autos at the Tamil Nadu government fare; demo quotes updated |
 | 4 Nov 2026 | Key facts: staging API and admin on `tamiltaxi.co.in` (sslip.io names still served) |
+| 4 Nov 2026 | API modules: kyc is the identity check by hand (Didit removed) |

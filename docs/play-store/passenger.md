@@ -70,7 +70,6 @@ SAFETY
 • Share your live trip with family
 • SOS button during the ride
 • Emergency contacts
-• Optional identity check for a Verified badge
 
 WHERE WE RUN
 Tamil Taxi runs in Coimbatore, Tamil Nadu, and will add cities one by one.
@@ -181,7 +180,7 @@ If the console still shows it: **My app is not a publicly available COVID-19 con
 | Question | Answer |
 |---|---|
 | Does your app collect or share any of the required user data types? | **Yes** |
-| Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS to `api.65-0-233-253.sslip.io`, Google, Firebase and Didit; release builds allow HTTPS only) |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS to `api.tamiltaxi.co.in`, Google and Firebase; release builds allow HTTPS only) |
 | Which of the following methods of account creation does your app support? | **Username and other authentication** (phone number + one-time code) |
 | Delete account URL | `https://www.tamiltaxi.co.in/delete-account/` (the `www` address loads without a redirect) |
 | Can users request deletion of some data without deleting their account? | **No** (optional question). Riders can remove saved places, emergency contacts, email and gender in the app, but a Yes needs a web page with the steps, and `/delete-account/` only covers closing the account |
@@ -189,7 +188,7 @@ If the console still shows it: **My app is not a publicly available COVID-19 con
 | Independent security review? | No |
 
 **Data shared with third parties: none.** Everything below is "Collected", none of it "Shared". Google doesn't count
-these as sharing: service providers that process data for us (AWS, Google Maps, Firebase Cloud Messaging, Didit,
+these as sharing: service providers that process data for us (AWS, Google Maps, Firebase Cloud Messaging,
 WATX), what the rider sends on purpose (the driver sees the rider's name, number and pickup after a booking; trip share
 and SOS go to contacts the rider picks), and disclosures the law requires.
 
@@ -207,23 +206,23 @@ and SOS go to contacts the rider picks), and disclosures the law requires.
 | Personal info › User IDs | Yes | Required | App functionality; Account management |
 | Personal info › Address | Yes (saved Home / Work places) | Optional | App functionality; Personalization |
 | Personal info › Phone number | Yes | Required | App functionality; Account management; Fraud prevention, security and compliance |
-| Personal info › Other info | Yes (gender for Pink Taxi; from the optional ID check: name and date of birth on the ID, last 4 digits of the document number) | Optional | App functionality; Fraud prevention, security and compliance |
+| Personal info › Other info | Yes (gender for Pink Taxi) | Optional | App functionality; Fraud prevention, security and compliance |
 | Financial info › Purchase history | Yes (trips, fares, payment mode cash / UPI) | Required | App functionality; Personalization; Advertising or marketing (usual-trip reminders) |
 | Messages › Other in-app messages | Yes (trip chat, Help & support tickets) | Optional | App functionality |
-| Photos and videos › Photos | Yes (parcel photo, support screenshot, ID-check document scans and selfie) | Optional | App functionality; Fraud prevention, security and compliance |
+| Photos and videos › Photos | Yes (parcel photo, support screenshot) | Optional | App functionality; Fraud prevention, security and compliance |
 | Contacts › Contacts | Yes (emergency contacts the rider adds; the receiver's name and number for a parcel) | Optional | App functionality |
 | App activity › In-app search history | Yes (place searches; a fare checked but not booked) | Required | App functionality; Personalization; Advertising or marketing (the "Ooty?" reminder after an unbooked fare) |
 | App activity › Other user-generated content | Yes (ratings and comments for drivers, parcel and moving details) | Optional | App functionality; Fraud prevention, security and compliance |
 | Device or other IDs | Yes (notification token per device; it also carries reminder and campaign pushes) | Required | App functionality; Advertising or marketing |
 
 **Not collected:** Health and fitness, Financial › User payment info (the rider pays in their own UPI app), Credit
-score, Other financial info, Videos, Audio (the Didit SDK declares the microphone permission; our code never records),
+score, Other financial info, Videos, Audio (from 0.1.2 the app has no microphone permission),
 Files and docs, Calendar, Web browsing, Installed apps (the app only checks whether WhatsApp is installed, for code
 autofill, and sends nothing), App interactions, Other actions, Crash logs, Diagnostics (no analytics or crash SDK in
 the app).
 
-> Check once in the Didit console: if your identity workflow records a video or sound for liveness, also tick
-> Photos and videos › Videos (and Audio › Voice or sound recordings), Optional, Fraud prevention.
+> From 0.1.2 (4 Nov 2026) the rider app has no identity check (Didit removed): update the store description and the
+> Data safety form (Other info, Photos) when that release goes up.
 
 ### Government apps
 
