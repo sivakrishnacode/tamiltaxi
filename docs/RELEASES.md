@@ -155,6 +155,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `e28e30a` (API and admin).
+
+### 4 Nov 2026 (second) · API and admin at `e28e30a`
+
+Release: `staging-2026-11-04.2` at `e28e30a`
+
 API (database change: migration `20261104120000_remove_didit`) and admin.
 
 - **Didit removed:** identities are checked only by hand (the driver's licence and Aadhaar, verified by an admin, with

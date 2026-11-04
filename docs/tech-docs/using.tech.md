@@ -2436,6 +2436,17 @@ both API names, admin `/login` 200 on both admin names. **Keep the sslip.io API 
 an app older than 0.1.2: 0.1.1 is built with `https://api.65-0-233-253.sslip.io/v1`. (Didit, and its webhook, were
 removed later the same day.)
 
+**Deployed 4 Nov 2026 (second):** API and admin at `e28e30a` (`3dd117c..e28e30a`): Didit removed (identities by hand
+only, no daily selfie, no rider Verified badge), the admin Heatmap fix for cities at different hex sizes (Tiruppur is
+res 9: "Something went wrong" since it was added), and the driver map's `zones`. Migration
+`20261104120000_remove_didit` applied on start. Backup `/opt/tamiltaxi/backups/20261104-e28e30a` (database dump, compose
+files, Caddyfile, `.env`); rollback images `tamiltaxi-api:rollback-20261104-3dd117c` /
+`tamiltaxi-admin:rollback-20261104-3dd117c`. The `DIDIT_*` lines were removed from `/opt/tamiltaxi/.env`. Checked:
+`/health` 200 on both API names; `/kyc/me` `isEnabled: false`, `/kyc/session` and the Didit webhook 404; app-config
+without the selfie switch; `/demand/hotspots` lists the 7 live zones; `IdentityVerification` gone, the two settings
+rows deleted, no rider left verified, the 3 approved drivers still approved; the Heatmap loads on
+`admin.tamiltaxi.co.in` with the city boundary.
+
 **Remaining infrastructure permission:** a harmless DeleteObject request for a unique nonexistent key confirmed
 `AccessDenied`. Account records can be anonymised, but remote KYC file cleanup requires the role permission in
 [staging-kyc-delete-policy.json](staging-kyc-delete-policy.json). The `rido` AWS profile cannot administer IAM.
@@ -2470,9 +2481,11 @@ automatic deployment. The EC2 staging stack serves API/admin only. The temporary
 **Redeploy** (images are built locally so the small instance never runs `next build`):
 
 ```bash
-set -a; . ./.env; set +a
+set -a; . ./.env; . apps/admin/.env.local; set +a   # .env.local holds the Map IDs (.dockerignore keeps it out of the image)
 docker build -f apps/api/Dockerfile -t tamiltaxi-api:local .
-docker build -f apps/admin/Dockerfile --build-arg NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY="$GOOGLE_MAPS_BROWSER_KEY" -t tamiltaxi-admin:local .
+docker build -f apps/admin/Dockerfile --build-arg NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY="$GOOGLE_MAPS_BROWSER_KEY" \
+  --build-arg NEXT_PUBLIC_GOOGLE_MAP_ID="$NEXT_PUBLIC_GOOGLE_MAP_ID" \
+  --build-arg NEXT_PUBLIC_GOOGLE_MAP_ID_NO_PLACES="$NEXT_PUBLIC_GOOGLE_MAP_ID_NO_PLACES" -t tamiltaxi-admin:local .
 docker save tamiltaxi-api:local tamiltaxi-admin:local | gzip -1 | ssh -i ~/.ssh/rido-key.pem ubuntu@65.0.233.253 'gunzip | docker load'
 scp -i ~/.ssh/rido-key.pem docker-compose.yml ubuntu@65.0.233.253:/opt/tamiltaxi/ && scp -i ~/.ssh/rido-key.pem -r caddy ubuntu@65.0.233.253:/opt/tamiltaxi/
 ssh -i ~/.ssh/rido-key.pem ubuntu@65.0.233.253 'cd /opt/tamiltaxi && docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile https up -d --no-build'
