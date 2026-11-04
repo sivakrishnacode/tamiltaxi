@@ -119,7 +119,7 @@ class ApiClient {
   /// Fires when the token is rejected (expired, or the account was blocked and signed out).
   Stream<void> get onUnauthorized => _unauthorized.stream;
 
-  /// Origin of the API (for Socket.IO), e.g. `https://api.65-0-233-253.sslip.io`.
+  /// Origin of the API (for Socket.IO), e.g. `https://api.tamiltaxi.co.in`.
   String get origin {
     final u = Uri.parse(baseUrl);
     return '${u.scheme}://${u.host}${u.hasPort ? ':${u.port}' : ''}';

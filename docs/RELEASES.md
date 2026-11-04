@@ -31,6 +31,7 @@ pre-releases on GitHub.
 ### Next release: 0.1.2 (code 3)
 
 - Maps: towns no longer show as dark grey patches at mid zoom (built-up areas are left out of the map style).
+- Talks to the server at `api.tamiltaxi.co.in` instead of the sslip.io address.
 
 ### 0.1.1 (code 2) · 2 Nov 2026
 
@@ -79,6 +80,7 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 - The app sends its version (`x-app-version`, `kDriverAppVersion`), so the server knows it can upload them.
 - Account › Documents counts what it shows (it said "5 of 4 verified" for a driver checked by hand).
 - Maps: towns no longer show as dark grey patches at mid zoom (built-up areas are left out of the map style).
+- Talks to the server at `api.tamiltaxi.co.in` instead of the sslip.io address.
 - A new profile photo shows "being checked" until an admin approves it, and it can be taken any time (it used to wait
   for the identity check, so a driver approved without one could never add the photo needed to go online).
 
