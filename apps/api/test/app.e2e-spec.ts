@@ -325,13 +325,21 @@ describe('Tamil Taxi API (e2e)', () => {
     const body = { pickup, drop, rideMode: 'OUTSTATION', roundTrip: true, scheduledAt: leave.toISOString(), returnAt: back.toISOString() };
     const quotes = (await http.post('/v1/fares/quote').set(quoter).send(body).expect(200)).body.quotes;
     const mini = quotes.find((q: { vehicleKind: string }) => q.vehicleKind === 'CAB');
-    expect(mini.modeTerms).toMatchObject({ mode: 'OUTSTATION', roundTrip: true, perKm: 11, allowancePerDay: 300 });
-    expect(mini.total).toBe(mini.modeTerms.includedKm * 11 + 300 * mini.modeTerms.days);
+    // Priced by time: both ways' km, 30 h away = 2 days of allowance, the waiting there at ₹90 an hour.
+    const terms = mini.modeTerms;
+    expect(terms).toMatchObject({ mode: 'OUTSTATION', roundTrip: true, perKm: 11, allowancePerDay: 300, days: 2, awayMin: 1800, waitPerHour: 90, returnAt: back.toISOString() });
+    expect(terms.includedKm).toBe(Math.ceil(2 * terms.routeKm));
+    expect(terms.waitMin).toBe(1800 - 2 * terms.driveMin);
+    expect(mini.total).toBe(Math.floor(terms.includedKm * 11) + 300 * 2 + Math.floor((terms.waitMin * 90) / 60));
+    // No return time: straight back, leaving + the drive both ways, nothing for waiting.
+    const straight = (await http.post('/v1/fares/quote').set(quoter).send({ ...body, returnAt: undefined }).expect(200)).body.quotes
+      .find((q: { vehicleKind: string }) => q.vehicleKind === 'CAB');
+    expect(straight.modeTerms).toMatchObject({ days: 1, waitMin: 0, awayMin: 2 * terms.driveMin, returnAt: new Date(leave.getTime() + 2 * terms.driveMin * 60_000).toISOString() });
+    expect(straight.total).toBe(Math.floor(terms.includedKm * 11) + 300);
     // The drop is outside the service area: fine for outstation, refused for a local ride.
     const rider = await login();
     const pax = { Authorization: `Bearer ${rider}` };
     await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'CAB', pickup, drop }).expect(400);
-    await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'CAB', ...body, returnAt: undefined }).expect(400);
 
     const trip = (await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'CAB', ...body }).expect(201)).body;
     expect(trip).toMatchObject({ status: 'SCHEDULED', rideMode: 'OUTSTATION', fareTotal: mini.total });

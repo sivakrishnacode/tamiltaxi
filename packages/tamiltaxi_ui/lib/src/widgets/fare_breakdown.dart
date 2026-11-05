@@ -101,7 +101,8 @@ class FareBreakdown extends StatelessWidget {
     );
   }
 
-  /// A rental (package, then km / minutes past it) or outstation fare (km, driver allowance, extra km).
+  /// A rental (package, then km / minutes past it) or outstation fare (km, waiting there, driver allowance, extra km and
+  /// a late return).
   factory FareBreakdown._mode(FareQuote q, ModeTerms terms, {Key? key, String? title, String? subtitle, Widget? footer}) {
     String rate(double r) => r == r.roundToDouble() ? '₹${r.toStringAsFixed(0)}' : '₹${r.toStringAsFixed(1)}';
     return FareBreakdown(
@@ -117,10 +118,13 @@ class FareBreakdown extends StatelessWidget {
               if (q.extraKmCharge > 0) FareLine('Extra distance', q.extraKmCharge, note: '${rate(t.extraKmRate)} a km', signed: true),
               if (q.extraTimeCharge > 0) FareLine('Extra time', q.extraTimeCharge, note: '${rate(t.extraMinRate)} a min', signed: true),
             ],
+          // The time charge is the allowance plus a round trip's waiting there.
           OutstationTerms t => [
               FareLine(t.roundTrip ? 'Round trip' : 'One way', q.base, note: '${formatCount(t.includedKm)} km × ${rate(t.perKm)}'),
-              FareLine("Driver's allowance", q.timeCharge, note: t.days == 1 ? '1 day' : '${t.days} days'),
+              if (t.waitCharge > 0) FareLine('Waiting there', t.waitCharge, note: '${formatMinutes(t.waitMin)} × ₹${t.waitPerHour} an hour'),
+              FareLine("Driver's allowance", q.timeCharge - t.waitCharge, note: t.days == 1 ? '1 day' : '${t.days} days'),
               if (q.extraKmCharge > 0) FareLine('Extra distance', q.extraKmCharge, note: '${rate(t.perKm)} a km', signed: true),
+              if (q.extraTimeCharge > 0) FareLine('Back later', q.extraTimeCharge, note: '₹${t.waitPerHour} an hour after ${RideModeRates.lateGraceMin} min free', signed: true),
             ],
         },
         if (q.hasCancellationFee) cancellationFeeLine(q),

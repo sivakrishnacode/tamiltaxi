@@ -217,8 +217,8 @@ export class FaresService {
 
   /**
    * Rental or outstation quotes for the cab tiers (Mini, Sedan, SUV), each with the terms it agrees to
-   * (ride-modes.ts). No surge and no city override: the price is fixed up front. Throws 400 for a missing package,
-   * drop or return time.
+   * (ride-modes.ts). No surge and no city override: the price is fixed up front. Throws 400 for a missing package or
+   * drop; a round trip without a return time comes straight back.
    */
   async modeQuotes(params: {
     pickup: GeoPoint;
@@ -248,13 +248,12 @@ export class FaresService {
       });
     }
     if (!params.drop) throw new BadRequestException('Choose where you are going');
+    // A round trip with no return time comes straight back (leaving + the drive both ways).
     const roundTrip = params.roundTrip === true;
-    if (roundTrip && !params.returnAt) throw new BadRequestException('Choose when you come back');
     const route = await this.maps.estimate({ from: params.pickup, to: params.drop, vehicleKind: VehicleKind.CAB });
     return CAB_TIERS.filter(isCabTier).map((kind) => {
-      const terms = outstationTerms({ kind, routeKm: route.distanceKm, roundTrip, leaveAt: params.leaveAt, returnAt: params.returnAt ?? null, rates: pricing.outstation });
-      const awayMin = roundTrip ? Math.max(route.durationMin * 2, Math.round(((params.returnAt as Date).getTime() - params.leaveAt.getTime()) / 60_000)) : route.durationMin;
-      const plan = { distanceKm: roundTrip ? terms.includedKm : route.distanceKm, durationMin: awayMin, ...(typeof route.travelMin === 'number' && { travelMin: route.travelMin }) };
+      const terms = outstationTerms({ kind, routeKm: route.distanceKm, driveMin: route.durationMin, roundTrip, leaveAt: params.leaveAt, returnAt: params.returnAt ?? null, rates: pricing.outstation });
+      const plan = { distanceKm: roundTrip ? terms.includedKm : route.distanceKm, durationMin: terms.awayMin ?? route.durationMin, ...(typeof route.travelMin === 'number' && { travelMin: route.travelMin }) };
       return { ...modeQuote(kind, terms, plan), modeTerms: terms };
     });
   }

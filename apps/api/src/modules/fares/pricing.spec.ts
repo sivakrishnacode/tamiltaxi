@@ -46,13 +46,28 @@ describe('city pricing', () => {
     expect(effectivePricing(null)).toBe(DEFAULT_PRICING);
   });
 
+  it('outstation rows saved before round trips were priced by time keep their rates and get the built-in waiting rate', () => {
+    const saved = clone(DEFAULT_PRICING.outstation) as unknown as Record<string, Record<string, number>>;
+    for (const tier of Object.values(saved)) {
+      delete tier.waitPerHour;
+      tier.roundTripKmPerDay = 250;
+    }
+    saved.SEDAN.roundTripPerKm = 13;
+    const p = effectivePricing({ outstation: saved });
+    expect(p.outstation.SEDAN).toEqual({ ...DEFAULT_PRICING.outstation.SEDAN, roundTripPerKm: 13 });
+    expect(p.outstation.CAB.waitPerHour).toBe(90);
+    const bad = clone(DEFAULT_PRICING.outstation) as unknown as Record<string, Record<string, number>>;
+    bad.SUV.waitPerHour = 99.5;
+    expect(parsePricingSection('outstation', bad)).toMatchObject({ error: expect.stringContaining('SUV waiting') });
+  });
+
   it('custom rates change every up-front price', () => {
     const rental = { ...DEFAULT_PRICING.rental, SEDAN: { prices: [300, 550, 800, 1000, 1500, 1900, 2350, 2750], extraKm: 15, extraMin: 2.5 } };
     expect(rentalTerms('SEDAN', '4h', rental)).toMatchObject({ price: 1000, extraKmRate: 15 });
     expect(rentalTerms('SEDAN', '4h')).toMatchObject({ price: 979 });
 
     const outstation = { ...DEFAULT_PRICING.outstation, CAB: { ...DEFAULT_PRICING.outstation.CAB, oneWayPerKm: 16, allowancePerDay: 350 } };
-    const t = outstationTerms({ kind: 'CAB', routeKm: 100, roundTrip: false, leaveAt: new Date(), returnAt: null, rates: outstation });
+    const t = outstationTerms({ kind: 'CAB', routeKm: 100, driveMin: 120, roundTrip: false, leaveAt: new Date(), returnAt: null, rates: outstation });
     expect(modeQuote(VehicleKind.CAB, t, { distanceKm: 100, durationMin: 120 }).total).toBe(100 * 16 + 350);
 
     const goods = { ...DEFAULT_PRICING.goodsOutstation, PICKUP: { perKm: 33, minKm: 50 } };

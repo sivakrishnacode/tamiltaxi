@@ -1285,7 +1285,7 @@ export interface RentalPackage {
 export type RentalPricing = Record<CabTier, { prices: number[]; extraKm: number; extraMin: number }>;
 export type OutstationPricing = Record<
   CabTier,
-  { oneWayPerKm: number; roundTripPerKm: number; allowancePerDay: number; oneWayMinKm: number; roundTripKmPerDay: number }
+  { oneWayPerKm: number; roundTripPerKm: number; allowancePerDay: number; oneWayMinKm: number; waitPerHour: number }
 >;
 export type GoodsOutstationPricing = Record<GoodsTruck, { perKm: number; minKm: number }>;
 export interface ShiftingPricing {

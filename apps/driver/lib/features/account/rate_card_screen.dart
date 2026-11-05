@@ -169,8 +169,9 @@ class _RateCardScreenState extends ConsumerState<RateCardScreen> {
     return [
       _Section(title: 'Outstation', lines: [
         _Line('One way', 'Per km, at least ${r.oneWayMinKm} km', _rs(r.oneWayPerKm)),
-        _Line('Round trip', 'Per km, at least ${r.roundTripKmPerDay} km a day', _rs(r.roundTripPerKm)),
-        _Line('Driver’s allowance', 'Per day', formatInr(r.allowancePerDay)),
+        _Line('Round trip', 'Per km, there and back', _rs(r.roundTripPerKm)),
+        _Line('Waiting there', 'Per hour, and when back late', formatInr(r.waitPerHour)),
+        _Line('Driver’s allowance', 'Per 24 hours', formatInr(r.allowancePerDay)),
       ]),
     ];
   }

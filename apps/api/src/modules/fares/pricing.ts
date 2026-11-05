@@ -91,7 +91,8 @@ function outstation(raw: unknown): OutstationRates {
       roundTripPerKm: need(num(r.roundTripPerKm, `${label} round trip ₹/km`, 1, 200)),
       allowancePerDay: need(num(r.allowancePerDay, `${label} driver allowance`, 0, 5_000, true)),
       oneWayMinKm: need(num(r.oneWayMinKm, `${label} one way minimum km`, 0, 500, true)),
-      roundTripKmPerDay: need(num(r.roundTripKmPerDay, `${label} km a day`, 1, 1_000, true)),
+      // Rows saved before round trips were priced by time (5 Nov 2026) have none: the built-in rate.
+      waitPerHour: r.waitPerHour == null ? OUTSTATION_RATES[tier].waitPerHour : need(num(r.waitPerHour, `${label} waiting ₹/hour`, 0, 2_000, true)),
     };
   }
   return out;

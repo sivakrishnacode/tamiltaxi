@@ -500,7 +500,7 @@ String? _rateOf(RideRequest r) => r.isShifting ? null : switch (r.modeTerms) {
     };
 
 /// Rental / outstation: a band across the top of the card saying what the trip is ("Rental · 4 hrs · 40 km
-/// package", "Outstation · Round trip · 2 days") and, for a trip booked ahead, the pickup time, so it reads apart
+/// package", "Outstation · Round trip · 9 h 40 min") and, for a trip booked ahead, the pickup time, so it reads apart
 /// from the rides around it.
 class _ModeBand extends StatelessWidget {
   const _ModeBand({required this.request});
@@ -518,8 +518,12 @@ class _ModeBand extends StatelessWidget {
           [shift.homeSize.label, if (shift.lines case final l?) '${l.helperCount} helpers', if (r.isOutstation) 'another town'].join(' · '),
         ),
       RentalTerms t => ('Rental', Symbols.timer_rounded, '${t.package.label} package'),
-      OutstationTerms(roundTrip: true, :final days) =>
-        ('Outstation', Symbols.route_rounded, 'Round trip · ${days == 1 ? 'same day' : '$days days'}'),
+      // How long the cab is away ("2 days" from trips booked before 5 Nov 2026, which have no planned time).
+      OutstationTerms(roundTrip: true, :final awayMin, :final days) => (
+          'Outstation',
+          Symbols.route_rounded,
+          'Round trip · ${awayMin > 0 && awayMin < 1440 ? formatMinutes(awayMin) : days == 1 ? '1 day' : '$days days'}',
+        ),
       OutstationTerms() => ('Outstation', Symbols.route_rounded, 'One way'),
       null => r.isRental ? ('Rental', Symbols.timer_rounded, 'By the hour') : ('Outstation', Symbols.route_rounded, 'Another town'),
     };

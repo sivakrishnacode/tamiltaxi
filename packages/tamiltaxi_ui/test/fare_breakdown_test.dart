@@ -28,4 +28,20 @@ void main() {
     expect(find.text('Night fare'), findsNothing);
     expect(find.text('Time charge'), findsOneWidget);
   });
+
+  test('an outstation round trip: km, the waiting there and the allowance add up to the total; a late return after', () {
+    final leave = DateTime.utc(2026, 10, 6, 0, 30);
+    final t = RideModeRates.outstationTerms(VehicleKind.cab,
+        routeKm: 40.1, driveMin: 55, roundTrip: true, leaveAt: leave, returnAt: leave.add(const Duration(hours: 14)));
+    final q = RideModeRates.quote(Seed.cab, t, distanceKm: 81, durationMin: 840);
+    final lines = FareBreakdown.fromQuote(q).lines;
+    expect([for (final l in lines) (l.label, l.amount)], [('Round trip', 891), ('Waiting there', 1095), ("Driver's allowance", 300)]);
+    expect(lines.fold(0, (sum, l) => sum + l.amount), q.total);
+    final late = q.copyWith(extraTimeCharge: 15, total: q.total + 15);
+    expect(FareBreakdown.fromQuote(late).lines.last.label, 'Back later');
+    // Straight back: no waiting line.
+    final quick = RideModeRates.outstationTerms(VehicleKind.cab, routeKm: 40.1, driveMin: 55, roundTrip: true, leaveAt: leave);
+    expect([for (final l in FareBreakdown.fromQuote(RideModeRates.quote(Seed.cab, quick, distanceKm: 81, durationMin: 110)).lines) l.label],
+        ['Round trip', "Driver's allowance"]);
+  });
 }

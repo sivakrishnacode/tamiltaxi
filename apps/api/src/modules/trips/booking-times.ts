@@ -12,7 +12,7 @@ export const SHIFTING_LEAD_MS = 60 * 60_000;
 /**
  * The booking's pickup time ([scheduledAt]: null = now) and an outstation round trip's return, checked: booking for
  * later is for rentals and outstation trips, up to [MAX_DAYS_AHEAD] days ahead; a round trip comes back after it
- * leaves and within [MAX_DAYS_AHEAD] days. A house shift ([opts.shifting]) is always for a slot, at least an hour
+ * leaves and within [MAX_DAYS_AHEAD] days, or straight back when it has no return time. A house shift ([opts.shifting]) is always for a slot, at least an hour
  * ahead. Throws 400 with what to fix.
  */
 export function bookingTimes(
@@ -37,8 +37,8 @@ export function bookingTimes(
     scheduledAt = at.getTime() <= now.getTime() + NOW_SLACK_MS ? null : at;
   }
   let returnAt: Date | null = null;
-  if (mode === RideMode.OUTSTATION && dto.roundTrip) {
-    if (!dto.returnAt) throw new BadRequestException('Choose when you come back');
+  // No return time: straight back (the fare sets it to leaving + the drive both ways).
+  if (mode === RideMode.OUTSTATION && dto.roundTrip && dto.returnAt) {
     returnAt = new Date(dto.returnAt);
     const leave = scheduledAt ?? now;
     if (returnAt.getTime() <= leave.getTime()) throw new BadRequestException('Come back after you leave');

@@ -224,23 +224,33 @@ function OutstationCard({ cityId, pricing }: { cityId: string; pricing: CityPric
   const cols: { key: Key; label: string; step: string }[] = [
     { key: "oneWayPerKm", label: "One way ₹/km", step: "0.5" },
     { key: "roundTripPerKm", label: "Round trip ₹/km", step: "0.5" },
-    { key: "allowancePerDay", label: "Driver allowance ₹/day", step: "10" },
+    { key: "waitPerHour", label: "Waiting ₹/hour", step: "10" },
+    { key: "allowancePerDay", label: "Driver allowance ₹/24 h", step: "10" },
     { key: "oneWayMinKm", label: "One way, at least km", step: "5" },
-    { key: "roundTripKmPerDay", label: "Round trip, km a day", step: "10" },
   ];
   const v = s.value;
   const oneWay = (t: CabTier): number => (v ? Math.floor(Math.max(v[t].oneWayMinKm, 150) * v[t].oneWayPerKm) + v[t].allowancePerDay : 0);
+  // 75 km each way (2 h's drive), back after 8 h: 150 km, 4 h waiting, one allowance.
+  const roundTrip = (t: CabTier): number => (v ? Math.floor(150 * v[t].roundTripPerKm) + 4 * v[t].waitPerHour + v[t].allowancePerDay : 0);
   return (
     <SectionCard
       title="Outstation (cabs)"
-      description="To another town. One way: the route km (at least the minimum) at the one-way rate plus one day's driver allowance, fixed. Round trip: the km a day are included (or twice the route if more) at the round-trip rate, plus the allowance per day; more km are added at the end."
+      description="To another town. One way: the route km (at least the minimum) at the one-way rate plus one day's driver allowance, fixed. Round trip, priced by time: both ways' km at the round-trip rate, the time waiting there (away time past the drive both ways) at the waiting rate, and the allowance per 24 hours away; more km, and coming back more than 30 min late, are added at the end."
       isDefault={pricing.sections.outstation.isDefault}
       isDirty={s.isDirty}
       isValid={!!v}
       isPending={s.isPending}
       onSave={s.save}
       onReset={s.reset}
-      example={v ? <>150 km one way: {CAB_TIERS.map((t) => `${TIER[t]} ${formatInr(oneWay(t))}`).join(" · ")}</> : null}
+      example={
+        v ? (
+          <>
+            150 km one way: {CAB_TIERS.map((t) => `${TIER[t]} ${formatInr(oneWay(t))}`).join(" · ")}
+            <br />
+            75 km each way, back after 8 h: {CAB_TIERS.map((t) => `${TIER[t]} ${formatInr(roundTrip(t))}`).join(" · ")}
+          </>
+        ) : null
+      }
     >
       <Table>
         <TableHeader>

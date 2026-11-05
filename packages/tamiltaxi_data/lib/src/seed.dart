@@ -666,12 +666,12 @@ abstract final class Seed {
     final leave = DateTime(now.year, now.month, now.day + 1, 6);
     final back = DateTime(now.year, now.month, now.day + 2, 18);
     final ooty = outstationTowns[1];
-    final terms = RideModeRates.outstationTerms(VehicleKind.sedan, routeKm: 86, roundTrip: true, leaveAt: leave, returnAt: back);
+    final terms = RideModeRates.outstationTerms(VehicleKind.sedan, routeKm: 86, driveMin: 150, roundTrip: true, leaveAt: leave, returnAt: back);
     return RideRequest(
       id: 'REQ-O1',
       kind: TripKind.ride,
       vehicle: VehicleKind.sedan,
-      fare: (terms.includedKm * terms.perKm).floor() + terms.allowancePerDay * terms.days,
+      fare: (terms.includedKm * terms.perKm).floor() + terms.allowancePerDay * terms.days + terms.waitCharge,
       pickup: gandhipuram,
       drop: ooty,
       pickupDistanceKm: 2.4,

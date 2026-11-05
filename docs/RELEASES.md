@@ -30,7 +30,10 @@ pre-releases on GitHub.
 
 ### Next release: 0.1.3 (code 4)
 
-Nothing yet.
+- Outstation round trips start "straight back": the return is leaving plus the drive there and back (Pollachi and
+  back: about 1 h 50 min), not the next evening, so the first price is for a same-day trip. Tap the return to stay
+  longer; the earliest return is the drive both ways. The fare shows the waiting there as its own line, and the notes
+  say what waiting costs an hour and that coming back later than chosen is added at the end, the first 30 min free.
 
 ### 0.1.2 (code 3) · 4 Nov 2026
 
@@ -108,6 +111,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
   inside the zone, instead of hidden under the card.
 - Go offline asks first ("Go offline?" with Stay online), so a tap while putting the phone in a pocket doesn't end
   the shift.
+- Outstation round trips: the request card says how long the trip is away ("Round trip · 9 h 40 min", days past 24
+  hours) instead of "same day", and the fare shows the waiting there and a late return as their own lines. Rate card:
+  round trip per km there and back, waiting per hour, allowance per 24 hours (no "km a day").
 
 ### 0.1.2 (code 4) · 4 Nov 2026
 
@@ -208,7 +214,15 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `e5f3f14` (API) and `cf87969` (admin).
+API and admin (no database change).
+
+- **Outstation round trips priced by time** (like Red Taxi): both ways' km at the round-trip rate, the waiting there
+  by the hour (Mini ₹90, Sedan ₹100, SUV ₹130) and the driver allowance per 24 hours away. No more 250 km a day:
+  Pollachi and back the same morning is about ₹1,190 for a Mini instead of ₹3,050. A round trip without a return
+  time comes straight back; coming back more than 30 min late adds the time at the end. Trips booked before keep
+  their price.
+- **Admin › City › Rentals & more:** Outstation has "Waiting ₹/hour" instead of "Round trip, km a day", and a round
+  trip example under the table.
 
 ### 5 Nov 2026 · API at `e5f3f14`
 

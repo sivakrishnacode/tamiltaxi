@@ -209,7 +209,7 @@ class _RentalPackagePickerState extends State<RentalPackagePicker> {
 
 /// "Now" or a pickup time later (up to [RideModeRates.maxDaysAhead] days). [onChanged] gets null for now.
 class WhenChoice extends ConsumerWidget {
-  const WhenChoice({super.key, required this.at, required this.onChanged, this.label = 'Pickup', this.allowNow = true, this.after});
+  const WhenChoice({super.key, required this.at, required this.onChanged, this.label = 'Pickup', this.allowNow = true, this.after, this.note});
 
   /// Null = now.
   final DateTime? at;
@@ -223,6 +223,9 @@ class WhenChoice extends ConsumerWidget {
 
   /// Earliest allowed time (a return after leaving); default [earliestLaterPickup].
   final DateTime? after;
+
+  /// Under the chosen time instead of "Tap to change" ("Straight back · tap to stay longer").
+  final String? note;
 
   Future<void> _pick(BuildContext context, WidgetRef ref) async {
     final picked = await pickTripTime(context, initial: at, after: after, title: label, leadMin: ref.read(dispatchLeadMinProvider));
@@ -251,7 +254,7 @@ class WhenChoice extends ConsumerWidget {
           child: _WhenTile(
             icon: Symbols.calendar_month_rounded,
             title: at == null ? 'Schedule' : formatWhen(at!),
-            subtitle: at == null ? 'Up to ${RideModeRates.maxDaysAhead} days ahead' : 'Tap to change',
+            subtitle: at == null ? 'Up to ${RideModeRates.maxDaysAhead} days ahead' : note ?? 'Tap to change',
             selected: later,
             onTap: () => _pick(context, ref),
           ),

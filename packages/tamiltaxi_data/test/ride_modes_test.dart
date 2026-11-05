@@ -37,6 +37,7 @@ void main() {
       final t = RideModeRates.outstationTerms(
         kind(i['kind']),
         routeKm: (i['routeKm'] as num).toDouble(),
+        driveMin: i['driveMin'] as int,
         roundTrip: i['roundTrip'] as bool,
         leaveAt: DateTime.parse(i['leaveAt'] as String),
         returnAt: i['returnAt'] == null ? null : DateTime.parse(i['returnAt'] as String),
@@ -46,8 +47,12 @@ void main() {
       expect(t.includedKm, e['includedKm']);
       expect(same(t.perKm, e['perKm']), isTrue);
       expect(t.allowancePerDay, e['allowancePerDay']);
+      if (t.roundTrip) {
+        expect(t.awayMin, e['awayMin']);
+        expect(t.waitMin, e['waitMin']);
+      }
       expect(q.total, e['total']);
-      final s = settled(RideModeRates.settle(t, (i['actualKm'] as num).toDouble(), 600));
+      final s = settled(RideModeRates.settle(t, (i['actualKm'] as num).toDouble(), ((i['actualMin'] as num?) ?? 600).toDouble()));
       for (final MapEntry(:key, :value) in (e['settlement'] as Map).cast<String, dynamic>().entries) {
         expect(same(s[key], value), isTrue, reason: '$key: ${s[key]} vs $value');
       }
@@ -59,6 +64,25 @@ void main() {
     expect(t, isA<RentalTerms>());
     expect((t! as RentalTerms).package.label, '4 hrs · 40 km');
     expect(ModeTerms.fromJson(null), isNull);
+  });
+
+  test('round trip terms: straight back by default, the waiting there in the time charge, read back from the API', () {
+    final leave = DateTime.utc(2026, 10, 6, 0, 30);
+    final quick = RideModeRates.outstationTerms(VehicleKind.cab, routeKm: 40.1, driveMin: 55, roundTrip: true, leaveAt: leave);
+    expect(quick.returnAt, DateTime.utc(2026, 10, 6, 2, 20));
+    expect((quick.awayMin, quick.waitMin, quick.days, quick.includedKm), (110, 0, 1, 81));
+    final evening = RideModeRates.outstationTerms(VehicleKind.cab,
+        routeKm: 40.1, driveMin: 55, roundTrip: true, leaveAt: leave, returnAt: leave.add(const Duration(hours: 14)));
+    expect((evening.waitMin, evening.waitCharge), (730, 1095));
+    final q = RideModeRates.quote(Seed.vehicle(VehicleKind.cab), evening, distanceKm: 81, durationMin: 840);
+    expect((q.base, q.timeCharge, q.total), (891, 1395, 2286));
+    final back = ModeTerms.fromJson(evening.toJson())! as OutstationTerms;
+    expect((back.driveMin, back.awayMin, back.waitMin, back.waitPerHour, back.waitCharge), (55, 840, 730, 90, 1095));
+    // A trip booked before 5 Nov 2026 has none of them: no waiting, no late charge.
+    final old = ModeTerms.fromJson({'mode': 'OUTSTATION', 'roundTrip': true, 'days': 2, 'includedKm': 500, 'perKm': 11, 'allowancePerDay': 300})!
+        as OutstationTerms;
+    expect(old.waitCharge, 0);
+    expect(RideModeRates.settle(old, 512.3, 5000).extraTimeCharge, 0);
   });
 
   test('mode requests send the API what it needs', () {

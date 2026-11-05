@@ -5,7 +5,7 @@ import 'models/vehicle.dart';
 import 'ride_modes.dart';
 
 typedef RentalTierRates = ({List<int> prices, double extraKm, double extraMin});
-typedef OutstationTierRates = ({double oneWayPerKm, double roundTripPerKm, int allowancePerDay, int oneWayMinKm, int roundTripKmPerDay});
+typedef OutstationTierRates = ({double oneWayPerKm, double roundTripPerKm, int allowancePerDay, int oneWayMinKm, int waitPerHour});
 typedef GoodsTruckRates = ({double perKm, int minKm});
 typedef ShiftingSizeRates = ({VehicleKind vehicle, int helpers, int basic, int full, int unpack});
 
@@ -130,7 +130,7 @@ class ModePricing {
           roundTripPerKm: d(r['roundTripPerKm']),
           allowancePerDay: i(r['allowancePerDay']),
           oneWayMinKm: i(r['oneWayMinKm']),
-          roundTripKmPerDay: i(r['roundTripKmPerDay']),
+          waitPerHour: i(r['waitPerHour']),
         ),
       ),
       goodsOutstation: byKind(raw['goodsOutstation'], defaults.goodsOutstation, (r) => (perKm: d(r['perKm']), minKm: i(r['minKm']))),

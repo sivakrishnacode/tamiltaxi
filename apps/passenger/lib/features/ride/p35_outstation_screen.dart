@@ -13,8 +13,9 @@ import 'widgets/mode_widgets.dart';
 
 /// P-35 Outstation: a cab to another town, one way or a round trip, now or up to 7 days ahead. From → To (P-35b
 /// search, other towns allowed), leave and return times, then the cab: one way by the km plus a day's driver
-/// allowance; a round trip with km included per day. Tolls, parking and permits are the rider's. Book now → P-12;
-/// later → P-36 booked.
+/// allowance; a round trip by time (both ways' km, the waiting there by the hour, the allowance per 24 hours),
+/// straight back until the rider picks a return time (Red Taxi style). Tolls, parking and permits are the rider's.
+/// Book now → P-12; later → P-36 booked.
 class P35OutstationScreen extends ConsumerStatefulWidget {
   const P35OutstationScreen({super.key, this.showcase = false});
 
@@ -44,6 +45,10 @@ class _P35OutstationScreenState extends ConsumerState<P35OutstationScreen> {
     }
   }
 
+  /// "1 h 50 min away", "2 days": how long the round trip takes the cab (days of allowance from an older API).
+  static String _away(OutstationTerms t) =>
+      t.awayMin > 0 && t.awayMin < 1440 ? '${formatMinutes(t.awayMin)} away' : (t.days == 1 ? '1 day' : '${t.days} days');
+
   ModeRequest _modeOf(RideFlowState s) => s.mode?.mode == RideMode.outstation ? s.mode! : const ModeRequest(mode: RideMode.outstation);
 
   Future<void> _chooseDestination() async {
@@ -58,10 +63,8 @@ class _P35OutstationScreenState extends ConsumerState<P35OutstationScreen> {
     final flow = ref.read(rideFlowProvider.notifier);
     final m = _modeOf(ref.read(rideFlowProvider));
     if (!roundTrip) return flow.updateMode(m.copyWith(roundTrip: false, clearReturn: true));
-    // A sensible return to start with: the next evening, 6 pm.
-    final leave = m.leaveAt ?? DateTime.now();
-    final back = DateTime(leave.year, leave.month, leave.day + 1, 18);
-    flow.updateMode(m.copyWith(roundTrip: true, returnAt: m.returnAt ?? back));
+    // No return time yet: straight back (the fare sets it to leaving + the drive both ways).
+    flow.updateMode(m.copyWith(roundTrip: true));
   }
 
   Future<void> _book() async {
@@ -151,14 +154,17 @@ class _P35OutstationScreenState extends ConsumerState<P35OutstationScreen> {
         if (mode.roundTrip)
           ModeSection(
             title: 'Come back',
-            trailing: terms is OutstationTerms
-                ? Text(terms.days == 1 ? 'Same day' : '${terms.days} days', style: t.bodySmallMedium.copyWith(color: TtColors.navy500))
+            trailing: terms is OutstationTerms && terms.roundTrip
+                ? Text(_away(terms), style: t.bodySmallMedium.copyWith(color: TtColors.navy500))
                 : null,
             child: WhenChoice(
               label: 'Return',
               allowNow: false,
-              at: mode.returnAt,
-              after: (mode.leaveAt ?? DateTime.now()).add(const Duration(hours: 2)),
+              // Straight back until the rider picks a time: the fare's return (leaving + the drive both ways).
+              at: mode.returnAt ?? (terms is OutstationTerms && terms.roundTrip ? terms.returnAt : null),
+              note: mode.returnAt == null && terms is OutstationTerms ? 'Straight back · tap to stay longer' : null,
+              after: (mode.leaveAt ?? DateTime.now())
+                  .add(Duration(minutes: terms is OutstationTerms && terms.driveMin > 0 ? 2 * terms.driveMin : 120)),
               onChanged: (at) => flow.updateMode(mode.copyWith(returnAt: at)),
             ),
           ),
@@ -180,6 +186,12 @@ class _P35OutstationScreenState extends ConsumerState<P35OutstationScreen> {
                 "Driver's allowance included (${formatInr(terms.allowancePerDay)} a day${terms.days > 1 ? ' × ${terms.days}' : ''})"),
           if (terms is OutstationTerms && terms.roundTrip)
             (Symbols.route_rounded, '${formatCount(terms.includedKm)} km included; more is ${formatInr(terms.perKm)} a km, added at the end'),
+          if (terms is OutstationTerms && terms.roundTrip && terms.waitPerHour > 0)
+            (
+              Symbols.schedule_rounded,
+              'Waiting there is ${formatInr(terms.waitPerHour)} an hour${terms.waitMin > 0 ? ', ${formatMinutes(terms.waitMin)} included' : ''}. '
+                  "Back later than you chose? It's added at the end, the first ${RideModeRates.lateGraceMin} min free",
+            ),
           (Symbols.toll_rounded, 'Tolls, parking and state permits are paid by you on the way'),
           if (mode.isLater)
             (Symbols.event_available_rounded,

@@ -93,7 +93,7 @@ void main() {
     expect(find.text('UPCOMING'), findsNothing);
   });
 
-  testWidgets('Outstation: choose a town, round trip, fares per km with the allowance', (tester) async {
+  testWidgets('Outstation: choose a town, round trip straight back by default, priced by time', (tester) async {
     final container = await pumpRoute(tester, Routes.outstation);
     await advance(tester, const Duration(milliseconds: 500));
     expect(find.byType(P35OutstationScreen), findsOneWidget);
@@ -111,9 +111,15 @@ void main() {
     await tapText(tester, 'Round trip');
     final round = container.read(rideFlowProvider).quote.modeTerms! as OutstationTerms;
     expect(round.roundTrip, isTrue);
-    expect(round.includedKm, greaterThanOrEqualTo(250));
+    // Straight back: both ways' km, back after the drive both ways, nothing for waiting.
+    expect(container.read(rideFlowProvider).mode!.returnAt, isNull);
+    expect(round.includedKm, (2 * round.routeKm).ceil());
+    expect((round.awayMin, round.waitMin), (2 * round.driveMin, 0));
+    expect(round.returnAt, isNotNull);
     await tester.scrollUntilVisible(find.text('Come back'), 200, scrollable: _sheet());
     expect(find.text('Come back'), findsOneWidget);
+    expect(find.text('Straight back · tap to stay longer'), findsOneWidget);
+    expect(find.text('${formatMinutes(round.awayMin)} away'), findsOneWidget);
     await tester.scrollUntilVisible(find.textContaining('km included').first, 200, scrollable: _sheet());
     expect(find.textContaining('km included'), findsWidgets);
   });

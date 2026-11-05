@@ -54,6 +54,10 @@ sealed class ModeTerms {
           perKm: n('perKm').toDouble(),
           allowancePerDay: n('allowancePerDay').toInt(),
           routeKm: n('routeKm').toDouble(),
+          driveMin: n('driveMin').toInt(),
+          awayMin: n('awayMin').toInt(),
+          waitMin: n('waitMin').toInt(),
+          waitPerHour: n('waitPerHour').toInt(),
         ),
       _ => null,
     };
@@ -105,17 +109,40 @@ final class OutstationTerms extends ModeTerms {
     required this.perKm,
     required this.allowancePerDay,
     required this.routeKm,
+    this.driveMin = 0,
+    this.awayMin = 0,
+    this.waitMin = 0,
+    this.waitPerHour = 0,
   });
 
   final bool roundTrip;
+
+  /// Round trip: when the rider comes back; straight back = leaving + the drive both ways.
   final DateTime? returnAt;
+
+  /// Days of driver allowance: 1 one way; a round trip's 24-hour blocks away (26 h = 2).
   final int days;
 
-  /// One way: the km charged (the route, at least the minimum); round trip: the km included in the price.
+  /// One way: the km charged (the route, at least the minimum); round trip: both ways' km, included in the price.
   final int includedKm;
   final double perKm;
   final int allowancePerDay;
   final double routeKm;
+
+  /// Round trip (0 one way and on trips booked before 5 Nov 2026): the drive one way, minutes.
+  final int driveMin;
+
+  /// Round trip: minutes from leaving to coming back, at least the drive both ways.
+  final int awayMin;
+
+  /// Round trip: minutes waiting there that the price includes (away − the drive both ways).
+  final int waitMin;
+
+  /// Round trip: ₹ an hour of waiting, and of a late return past [RideModeRates.lateGraceMin].
+  final int waitPerHour;
+
+  /// The waiting there in the fare, whole rupees rounded down (0 one way and on older trips).
+  int get waitCharge => waitMin * waitPerHour ~/ 60;
 
   @override
   RideMode get mode => RideMode.outstation;
@@ -130,6 +157,7 @@ final class OutstationTerms extends ModeTerms {
         'perKm': perKm,
         'allowancePerDay': allowancePerDay,
         'routeKm': routeKm,
+        if (roundTrip) ...{'driveMin': driveMin, 'awayMin': awayMin, 'waitMin': waitMin, 'waitPerHour': waitPerHour},
       };
 }
 
@@ -208,14 +236,19 @@ abstract final class RideModeRates {
     VehicleKind.suv: (prices: [379, 679, 979, 1279, 1879, 2399, 2999, 3499], extraKm: 18, extraMin: 3),
   };
 
+  /// One way: the route km (at least the minimum) and a day's allowance. Round trip, priced by time (5 Nov 2026):
+  /// both ways' km, the waiting there by the hour and the allowance per 24 hours away.
   static const Map<VehicleKind, OutstationTierRates> outstation = {
-    VehicleKind.cab: (oneWayPerKm: 14, roundTripPerKm: 11, allowancePerDay: 300, oneWayMinKm: 60, roundTripKmPerDay: 250),
-    VehicleKind.sedan: (oneWayPerKm: 15, roundTripPerKm: 12, allowancePerDay: 300, oneWayMinKm: 60, roundTripKmPerDay: 250),
-    VehicleKind.suv: (oneWayPerKm: 19, roundTripPerKm: 16, allowancePerDay: 400, oneWayMinKm: 60, roundTripKmPerDay: 250),
+    VehicleKind.cab: (oneWayPerKm: 14, roundTripPerKm: 11, allowancePerDay: 300, oneWayMinKm: 60, waitPerHour: 90),
+    VehicleKind.sedan: (oneWayPerKm: 15, roundTripPerKm: 12, allowancePerDay: 300, oneWayMinKm: 60, waitPerHour: 100),
+    VehicleKind.suv: (oneWayPerKm: 19, roundTripPerKm: 16, allowancePerDay: 400, oneWayMinKm: 60, waitPerHour: 130),
   };
 
   /// Up to a week away: how far ahead a trip can be booked, and the longest round trip.
   static const maxDaysAhead = 7;
+
+  /// A round trip back this much later than booked pays nothing more (ETA error, a slow ghat road).
+  static const lateGraceMin = 30;
 
   /// Minutes before the pickup time that a trip booked for later starts looking for a driver (the API's default).
   static const dispatchLeadMin = 30;
@@ -231,16 +264,12 @@ abstract final class RideModeRates {
     return RentalTerms(packageId: p.id, hours: p.hours, km: p.km, price: r.prices[i], extraKmRate: r.extraKm, extraMinRate: r.extraMin);
   }
 
-  /// Calendar days (IST) from [from] to [to], both counted: Tue 6 am → Tue 10 pm = 1, Tue → Wed = 2.
-  static int istDays(DateTime from, DateTime to) {
-    int day(DateTime t) => (t.toUtc().millisecondsSinceEpoch + 330 * 60000) ~/ 86400000;
-    final d = day(to) - day(from) + 1;
-    return d < 1 ? 1 : d;
-  }
-
+  /// [returnAt] null, or before the drive both ways ([driveMin] each), means straight back: leaving + the drive
+  /// both ways (P-35's default, Red Taxi style).
   static OutstationTerms outstationTerms(
     VehicleKind kind, {
     required double routeKm,
+    required int driveMin,
     required bool roundTrip,
     required DateTime leaveAt,
     DateTime? returnAt,
@@ -253,28 +282,33 @@ abstract final class RideModeRates {
       return OutstationTerms(
           roundTrip: false, returnAt: null, days: 1, includedKm: charged, perKm: r.oneWayPerKm, allowancePerDay: r.allowancePerDay, routeKm: km);
     }
-    final days = istDays(leaveAt, returnAt ?? leaveAt);
-    final perDay = r.roundTripKmPerDay * days;
-    final twice = (2 * km).ceil();
+    final drive = driveMin < 1 ? 1 : driveMin;
+    final asked = returnAt == null ? 0 : (returnAt.difference(leaveAt).inSeconds / 60).round();
+    final straightBack = asked < 2 * drive;
+    final away = straightBack ? 2 * drive : asked;
     return OutstationTerms(
       roundTrip: true,
-      returnAt: returnAt ?? leaveAt,
-      days: days,
-      includedKm: perDay > twice ? perDay : twice,
+      returnAt: straightBack ? leaveAt.add(Duration(minutes: away)) : returnAt,
+      days: (away / 1440).ceil().clamp(1, 1 << 30),
+      includedKm: (2 * km).ceil(),
       perKm: r.roundTripPerKm,
       allowancePerDay: r.allowancePerDay,
       routeKm: km,
+      driveMin: drive,
+      awayMin: away,
+      waitMin: away - 2 * drive,
+      waitPerHour: r.waitPerHour,
     );
   }
 
   /// The quote for [terms]: `base` is the package price (rental) or the km charge (outstation), `timeCharge` the
-  /// driver allowance. No surge.
+  /// driver allowance plus a round trip's waiting there. No surge.
   static FareQuote quote(VehicleType vehicle, ModeTerms terms, {required double distanceKm, required int durationMin, int? travelMin}) {
     final base = switch (terms) {
       RentalTerms t => t.price,
       OutstationTerms t => (t.includedKm * t.perKm).floor(),
     };
-    final allowance = terms is OutstationTerms ? terms.allowancePerDay * terms.days : 0;
+    final allowance = terms is OutstationTerms ? terms.allowancePerDay * terms.days + terms.waitCharge : 0;
     return FareQuote(
       vehicle: vehicle,
       distanceKm: distanceKm,
@@ -311,15 +345,21 @@ abstract final class RideModeRates {
       for (final v in cabs)
         () {
           final t = outstationTerms(v.kind,
-              routeKm: route.distanceKm, roundTrip: request.roundTrip, leaveAt: leave, returnAt: request.returnAt, pricing: pricing);
-          final away = request.roundTrip && request.returnAt != null ? request.returnAt!.difference(leave).inMinutes : route.durationMin;
-          return quote(v, t, distanceKm: request.roundTrip ? t.includedKm.toDouble() : route.distanceKm, durationMin: away);
+              routeKm: route.distanceKm,
+              driveMin: route.durationMin,
+              roundTrip: request.roundTrip,
+              leaveAt: leave,
+              returnAt: request.returnAt,
+              pricing: pricing);
+          return quote(v, t,
+              distanceKm: request.roundTrip ? t.includedKm.toDouble() : route.distanceKm, durationMin: request.roundTrip ? t.awayMin : route.durationMin);
         }(),
     ];
   }
 
   /// What a finished trip adds past its terms (null km: the GPS distance failed, nothing added for km). One-way
-  /// outstation trips are fixed. Each line rounded down.
+  /// outstation trips are fixed; a round trip back later than booked pays the time past [lateGraceMin] at its
+  /// waiting rate. Each line rounded down.
   static ModeSettlement settle(ModeTerms terms, double? actualKm, double actualMin) {
     if (terms is OutstationTerms && !terms.roundTrip) return (extraKm: 0, extraMin: 0, extraKmCharge: 0, extraTimeCharge: 0);
     final allowedKm = switch (terms) {
@@ -332,13 +372,19 @@ abstract final class RideModeRates {
       RentalTerms t => t.extraKmRate,
       OutstationTerms t => t.perKm,
     };
-    final extraMin = terms is RentalTerms ? (actualMin - terms.hours * 60).ceil().clamp(0, 1 << 30) : 0;
-    final minRate = terms is RentalTerms ? terms.extraMinRate : 0.0;
+    final extraKmCharge = (extraKm * kmRate + 1e-9).floor();
+    if (terms is OutstationTerms) {
+      // Older round trips (before 5 Nov 2026) had no planned time: nothing added for time.
+      final late = terms.awayMin == 0 ? 0 : (actualMin - terms.awayMin - lateGraceMin).ceil().clamp(0, 1 << 30);
+      return (extraKm: extraKm, extraMin: late, extraKmCharge: extraKmCharge, extraTimeCharge: late * terms.waitPerHour ~/ 60);
+    }
+    final rental = terms as RentalTerms;
+    final extraMin = (actualMin - rental.hours * 60).ceil().clamp(0, 1 << 30);
     return (
       extraKm: extraKm,
       extraMin: extraMin,
-      extraKmCharge: (extraKm * kmRate + 1e-9).floor(),
-      extraTimeCharge: (extraMin * minRate + 1e-9).floor(),
+      extraKmCharge: extraKmCharge,
+      extraTimeCharge: (extraMin * rental.extraMinRate + 1e-9).floor(),
     );
   }
 }

@@ -16,7 +16,7 @@ Map<String, Object> apiDefaults() => {
             'roundTripPerKm': value.roundTripPerKm,
             'allowancePerDay': value.allowancePerDay,
             'oneWayMinKm': value.oneWayMinKm,
-            'roundTripKmPerDay': value.roundTripKmPerDay,
+            'waitPerHour': value.waitPerHour,
           },
       },
       'goodsOutstation': {
@@ -62,7 +62,7 @@ void main() {
     final p = ModePricing.fromJson(json);
     expect(RideModeRates.rentalTerms(VehicleKind.cab, '1h', pricing: p)!.price, 299);
     final leave = DateTime.utc(2026, 10, 6, 1);
-    expect(RideModeRates.outstationTerms(VehicleKind.sedan, routeKm: 50, roundTrip: false, leaveAt: leave, pricing: p).includedKm, 80);
+    expect(RideModeRates.outstationTerms(VehicleKind.sedan, routeKm: 50, driveMin: 70, roundTrip: false, leaveAt: leave, pricing: p).includedKm, 80);
     expect(GoodsModeRates.outstationTerms(VehicleKind.pickup, 100, pricing: p).perKm, 33);
     const d = ShiftingDetails(homeSize: HomeSize.oneBhk);
     expect(GoodsModeRates.lines(d, 1000, DateTime.utc(2026, 10, 1, 3, 30), pricing: p).helpers, 1000);

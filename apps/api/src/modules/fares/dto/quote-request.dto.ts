@@ -45,7 +45,7 @@ export class QuoteRequestDto {
   @IsBoolean()
   roundTrip?: boolean;
 
-  /** OUTSTATION round trip: when the rider comes back (ISO). */
+  /** OUTSTATION round trip: when the rider comes back (ISO); none = straight back (leaving + the drive both ways). */
   @IsOptional()
   @IsDateString()
   returnAt?: string;

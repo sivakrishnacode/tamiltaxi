@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 5 Nov 2026 (live surge guarded against fake demand; SD-20 to SD-22 added; earlier, 10 Oct: offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
+Last updated: 5 Nov 2026 (Red Taxi's outstation pricing compared, round trips now priced by time; live surge guarded against fake demand; SD-20 to SD-22 added; earlier, 10 Oct: offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
 
 ---
 
@@ -217,6 +217,28 @@ real rider than a phone number. Supply should be measured over the same window a
 under it in a minute. Cost: a driver who really ends their shift still counts for up to `demandWindowMin`, so surge
 starts a little later (riders pay less, never more). Brand-new riders still show on the driver map, through its
 last-hour bookings. Next: SD-20 to SD-22.
+
+### 5 Nov 2026: Red Taxi's outstation pricing (one way vs round trip)
+
+Source: Red Taxi on the owner's phone (no booking made), from near Pattanam to Pollachi (40 km), Tiruppur (50 km)
+and Ooty (111 km), leaving at about 6:20 am.
+
+| | Red Taxi | Us before | Us now (5 Nov 2026) |
+|---|---|---|---|
+| Leave | now + 15 min, up to 60 days ahead | now, up to 7 days | unchanged |
+| Default return | leaving + the drive both ways (Pollachi +1 h 51 m, Ooty +6 h 46 m), within 10 days | the next day, 6 pm | straight back, Red Taxi style |
+| One way | both ways charged ("Both up and down amount will be applicable"): GoTaxi ₹1,050 Pollachi, ₹2,583 Ooty | route km (≥ 60) × ₹14 + ₹300: ₹1,140, ~₹1,870 | unchanged |
+| Round trip, straight back | only a little over one way: GoTaxi ₹1,216 Pollachi | 250 km × ₹11 + ₹300 = ₹3,050 | 81 km × ₹11 + ₹300 = ₹1,191 |
+| Waiting there | ~₹80–145 an hour (GoTaxi Pollachi: ₹1,371 at 3 h 51 m, ₹2,184 at 9 h 50 m, ₹2,520 at 13 h 49 m) | nothing per hour; 250 km a calendar day | ₹90 / 100 / 130 an hour |
+| Next morning / 2 days | ₹3,125 / ₹5,325 | 2 / 3 calendar days: ₹6,100 / ₹9,150 | 24-hour blocks: ~₹3,175 / ~₹5,635 |
+| SUV-class | much flatter with time, a day-rate shape | per km like the cabs | unchanged shape |
+
+Learned: riders compare the first price they see, and for us that was a 2-day price for a trip they hadn't chosen.
+Time is what a round trip costs the driver once the km are paid, so price the wait, not a km allowance nobody
+drives; count days in 24-hour blocks so an overnight trip isn't two days. Once time is in the price, a late return
+has to be charged at the end (we give 30 min free for ETA error), or riders book the shortest stay. Gaps: Red Taxi
+lets riders book 60 days ahead (we allow 7), and their fare breakdown is only shown after "Confirm pickup", so the
+exact hourly rule is a fit to their prices, not their formula.
 
 ## 4. Optimization backlog
 

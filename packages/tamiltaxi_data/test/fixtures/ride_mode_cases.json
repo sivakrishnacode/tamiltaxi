@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared rental / outstation cases, read by apps/api/src/modules/fares/ride-modes.spec.ts and packages/tamiltaxi_data/test/ride_modes_test.dart. Both must produce exactly these numbers; edit both rate tables and this file together. Outstation settlement uses 600 actual minutes.",
+  "_comment": "Shared rental / outstation cases, read by apps/api/src/modules/fares/ride-modes.spec.ts and packages/tamiltaxi_data/test/ride_modes_test.dart. Both must produce exactly these numbers; edit both rate tables and this file together. Outstation settlement uses 600 actual minutes unless actualMin is given.",
   "rental": [
     {
       "name": "Rental CAB 1h",
@@ -71,6 +71,7 @@
       "input": {
         "kind": "CAB",
         "routeKm": 22,
+        "driveMin": 35,
         "roundTrip": false,
         "leaveAt": "2026-10-06T00:30:00.000Z",
         "returnAt": null,
@@ -95,6 +96,7 @@
       "input": {
         "kind": "SEDAN",
         "routeKm": 87.4,
+        "driveMin": 140,
         "roundTrip": false,
         "leaveAt": "2026-10-06T00:30:00.000Z",
         "returnAt": null,
@@ -115,34 +117,67 @@
       }
     },
     {
-      "name": "Outstation CAB round trip 86 km",
+      "name": "Outstation CAB round trip 40.1 km, straight back",
       "input": {
         "kind": "CAB",
-        "routeKm": 86,
+        "routeKm": 40.1,
+        "driveMin": 55,
         "roundTrip": true,
         "leaveAt": "2026-10-06T00:30:00.000Z",
-        "returnAt": "2026-10-07T14:30:00.000Z",
-        "actualKm": 512.3
+        "returnAt": null,
+        "actualKm": 80.9,
+        "actualMin": 120
       },
       "expected": {
-        "days": 2,
-        "includedKm": 500,
+        "days": 1,
+        "includedKm": 81,
         "perKm": 11,
         "allowancePerDay": 300,
-        "total": 6100,
+        "awayMin": 110,
+        "waitMin": 0,
+        "total": 1191,
         "settlement": {
-          "extraKm": 12.3,
+          "extraKm": 0,
           "extraMin": 0,
-          "extraKmCharge": 135,
+          "extraKmCharge": 0,
           "extraTimeCharge": 0
         }
       }
     },
     {
-      "name": "Outstation SUV round trip 300 km",
+      "name": "Outstation CAB round trip 86 km, back the next evening, 45 min late",
+      "input": {
+        "kind": "CAB",
+        "routeKm": 86,
+        "driveMin": 150,
+        "roundTrip": true,
+        "leaveAt": "2026-10-06T00:30:00.000Z",
+        "returnAt": "2026-10-07T14:30:00.000Z",
+        "actualKm": 190.4,
+        "actualMin": 2325
+      },
+      "expected": {
+        "days": 2,
+        "includedKm": 172,
+        "perKm": 11,
+        "allowancePerDay": 300,
+        "awayMin": 2280,
+        "waitMin": 1980,
+        "total": 5462,
+        "settlement": {
+          "extraKm": 18.4,
+          "extraMin": 15,
+          "extraKmCharge": 202,
+          "extraTimeCharge": 22
+        }
+      }
+    },
+    {
+      "name": "Outstation SUV round trip 300 km, same day",
       "input": {
         "kind": "SUV",
         "routeKm": 300,
+        "driveMin": 330,
         "roundTrip": true,
         "leaveAt": "2026-10-06T00:30:00.000Z",
         "returnAt": "2026-10-06T16:30:00.000Z",
@@ -153,7 +188,9 @@
         "includedKm": 600,
         "perKm": 16,
         "allowancePerDay": 400,
-        "total": 10000,
+        "awayMin": 960,
+        "waitMin": 300,
+        "total": 10650,
         "settlement": {
           "extraKm": 0,
           "extraMin": 0,

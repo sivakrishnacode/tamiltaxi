@@ -15,8 +15,8 @@ describe('bookingTimes', () => {
     expect(bookingTimes({ scheduledAt: at(0.01) }, RideMode.RENTAL, now).scheduledAt).toBeNull();
   });
 
-  it('a round trip comes back after it leaves, within 7 days', () => {
-    expect(() => bookingTimes({ roundTrip: true }, RideMode.OUTSTATION, now)).toThrow('come back');
+  it('a round trip comes back after it leaves, within 7 days, or straight back without a return time', () => {
+    expect(bookingTimes({ roundTrip: true }, RideMode.OUTSTATION, now)).toEqual({ scheduledAt: null, returnAt: null });
     expect(() => bookingTimes({ roundTrip: true, scheduledAt: at(5), returnAt: at(4) }, RideMode.OUTSTATION, now)).toThrow('after you leave');
     expect(() => bookingTimes({ roundTrip: true, returnAt: at(24 * 8) }, RideMode.OUTSTATION, now)).toThrow('7 days');
     expect(bookingTimes({ roundTrip: true, scheduledAt: at(5), returnAt: at(30) }, RideMode.OUTSTATION, now).returnAt?.toISOString()).toBe(at(30));

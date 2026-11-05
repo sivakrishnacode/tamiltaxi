@@ -69,49 +69,59 @@ export function rentalTerms(kind: CabTier, packageId: string, rates: RentalRates
 // ---------------------------------------------------------------------------------------------- outstation
 
 /**
- * One way: the route km (at least [oneWayMinKm]) at [oneWayPerKm] (the driver drives back empty). Round trip:
- * [roundTripKmPerDay] km a day are included, or twice the route if that is more, at [roundTripPerKm]. A driver
- * allowance per calendar day either way. Tolls, parking and state permits are paid by the rider on the way.
+ * One way: the route km (at least [oneWayMinKm]) at [oneWayPerKm] (the driver drives back empty) and a day's
+ * allowance. Round trip, priced by time (5 Nov 2026, like Red Taxi): both ways' km at [roundTripPerKm], the time
+ * waiting there (time away past the drive both ways) at [waitPerHour], and the allowance per 24 hours away. Tolls,
+ * parking and state permits are paid by the rider on the way.
  */
 export type OutstationRates = Readonly<
-  Record<CabTier, { oneWayPerKm: number; roundTripPerKm: number; allowancePerDay: number; oneWayMinKm: number; roundTripKmPerDay: number }>
+  Record<CabTier, { oneWayPerKm: number; roundTripPerKm: number; allowancePerDay: number; oneWayMinKm: number; waitPerHour: number }>
 >;
 
 /** The built-in outstation rates (a city may set its own, fares/pricing.ts). */
 export const OUTSTATION_RATES: OutstationRates = {
-  CAB: { oneWayPerKm: 14, roundTripPerKm: 11, allowancePerDay: 300, oneWayMinKm: 60, roundTripKmPerDay: 250 },
-  SEDAN: { oneWayPerKm: 15, roundTripPerKm: 12, allowancePerDay: 300, oneWayMinKm: 60, roundTripKmPerDay: 250 },
-  SUV: { oneWayPerKm: 19, roundTripPerKm: 16, allowancePerDay: 400, oneWayMinKm: 60, roundTripKmPerDay: 250 },
+  CAB: { oneWayPerKm: 14, roundTripPerKm: 11, allowancePerDay: 300, oneWayMinKm: 60, waitPerHour: 90 },
+  SEDAN: { oneWayPerKm: 15, roundTripPerKm: 12, allowancePerDay: 300, oneWayMinKm: 60, waitPerHour: 100 },
+  SUV: { oneWayPerKm: 19, roundTripPerKm: 16, allowancePerDay: 400, oneWayMinKm: 60, waitPerHour: 130 },
 };
 
 /** Up to a week away (round trips and how far ahead a trip can be scheduled). */
 export const MAX_DAYS_AHEAD = 7;
-const IST_MS = 330 * 60_000;
-const DAY_MS = 86_400_000;
-
-/** Calendar days (IST) from [from] to [to], both counted: Tue 6 am → Tue 10 pm = 1, Tue → Wed = 2. */
-export function istDays(from: Date, to: Date): number {
-  const d = (t: Date): number => Math.floor((t.getTime() + IST_MS) / DAY_MS);
-  return Math.max(1, d(to) - d(from) + 1);
-}
+/** A round trip back this much later than booked pays nothing more (ETA error, a slow ghat road). */
+export const LATE_GRACE_MIN = 30;
+const DAY_MIN = 1440;
 
 /** What an outstation trip agreed to (stored in `Trip.modeTerms`). */
 export interface OutstationTerms {
   readonly mode: 'OUTSTATION';
   readonly roundTrip: boolean;
-  /** Round trip: when the rider comes back (ISO). */
+  /** Round trip: when the rider comes back (ISO); straight back = leaving + the drive both ways. */
   readonly returnAt: string | null;
+  /** Days of driver allowance: 1 one way; a round trip's 24-hour blocks away (26 h = 2). */
   readonly days: number;
-  /** One way: the route km (or the minimum); round trip: the km included in the price. */
+  /** One way: the route km (or the minimum); round trip: both ways' km, included in the price. */
   readonly includedKm: number;
   readonly perKm: number;
   readonly allowancePerDay: number;
   readonly routeKm: number;
+  /** Round trip (none on trips booked before 5 Nov 2026): the drive one way, minutes. */
+  readonly driveMin?: number;
+  /** Round trip: minutes from leaving to coming back, at least the drive both ways. */
+  readonly awayMin?: number;
+  /** Round trip: minutes waiting there that the price includes (away − the drive both ways). */
+  readonly waitMin?: number;
+  /** Round trip: ₹ an hour of waiting, and of a late return past [LATE_GRACE_MIN]. */
+  readonly waitPerHour?: number;
 }
 
+/**
+ * [p.returnAt] null, or before the drive both ways ([p.driveMin] each), means straight back: leaving + the drive
+ * both ways (the rider app's default, Red Taxi style).
+ */
 export function outstationTerms(p: {
   kind: CabTier;
   routeKm: number;
+  driveMin: number;
   roundTrip: boolean;
   leaveAt: Date;
   returnAt: Date | null;
@@ -122,17 +132,29 @@ export function outstationTerms(p: {
   if (!p.roundTrip) {
     return { mode: 'OUTSTATION', roundTrip: false, returnAt: null, days: 1, includedKm: Math.max(r.oneWayMinKm, Math.ceil(routeKm)), perKm: r.oneWayPerKm, allowancePerDay: r.allowancePerDay, routeKm };
   }
-  const days = istDays(p.leaveAt, p.returnAt ?? p.leaveAt);
+  const driveMin = Math.max(1, Math.round(p.driveMin));
+  const asked = p.returnAt ? Math.round((p.returnAt.getTime() - p.leaveAt.getTime()) / 60_000) : 0;
+  const straightBack = asked < 2 * driveMin;
+  const awayMin = straightBack ? 2 * driveMin : asked;
   return {
     mode: 'OUTSTATION',
     roundTrip: true,
-    returnAt: (p.returnAt ?? p.leaveAt).toISOString(),
-    days,
-    includedKm: Math.max(r.roundTripKmPerDay * days, Math.ceil(2 * routeKm)),
+    returnAt: (straightBack ? new Date(p.leaveAt.getTime() + awayMin * 60_000) : (p.returnAt as Date)).toISOString(),
+    days: Math.max(1, Math.ceil(awayMin / DAY_MIN)),
+    includedKm: Math.ceil(2 * routeKm),
     perKm: r.roundTripPerKm,
     allowancePerDay: r.allowancePerDay,
     routeKm,
+    driveMin,
+    awayMin,
+    waitMin: awayMin - 2 * driveMin,
+    waitPerHour: r.waitPerHour,
   };
+}
+
+/** A round trip's waiting there, whole rupees rounded down (0 one way and on older trips). */
+export function waitCharge(t: OutstationTerms): number {
+  return Math.floor(((t.waitMin ?? 0) * (t.waitPerHour ?? 0)) / 60);
 }
 
 // ------------------------------------------------------------------------------------------------- quotes
@@ -141,13 +163,14 @@ export type ModeTerms = RentalTerms | OutstationTerms;
 
 /**
  * The fare lines for [terms], in the usual quote shape so every screen and the receipt read it the same way:
- * `base` is the package price (rental) or the km charge (outstation), `timeCharge` the driver allowance.
+ * `base` is the package price (rental) or the km charge (outstation), `timeCharge` the driver allowance plus a round
+ * trip's waiting there ([waitCharge]; apps before 0.1.3 show it all as the allowance, so the lines still add up).
  * [distanceKm] / [durationMin]: what the trip is planned to cover.
  */
 export function modeQuote(kind: VehicleKind, terms: ModeTerms, plan: { distanceKm: number; durationMin: number; travelMin?: number }): FareQuote {
   // Floored like the apps' engine: per-city ₹/km may have paise, and the fare columns are whole rupees.
   const base = terms.mode === 'RENTAL' ? terms.price : Math.floor(terms.includedKm * terms.perKm);
-  const allowance = terms.mode === 'OUTSTATION' ? terms.allowancePerDay * terms.days : 0;
+  const allowance = terms.mode === 'OUTSTATION' ? terms.allowancePerDay * terms.days + waitCharge(terms) : 0;
   const total = base + allowance;
   return {
     vehicleKind: kind,
@@ -180,16 +203,22 @@ export interface ModeSettlement {
 
 /**
  * The extra for [terms] after [actualKm] and [actualMin] (null km: the GPS distance failed, so nothing is added for
- * km). One-way outstation trips are fixed. Each line rounded down, like the fare engine.
+ * km). One-way outstation trips are fixed; a round trip back later than booked pays the time past
+ * [LATE_GRACE_MIN] at its waiting rate. Each line rounded down, like the fare engine.
  */
 export function settleMode(terms: ModeTerms, actualKm: number | null, actualMin: number): ModeSettlement {
   if (terms.mode === 'OUTSTATION' && !terms.roundTrip) return { extraKm: 0, extraMin: 0, extraKmCharge: 0, extraTimeCharge: 0 };
   const allowedKm = terms.mode === 'RENTAL' ? terms.km : terms.includedKm;
   const extraKm = actualKm === null ? 0 : Math.max(0, Math.round((actualKm - allowedKm) * 10) / 10);
   const kmRate = terms.mode === 'RENTAL' ? terms.extraKmRate : terms.perKm;
-  const extraMin = terms.mode === 'RENTAL' ? Math.max(0, Math.ceil(actualMin - terms.hours * 60)) : 0;
-  const minRate = terms.mode === 'RENTAL' ? terms.extraMinRate : 0;
-  return { extraKm, extraMin, extraKmCharge: Math.floor(extraKm * kmRate + 1e-9), extraTimeCharge: Math.floor(extraMin * minRate + 1e-9) };
+  const extraKmCharge = Math.floor(extraKm * kmRate + 1e-9);
+  if (terms.mode === 'OUTSTATION') {
+    // Older round trips (before 5 Nov 2026) had no planned time: nothing added for time.
+    const late = terms.awayMin == null ? 0 : Math.max(0, Math.ceil(actualMin - terms.awayMin - LATE_GRACE_MIN));
+    return { extraKm, extraMin: late, extraKmCharge, extraTimeCharge: Math.floor((late * (terms.waitPerHour ?? 0)) / 60) };
+  }
+  const extraMin = Math.max(0, Math.ceil(actualMin - terms.hours * 60));
+  return { extraKm, extraMin, extraKmCharge, extraTimeCharge: Math.floor(extraMin * terms.extraMinRate + 1e-9) };
 }
 
 /** [fare] with the settlement lines added to its total (stored as `extraKmCharge` / `extraTimeCharge`). */
