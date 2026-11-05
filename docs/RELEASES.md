@@ -214,6 +214,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `320e1df` (API and admin).
+
+### 5 Nov 2026 (second) · API and admin at `320e1df`
+
+Release: `staging-2026-11-05.2` at `320e1df`
+
 API and admin (no database change).
 
 - **Outstation round trips priced by time** (like Red Taxi): both ways' km at the round-trip rate, the waiting there
