@@ -66,7 +66,10 @@ class DeviceLocationController extends Notifier<LatLng?> {
         return LocateResult.denied;
       }
       var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied && askPermission) perm = await Geolocator.requestPermission();
+      // Queued behind any prompt already open (the notification one right after sign-in), which would cancel it.
+      if (perm == LocationPermission.denied && askPermission) {
+        perm = await PermissionPrompts.run(Geolocator.requestPermission);
+      }
       if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
         access.set(perm == LocationPermission.deniedForever ? LocationAccess.deniedForever : LocationAccess.denied);
         return LocateResult.denied;

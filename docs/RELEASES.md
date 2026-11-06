@@ -30,6 +30,8 @@ pre-releases on GitHub.
 
 ### Next release: 0.1.3 (code 4)
 
+- After signing in, the app asks for location on Home again. The notification prompt that appears at sign-in used to
+  cancel it, so location was only asked when the locate button was tapped. Now the location prompt follows right after.
 - Maps: the ETA bubble on "Driver on the way" and the labels on "Not in your area yet" stay on their place while the
   map is dragged, instead of trailing behind it and catching up after.
 - Outstation round trips start "straight back": the return is leaving plus the drive there and back (Pollachi and

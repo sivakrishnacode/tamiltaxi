@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../permission_prompts.dart';
 import 'api_client.dart';
 
 /// Which app this is (the API keeps one device list per app).
@@ -100,7 +101,7 @@ class TtPush {
 
   /// Asks for the notification permission (Android 13+). Call when it makes sense to the user (after sign-in).
   Future<bool> requestPermission() async {
-    final settings = await _fcm.requestPermission();
+    final settings = await PermissionPrompts.run(_fcm.requestPermission);
     return settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional;
   }

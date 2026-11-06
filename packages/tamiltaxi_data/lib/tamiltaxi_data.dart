@@ -23,6 +23,7 @@ export 'src/api/demand_map.dart';
 export 'src/api/live_services.dart';
 export 'src/api/promos.dart';
 export 'src/api/push.dart';
+export 'src/permission_prompts.dart';
 export 'src/api/realtime_client.dart';
 export 'src/api/safety.dart';
 export 'src/api/service_cities.dart';
