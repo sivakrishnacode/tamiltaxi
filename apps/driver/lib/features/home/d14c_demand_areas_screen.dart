@@ -97,8 +97,12 @@ class _D14cDemandAreasScreenState extends ConsumerState<D14cDemandAreasScreen> {
       width: 240,
       height: 40,
       alignment: Alignment.topCenter,
-      child: Center(
-        child: text == null ? _Dot(icon: _icon, color: _color) : DemandLabel(text: text, icon: _icon, color: _color),
+      // A native marker on the Google map, so it stays put during a drag.
+      child: MapBadge(
+        look: 'area-${_surge ? 'surge' : 'busy'}-${text ?? 'dot'}',
+        child: Center(
+          child: text == null ? _Dot(icon: _icon, color: _color) : DemandLabel(text: text, icon: _icon, color: _color),
+        ),
       ),
     );
   }

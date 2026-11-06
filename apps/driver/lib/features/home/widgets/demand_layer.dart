@@ -250,7 +250,11 @@ List<Marker> demandLabels(DemandMap? map, {double zoom = 14.6, LatLng? near, Veh
         width: 280,
         height: _labelHeight,
         alignment: Alignment.topCenter,
-        child: Center(child: DemandLabel(text: c.text, icon: c.icon, color: c.color, compact: short)),
+        // A native marker on the Google map, so it stays put during a drag.
+        child: MapBadge(
+          look: 'demand-${c.text}-${c.icon.codePoint}-${c.color.toARGB32()}-$short',
+          child: Center(child: DemandLabel(text: c.text, icon: c.icon, color: c.color, compact: short)),
+        ),
       ),
   ];
 }

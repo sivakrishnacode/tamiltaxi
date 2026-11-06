@@ -83,7 +83,7 @@ void main() {
     });
 
     test('labelled by what they mean, surges first', () {
-      final texts = [for (final m in demandLabels(map, zoom: 16, vehicle: VehicleKind.bike)) ((m.child as Center).child! as DemandLabel).text];
+      final texts = [for (final m in demandLabels(map, zoom: 16, vehicle: VehicleKind.bike)) (((m.child as MapBadge).child as Center).child! as DemandLabel).text];
       expect(texts, ['Surge 1.2x · Surge now', 'No pickups · Bus stand']);
     });
 
@@ -96,7 +96,7 @@ void main() {
     });
 
     test("zoomed out to the city: short labels, the zone's name", () {
-      final texts = [for (final m in demandLabels(map, zoom: 12, vehicle: VehicleKind.bike)) ((m.child as Center).child! as DemandLabel)];
+      final texts = [for (final m in demandLabels(map, zoom: 12, vehicle: VehicleKind.bike)) (((m.child as MapBadge).child as Center).child! as DemandLabel)];
       expect(texts.map((l) => l.text), contains('1.2x · Surge now'));
       expect(texts.every((l) => l.compact), isTrue);
     });
@@ -123,7 +123,7 @@ void main() {
       final busy = MapZone(id: 'busy', name: 'Gandhipuram', kind: MapZoneKind.demand, centre: here,
           outline: [hexDiskOutline(here, 531, 0)]);
       final crowded = DemandMap(at: DateTime(2026, 11, 4), zones: [for (var i = 0; i < 5; i++) pickup(i), busy]);
-      String text(Marker m) => ((m.child as Center).child! as DemandLabel).text;
+      String text(Marker m) => (((m.child as MapBadge).child as Center).child! as DemandLabel).text;
       expect(demandLabels(crowded, zoom: 14.6).map(text), isNot(contains('Busy · Gandhipuram')),
           reason: 'without the camera, five pickup points far away fill the places');
       expect(demandLabels(crowded, zoom: 14.6, near: here).map(text), ['Busy · Gandhipuram']);
@@ -138,7 +138,7 @@ void main() {
       final busy = MapZone(id: 'busy', name: 'Gandhipuram', kind: MapZoneKind.demand, centre: north,
           outline: [hexDiskOutline(north, 76, 1)]);
       final pair = DemandMap(at: DateTime(2026, 11, 4), zones: [airport, busy]);
-      String text(Marker m) => ((m.child as Center).child! as DemandLabel).text;
+      String text(Marker m) => (((m.child as MapBadge).child as Center).child! as DemandLabel).text;
       expect(demandLabels(pair, zoom: 12).map(text), ['Gandhipuram']);
       expect(demandLabels(pair, zoom: 16).map(text), ['Pickup point · Airport', 'Busy · Gandhipuram'],
           reason: 'zoomed in, the zones are far apart on screen');

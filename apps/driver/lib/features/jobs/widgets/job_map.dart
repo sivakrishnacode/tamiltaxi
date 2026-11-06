@@ -98,7 +98,13 @@ class LiveVehicleMap extends ConsumerWidget {
         controller: controller,
         extraMarkers: [
           ...labels,
-          if (gpsLost) Marker(point: pos, width: 128, height: 128, child: const _GpsLostMarker()),
+          if (gpsLost)
+            Marker(
+              point: pos,
+              width: 128,
+              height: 128,
+              child: const MapBadge(look: 'gps-lost', child: _GpsLostMarker()),
+            ),
         ],
       );
 }

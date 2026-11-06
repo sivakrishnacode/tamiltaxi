@@ -109,7 +109,7 @@ class P13DriverAssignedScreen extends ConsumerWidget {
                   width: 96,
                   height: 44,
                   alignment: const Alignment(0, -1.7),
-                  child: Center(child: EtaBubble(text: '$eta min')),
+                  child: MapBadge(look: 'eta-$eta', child: Center(child: EtaBubble(text: '$eta min'))),
                 ),
               ],
             );

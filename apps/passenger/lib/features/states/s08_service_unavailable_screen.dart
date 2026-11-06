@@ -98,17 +98,20 @@ class S08ServiceUnavailableView extends ConsumerWidget {
                     point: centre,
                     width: 200,
                     height: 40,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m, vertical: 6),
-                        decoration: const BoxDecoration(
-                          color: TtColors.surface,
-                          borderRadius: TtRadii.pillRadius,
-                          boxShadow: TtShadows.soft,
-                        ),
-                        child: Text(
-                          'Tamil Taxi service area',
-                          style: t.bodySmallMedium.copyWith(color: TtColors.coral600, fontWeight: FontWeight.w600),
+                    child: MapBadge(
+                      look: 'service-area-label',
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m, vertical: 6),
+                          decoration: const BoxDecoration(
+                            color: TtColors.surface,
+                            borderRadius: TtRadii.pillRadius,
+                            boxShadow: TtShadows.soft,
+                          ),
+                          child: Text(
+                            'Tamil Taxi service area',
+                            style: t.bodySmallMedium.copyWith(color: TtColors.coral600, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                     ),
@@ -118,19 +121,22 @@ class S08ServiceUnavailableView extends ConsumerWidget {
                     width: 120,
                     height: 100,
                     alignment: Alignment.topCenter,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m, vertical: TtSpacing.xs),
-                          decoration: const BoxDecoration(
-                            color: TtColors.navy900,
-                            borderRadius: TtRadii.pillRadius,
+                    child: MapBadge(
+                      look: 'your-pin',
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: TtSpacing.m, vertical: TtSpacing.xs),
+                            decoration: const BoxDecoration(
+                              color: TtColors.navy900,
+                              borderRadius: TtRadii.pillRadius,
+                            ),
+                            child: Text('Your pin', style: t.bodySmallMedium.copyWith(color: TtColors.surface)),
                           ),
-                          child: Text('Your pin', style: t.bodySmallMedium.copyWith(color: TtColors.surface)),
-                        ),
-                        const Icon(Symbols.location_on_rounded, fill: 1, size: 44, color: TtColors.navy900),
-                      ],
+                          const Icon(Symbols.location_on_rounded, fill: 1, size: 44, color: TtColors.navy900),
+                        ],
+                      ),
                     ),
                   ),
                 ],

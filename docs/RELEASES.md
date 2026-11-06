@@ -30,6 +30,8 @@ pre-releases on GitHub.
 
 ### Next release: 0.1.3 (code 4)
 
+- Maps: the ETA bubble on "Driver on the way" and the labels on "Not in your area yet" stay on their place while the
+  map is dragged, instead of trailing behind it and catching up after.
 - Outstation round trips start "straight back": the return is leaving plus the drive there and back (Pollachi and
   back: about 1 h 50 min), not the next evening, so the first price is for a same-day trip. Tap the return to stay
   longer; the earliest return is the drive both ways. The fare shows the waiting there as its own line, and the notes
@@ -97,6 +99,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ### Next release: 0.1.3 (code 5)
 
+- Maps: zone and demand labels on Home, the pins on Surge / High demand areas and the "location lost" mark stay on
+  their place while the map is dragged, instead of trailing behind it and catching up after. A tap on a pin still
+  shows its area.
 - Home map: zones look cleaner. A thin 1 px hexagon edge (was 3 px) with a light tint; busy areas are coral like the
   demand hexes (were brown), pickup points a lighter blue. Zone names show when zoomed out to the city too (short:
   "Airport", "Singanallur"), and sit on the zone's top edge instead of covering it or the car. The zone the driver

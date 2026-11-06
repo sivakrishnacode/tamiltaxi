@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -188,6 +189,10 @@ class TtMap extends StatelessWidget {
 
   /// A tap on the map itself (not on a marker), with the point tapped: e.g. which zone it fell in.
   final ValueChanged<LatLng>? onTap;
+
+  /// Badges and other widgets placed on points. On the Google engine one whose child is a [MapBadge] is drawn as a
+  /// native marker, so it stays on its point while the map is dragged, and a tap on it reaches [onTap] with its point.
+  /// Any other child is a widget laid over the map, which trails the map during a drag (fine for something animated).
   final List<Marker> extraMarkers;
   final bool showAttribution;
   final Alignment attributionAlignment;
@@ -762,6 +767,19 @@ class _FlutterTtMapState extends State<_FlutterTtMap> {
       ),
     );
   }
+}
+
+/// A still badge for [TtMap.extraMarkers] (a zone label, an ETA bubble): on the Google engine it becomes a native
+/// marker drawn from a bitmap of [child], so it moves with the map during a drag. [look] names how it looks: badges
+/// with the same look share one bitmap, so give each different text, icon or colour its own.
+class MapBadge extends StatelessWidget {
+  const MapBadge({super.key, required this.look, required this.child});
+
+  final String look;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => child;
 }
 
 /// "High demand: Gandhipuram" chip shown under a demand zone.

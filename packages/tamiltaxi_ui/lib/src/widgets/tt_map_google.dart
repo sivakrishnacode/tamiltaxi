@@ -73,6 +73,28 @@ abstract final class _MarkerBitmaps {
         });
   }
 
+  static final Map<String, Future<({gm.BitmapDescriptor icon, Rect bounds})>> _trimmed = {};
+
+  /// [widget] laid out at [size], cropped to what it paints (keeping [keep] inside): see [renderWidgetToTrimmedPng].
+  static Future<({gm.BitmapDescriptor icon, Rect bounds})> trimmed(
+    String key,
+    Widget widget,
+    Size size,
+    Offset keep,
+    double dpr,
+    ui.FlutterView view,
+  ) {
+    final cacheKey = '$key@$dpr';
+    // After the app's fonts have loaded: a bitmap drawn before would keep the fallback font for good.
+    return _trimmed[cacheKey] ??= GoogleFonts.pendingFonts()
+        .then((_) => renderWidgetToTrimmedPng(widget, size: size, pixelRatio: dpr, view: view, keep: keep))
+        .then((r) => (icon: gm.BytesMapBitmap(r.png, imagePixelRatio: dpr) as gm.BitmapDescriptor, bounds: r.bounds))
+        .catchError((Object e) {
+          _trimmed.remove(cacheKey);
+          throw e;
+        });
+  }
+
   /// Anchor for a marker whose point sits at [inner] (0..1 of the unpadded widget).
   static Offset anchor(Size size, Offset inner) => Offset(
     (pad + inner.dx * size.width) / (size.width + 2 * pad),
@@ -106,6 +128,9 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
   late gm.CameraPosition _camera;
   Size _size = Size.zero;
   final Map<String, gm.BitmapDescriptor> _icons = {};
+
+  /// Bitmaps of the [MapBadge] extra markers and where their point sits in them (0..1).
+  final Map<String, ({gm.BitmapDescriptor icon, Offset anchor})> _badges = {};
   final Set<String> _requested = {};
   bool _programmaticMove = false;
   (LatLng, double)? _pendingMove;
@@ -262,9 +287,29 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
   }
 
   bool get _hasOverlays =>
-      m.pulseAt != null ||
-      m.extraMarkers.isNotEmpty ||
-      m.polygons.any((p) => p.isZoomLimited);
+      m.pulseAt != null || m.extraMarkers.any((mk) => _badgeOf(mk) == null) || m.polygons.any((p) => p.isZoomLimited);
+
+  // ---- badges: MapBadge extra markers drawn as native markers ----
+
+  /// The bitmap key of an extra marker whose child is a [MapBadge] (its look and box); null for any other, laid over
+  /// the map.
+  static String? _badgeKey(Marker mk) {
+    final c = mk.child;
+    if (c is! MapBadge) return null;
+    final a = mk.alignment ?? Alignment.center;
+    return 'badge-${c.look}-${mk.width.round()}x${mk.height.round()}-${a.x},${a.y}';
+  }
+
+  /// Where [mk]'s point sits in its box (flutter_map: the box is placed by its alignment relative to the point).
+  static Offset _badgePoint(Marker mk) {
+    final a = mk.alignment ?? Alignment.center;
+    return Offset(mk.width * (1 - a.x) / 2, mk.height * (1 - a.y) / 2);
+  }
+
+  ({gm.BitmapDescriptor icon, Offset anchor})? _badgeOf(Marker mk) {
+    final key = _badgeKey(mk);
+    return key == null ? null : _badges[key];
+  }
 
   void _onCameraMove(gm.CameraPosition pos) {
     _camera = pos;
@@ -328,6 +373,29 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
     for (final v in widget.vehicles) {
       need(_vehicleKey(v), VehicleMarker(type: v.type, large: v.large), _vehicleSize(v));
     }
+
+    // Badges (zone labels, ETA bubbles) are markers too, so they stay on their place during a drag. Cropped
+    // to what they paint, so the empty part of their box doesn't take taps meant for the map.
+    final theme = Theme.of(context);
+    for (final mk in m.extraMarkers) {
+      final key = _badgeKey(mk);
+      if (key == null || _requested.contains(key)) continue;
+      _requested.add(key);
+      final size = Size(mk.width, mk.height);
+      final point = _badgePoint(mk);
+      _MarkerBitmaps.trimmed(key, Theme(data: theme, child: mk.child), size, point, dpr, view).then(
+        (r) {
+          if (!mounted) return;
+          final b = r.bounds;
+          final anchor = Offset((point.dx - b.left) / b.width, (point.dy - b.top) / b.height);
+          setState(() => _badges[key] = (icon: r.icon, anchor: anchor));
+        },
+        onError: (Object e) {
+          _requested.remove(key);
+          debugPrint('TtMap: badge bitmap failed: $e');
+        },
+      );
+    }
   }
 
   /// The chip's bitmap key; its width is in it, so a chip measured again once the font has loaded gets a new bitmap.
@@ -388,6 +456,24 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
         ),
       );
     }
+    // Over the cars and places, later ones on top (as the overlays they replace). A tap on one reaches onTap with its
+    // point (a tap on an overlay went through to the map).
+    for (var i = 0; i < m.extraMarkers.length; i++) {
+      final mk = m.extraMarkers[i];
+      final badge = _badgeOf(mk);
+      if (badge == null) continue;
+      out.add(
+        gm.Marker(
+          markerId: gm.MarkerId('badge-$i'),
+          position: _g(mk.point),
+          icon: badge.icon,
+          anchor: badge.anchor,
+          consumeTapEvents: true,
+          onTap: m.onTap == null ? null : () => m.onTap!(mk.point),
+          zIndexInt: 10 + i,
+        ),
+      );
+    }
     return out;
   }
 
@@ -421,7 +507,7 @@ class _GoogleTtMapState extends State<_GoogleTtMap> with WidgetsBindingObserver 
   List<Widget> _overlays() => [
     if (m.pulseAt != null) _overlay(m.pulseAt!, 180, 180, Alignment.center, PulseRing(color: m.pulseColor)),
     for (final mk in m.extraMarkers)
-      _overlay(mk.point, mk.width, mk.height, mk.alignment ?? Alignment.center, mk.child),
+      if (_badgeOf(mk) == null) _overlay(mk.point, mk.width, mk.height, mk.alignment ?? Alignment.center, mk.child),
   ].nonNulls.toList();
 
   @override
