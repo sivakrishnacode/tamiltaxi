@@ -184,9 +184,11 @@ def draw_caption(
     line_h = round(size * (1.12 if face == "serif" else 1.22))
     for line in text.split("\n"):
         parts = [(p, i % 2 == 1) for i, p in enumerate(line.split("*")) if p]
-        width = sum(d.textlength(p, font=f) for p, _ in parts)
+        # Centred on the ink (the glyphs' visible box), not the advance widths, so serif side bearings don't shift it.
+        left, _, right, _ = d.textbbox((0, 0), "".join(p for p, _ in parts), font=f)
+        width = right - left
         assert width <= max_w, f"caption too wide: {line!r}"
-        x = box_x + (max_w - width) / 2 if align == "center" else box_x
+        x = (box_x + (max_w - width) / 2 if align == "center" else box_x) - left
         for p, coral in parts:
             d.text((x, y), p, font=f, fill=CORAL if coral else ink)
             x += d.textlength(p, font=f)
@@ -200,9 +202,10 @@ def draw_sub(
 ) -> int:
     d = ImageDraw.Draw(img)
     f = font(face, size)
-    w = d.textlength(text, font=f)
+    left, _, right, _ = d.textbbox((0, 0), text, font=f)
+    w = right - left
     assert w <= max_w, f"subline too wide: {text!r}"
-    d.text((box_x + (max_w - w) / 2 if align == "center" else box_x, y), text, font=f, fill=ink)
+    d.text(((box_x + (max_w - w) / 2 if align == "center" else box_x) - left, y), text, font=f, fill=ink)
     return y + round(size * 1.4)
 
 
@@ -225,8 +228,8 @@ def phone_shot(app: App, shot: Image.Image, caption: str, sub: str, first: bool,
         logo = logo_image(app, 190)
         img.paste(logo, ((W - logo.width) // 2, 150), logo)
         y = 150 + logo.height + 70
-    y = draw_caption(img, caption, 0, y, 112, "center", W - 260, ink=ink, face="serif")
-    y = draw_sub(img, sub, 0, y + 44, 44, "center", W - 200, ink=grey, face="Inter-Regular.ttf")
+    y = draw_caption(img, caption, 130, y, 112, "center", W - 260, ink=ink, face="serif")
+    y = draw_sub(img, sub, 100, y + 44, 44, "center", W - 200, ink=grey, face="Inter-Regular.ttf")
     p = phone(shot, 800)
     img.paste(p, ((W - p.width) // 2, y + 80 - round(p.width * 0.1)), p)
     return img
