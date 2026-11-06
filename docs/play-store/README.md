@@ -74,3 +74,8 @@ python3 scripts/store_screenshots.py [passenger|driver]   # raw/<app>/ captures 
 
 Captions are in the script's `APPS` table. The top of the script says how to retake the raw captures (mock-mode build
 with the Design gallery, location off, clean status bar, `adb`).
+
+Look (6 Nov 2026, after CRED's listing): warm grey background, a black serif headline in lower case (Playfair Display,
+`scripts/fonts/`, OFL; not bundled into the apps), one grey line under it, the phone below. The first shot carries the
+logo; one shot per app (`dark` in `APPS`) is near-black with a coral glow. The feature graphic keeps its earlier design.
+No public figure's photo goes on the listing: Google Play's policy forbids implying an endorsement the app doesn't have.

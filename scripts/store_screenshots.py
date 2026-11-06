@@ -36,13 +36,19 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 FONTS = ROOT / "packages/tamiltaxi_ui/assets/google_fonts"
+# Playfair Display (OFL, scripts/fonts/): the serif for the store captions only, so it isn't bundled into the apps.
+SERIF = ROOT / "scripts/fonts/PlayfairDisplay.ttf"
 ASSETS = ROOT / "docs/design/assets"
 
-NAVY = (30, 41, 59)
-SLATE = (71, 85, 105)
+# A calm, CRED-like look (6 Nov 2026): warm grey, a black serif headline in lower case, one line under it, the phone.
+INK = (22, 22, 24)
+GREY = (92, 92, 98)
 CORAL = (216, 67, 21)
-BG_TOP = (255, 246, 241)
-BG_BOTTOM = (255, 226, 214)
+NAVY = (30, 41, 59)
+BG = (241, 239, 236)
+BG_GLOW = (250, 249, 247)
+DARK_TOP = (17, 20, 27)
+DARK_BOTTOM = (30, 22, 20)
 FRAME = (15, 23, 42)
 
 
@@ -50,10 +56,12 @@ FRAME = (15, 23, 42)
 class App:
     logo: Path
     icon: Path
-    # Raw capture (with its Design gallery frame), caption (*word* = coral), subline. In listing order.
+    # Raw capture (with its Design gallery frame), caption, subline. In listing order. The first one carries the logo.
     shots: list[tuple[str, str, str]]
     feature_caption: str
     feature_sub: str
+    # The one shot on a dark background (with a coral glow), as a change of pace in the row.
+    dark: str = ""
     # How big the art sits on the feature graphic: small enough that its subject clears the text on the left.
     feature_scale: float = 0.56
 
@@ -63,13 +71,14 @@ APPS = {
         logo=ASSETS / "logo/tamil-taxi.png",
         icon=ASSETS / "app-icon/tamil-taxi-512.png",
         shots=[
-            ("home", "Bike, auto or cab\nin *two taps*", "Rides across Coimbatore"),  # P-07
-            ("choose-ride", "See the fare\n*before you book*", "Locked when you book. No surprises"),  # P-10
-            ("driver-on-the-way", "Watch your driver\n*arrive live*", "Call or chat, start with your ride OTP"),  # P-13
-            ("ride-safety", "Ride safe with\n*SOS and trip sharing*", "Share your live trip with family"),  # P-16
-            ("pay-driver", "Drivers keep *100%*\nof your fare", "0% commission. Pay by cash or UPI"),  # P-19
-            ("parcel", "Send parcels\n*across town*", "Bike to truck, plus Packers & Movers"),  # PP-01
+            ("home", "zero commission.\nmade in tamil nadu.", "bike, auto and cab rides across Coimbatore"),  # P-07
+            ("choose-ride", "see the fare\nbefore you book.", "locked when you book. no surprises."),  # P-10
+            ("driver-on-the-way", "watch your driver\narrive live.", "call or chat, and start with your ride code."),  # P-13
+            ("ride-safety", "ride safe,\nevery time.", "SOS to 112 and live trip sharing with family."),  # P-16
+            ("pay-driver", "your driver keeps\nevery rupee.", "pay directly by cash or UPI. 0% commission."),  # P-19
+            ("parcel", "send anything\nacross town.", "parcels by bike to truck, plus packers & movers."),  # PP-01
         ],
+        dark="pay-driver",
         feature_caption="Rides & parcels\nwith *0% commission*",
         feature_sub="Bike · Auto · Cab · Parcel · Coimbatore",
     ),
@@ -77,13 +86,14 @@ APPS = {
         logo=ASSETS / "logo/tamil-taxi-driver.png",
         icon=ASSETS / "app-icon/tamil-taxi-driver-512.png",
         shots=[
-            ("online", "Go online, get\n*rides near you*", "Busy areas shown on your map"),  # D-14
-            ("ride-request", "See the fare\n*before you accept*", "Pickup, drop and distance up front"),  # D-15
-            ("to-pickup", "Head to\n*your rider*", "Navigate, call or chat in one tap"),  # D-16
-            ("collect", "Keep *100%*\nof every fare", "0% commission. Riders pay you directly"),  # D-19
-            ("earnings", "See what\n*you earned*", "Every trip, day and week"),  # D-23
-            ("delivery", "Parcels and\n*house moves* too", "More work between rides"),  # D-21
+            ("online", "zero commission.\nzero subscription.", "drive with Tamil Taxi and keep every fare."),  # D-14
+            ("ride-request", "see the fare\nbefore you accept.", "pickup, drop and distance up front."),  # D-15
+            ("to-pickup", "head straight\nto your rider.", "navigate, call or chat in one tap."),  # D-16
+            ("collect", "keep every rupee\nof every fare.", "riders pay you directly. 0% commission."),  # D-19
+            ("earnings", "know what\nyou earned.", "every trip, day and week."),  # D-23
+            ("delivery", "parcels and\nhouse moves too.", "more work between rides."),  # D-21
         ],
+        dark="collect",
         feature_caption="Drive and keep\n*100% of every fare*",
         feature_sub="0% commission · No subscription",
         feature_scale=0.5,
@@ -103,14 +113,28 @@ def font(name: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(FONTS / name), size)
 
 
-def gradient(w: int, h: int, vertical: bool = True) -> Image.Image:
-    img = Image.new("RGB", (w, h))
-    d = ImageDraw.Draw(img)
-    n = h if vertical else w
-    for i in range(n):
-        t = i / max(n - 1, 1)
-        c = tuple(round(a + (b - a) * t) for a, b in zip(BG_TOP, BG_BOTTOM))
-        d.line([(0, i), (w, i)] if vertical else [(i, 0), (i, h)], fill=c)
+def serif(size: int) -> ImageFont.FreeTypeFont:
+    f = ImageFont.truetype(str(SERIF), size)
+    f.set_variation_by_name("Bold")
+    return f
+
+
+def backdrop(w: int, h: int, glow_at: tuple[float, float], dark: bool) -> Image.Image:
+    """Warm grey with a soft light behind the phone; or near-black with a coral glow there (the dark shot)."""
+    if dark:
+        img = Image.new("RGB", (w, h))
+        d = ImageDraw.Draw(img)
+        for y in range(h):
+            t = y / max(h - 1, 1)
+            d.line([(0, y), (w, y)], fill=tuple(round(a + (b - a) * t) for a, b in zip(DARK_TOP, DARK_BOTTOM)))
+        glow, colour, strength = Image.new("L", (w, h), 0), CORAL, 150
+    else:
+        img, glow, colour, strength = Image.new("RGB", (w, h), BG), Image.new("L", (w, h), 0), BG_GLOW, 255
+    r = round(min(w, h) * 0.42)
+    cx, cy = round(w * glow_at[0]), round(h * glow_at[1])
+    ImageDraw.Draw(glow).ellipse([cx - r, cy - r, cx + r, cy + r], fill=strength)
+    glow = glow.filter(ImageFilter.GaussianBlur(r * 0.55))
+    img.paste(Image.new("RGB", (w, h), colour), (0, 0), glow)
     return img
 
 
@@ -138,7 +162,7 @@ def phone(shot: Image.Image, screen_w: int) -> Image.Image:
 
     shadow = Image.new("RGBA", out.size, (0, 0, 0, 0))
     ImageDraw.Draw(shadow).rounded_rectangle(
-        [pad, pad + bezel * 2, pad + fw, pad + fh + bezel * 2], r_screen + bezel, fill=(120, 40, 10, 70))
+        [pad, pad + bezel * 2, pad + fw, pad + fh + bezel * 2], r_screen + bezel, fill=(0, 0, 0, 60))
     out = Image.alpha_composite(out, shadow.filter(ImageFilter.GaussianBlur(pad * 0.4)))
 
     d = ImageDraw.Draw(out)
@@ -150,53 +174,77 @@ def phone(shot: Image.Image, screen_w: int) -> Image.Image:
     return out
 
 
-def draw_caption(img: Image.Image, text: str, box_x: int, y: int, size: int, align: str, max_w: int) -> int:
+def draw_caption(
+    img: Image.Image, text: str, box_x: int, y: int, size: int, align: str, max_w: int,
+    ink: tuple[int, int, int] = NAVY, face: str = "Poppins-Bold.ttf",
+) -> int:
     """Draws [text] (lines split on \\n, *word* in coral) and returns the y below it."""
     d = ImageDraw.Draw(img)
-    f = font("Poppins-Bold.ttf", size)
-    line_h = round(size * 1.22)
+    f = serif(size) if face == "serif" else font(face, size)
+    line_h = round(size * (1.12 if face == "serif" else 1.22))
     for line in text.split("\n"):
         parts = [(p, i % 2 == 1) for i, p in enumerate(line.split("*")) if p]
         width = sum(d.textlength(p, font=f) for p, _ in parts)
         assert width <= max_w, f"caption too wide: {line!r}"
         x = box_x + (max_w - width) / 2 if align == "center" else box_x
         for p, coral in parts:
-            d.text((x, y), p, font=f, fill=CORAL if coral else NAVY)
+            d.text((x, y), p, font=f, fill=CORAL if coral else ink)
             x += d.textlength(p, font=f)
         y += line_h
     return y
 
 
-def draw_sub(img: Image.Image, text: str, box_x: int, y: int, size: int, align: str, max_w: int) -> int:
+def draw_sub(
+    img: Image.Image, text: str, box_x: int, y: int, size: int, align: str, max_w: int,
+    ink: tuple[int, int, int] = (71, 85, 105), face: str = "Inter-Medium.ttf",
+) -> int:
     d = ImageDraw.Draw(img)
-    f = font("Inter-Medium.ttf", size)
+    f = font(face, size)
     w = d.textlength(text, font=f)
     assert w <= max_w, f"subline too wide: {text!r}"
-    d.text((box_x + (max_w - w) / 2 if align == "center" else box_x, y), text, font=f, fill=SLATE)
+    d.text((box_x + (max_w - w) / 2 if align == "center" else box_x, y), text, font=f, fill=ink)
     return y + round(size * 1.4)
 
 
-def phone_shot(shot: Image.Image, caption: str, sub: str) -> Image.Image:
+def text_inks(dark: bool) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    return ((255, 255, 255), (205, 208, 214)) if dark else (INK, GREY)
+
+
+def logo_image(app: App, height: int) -> Image.Image:
+    logo = Image.open(app.logo).convert("RGBA")
+    return logo.resize((round(logo.width * height / logo.height), height), Image.LANCZOS)
+
+
+def phone_shot(app: App, shot: Image.Image, caption: str, sub: str, first: bool, dark: bool) -> Image.Image:
+    """Headline and line on top, centred; the phone below, cut by the bottom edge when it runs past it."""
     W, H = 1440, 2560
-    img = gradient(W, H)
-    y = draw_caption(img, caption, 0, 140, 92, "center", W - 160)
-    draw_sub(img, sub, 0, y + 24, 46, "center", W - 160)
-    p = phone(shot, 840)
-    img.paste(p, ((W - p.width) // 2, H - p.height + round(p.width * 0.035)), p)
+    img = backdrop(W, H, (0.5, 0.66), dark)
+    ink, grey = text_inks(dark)
+    y = 190
+    if first and not dark:
+        logo = logo_image(app, 190)
+        img.paste(logo, ((W - logo.width) // 2, 150), logo)
+        y = 150 + logo.height + 70
+    y = draw_caption(img, caption, 0, y, 112, "center", W - 260, ink=ink, face="serif")
+    y = draw_sub(img, sub, 0, y + 44, 44, "center", W - 200, ink=grey, face="Inter-Regular.ttf")
+    p = phone(shot, 800)
+    img.paste(p, ((W - p.width) // 2, y + 80 - round(p.width * 0.1)), p)
     return img
 
 
-def tablet_shot(app: App, shot: Image.Image, caption: str, sub: str, W: int, H: int) -> Image.Image:
+def tablet_shot(app: App, shot: Image.Image, caption: str, sub: str, W: int, H: int, dark: bool) -> Image.Image:
     s = H / 1440
-    img = gradient(W, H, vertical=False)
+    img = backdrop(W, H, (0.73, 0.55), dark)
+    ink, grey = text_inks(dark)
     left = round(170 * s)
     text_w = round(W * 0.5) - left
-    logo = Image.open(app.logo).convert("RGBA")
-    logo = logo.resize((round(logo.width * 190 * s / logo.height), round(190 * s)), Image.LANCZOS)
-    top = round(400 * s)
-    img.paste(logo, (left, top), logo)
-    y = draw_caption(img, caption, left, top + logo.height + round(70 * s), round(104 * s), "left", text_w)
-    draw_sub(img, sub, left, y + round(26 * s), round(50 * s), "left", text_w)
+    top = round(430 * s)
+    if not dark:
+        logo = logo_image(app, round(150 * s))
+        img.paste(logo, (left, top), logo)
+        top += logo.height + round(60 * s)
+    y = draw_caption(img, caption, left, top, round(108 * s), "left", text_w, ink=ink, face="serif")
+    draw_sub(img, sub, left, y + round(26 * s), round(46 * s), "left", text_w, ink=grey, face="Inter-Regular.ttf")
     p = phone(shot, round(565 * s))
     img.paste(p, (round(W * 0.73) - p.width // 2, (H - p.height) // 2 + round(30 * s)), p)
     return img
@@ -233,9 +281,10 @@ def build(name: str) -> None:
         if box := BLUR.get((name, shot_name)):
             shot.paste(shot.crop(box).filter(ImageFilter.GaussianBlur(12)), box[:2])
         stem = f"{i:02d}-{shot_name}.png"
-        phone_shot(shot, caption, sub).save(out / "phone" / stem, optimize=True)
-        tablet_shot(app, shot, caption, sub, 1920, 1080).save(out / "tablet-7in" / stem, optimize=True)
-        tablet_shot(app, shot, caption, sub, 2560, 1440).save(out / "tablet-10in" / stem, optimize=True)
+        dark = shot_name == app.dark
+        phone_shot(app, shot, caption, sub, i == 1, dark).save(out / "phone" / stem, optimize=True)
+        tablet_shot(app, shot, caption, sub, 1920, 1080, dark).save(out / "tablet-7in" / stem, optimize=True)
+        tablet_shot(app, shot, caption, sub, 2560, 1440, dark).save(out / "tablet-10in" / stem, optimize=True)
         print(name, "framed", stem)
     if (raw / "feature-art.png").exists():
         feature_graphic(app, raw).save(out / "feature-graphic.png", optimize=True)
