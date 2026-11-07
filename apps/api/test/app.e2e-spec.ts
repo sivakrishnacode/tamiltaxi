@@ -104,6 +104,8 @@ describe('Tamil Taxi API (e2e)', () => {
     expect((await http.post('/v1/auth/verify').send({ phone: p, code: '123456' }).expect(401)).body.message).toBe('Request a new OTP first');
     await http.post('/v1/auth/otp').send({ phone: p }).expect(200);
     expect((await http.post('/v1/auth/verify').send({ phone: p, code: '000000' }).expect(401)).body.message).toBe('Incorrect OTP');
+    // Sending a code or a wrong code makes no account: a rider exists only after a verified OTP.
+    expect(await prisma.user.count({ where: { phone: `+91${p}` } })).toBe(0);
     await http.get('/v1/me').expect(401);
   });
 
