@@ -35,4 +35,10 @@ export class RegisterDriverDto {
   @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;
+
+  /** D-06: the service city the driver works in (an active city's id; the app picks the one nearest the phone). */
+  @IsOptional()
+  @IsString()
+  @Length(1, 40)
+  cityId?: string;
 }

@@ -1039,6 +1039,28 @@ describe('Tamil Taxi API (e2e)', () => {
     for (const d of [driver, { Authorization: `Bearer ${other}` }]) await http.post('/v1/drivers/me/offline').set(d);
   }, 30_000);
 
+  it('drivers pick their service city at sign-up (D-06) and can change it; only an active city', async () => {
+    const cities = (await http.get('/v1/cities').expect(200)).body as { id: string }[];
+    expect(cities.length).toBeGreaterThan(0);
+    const user = { Authorization: `Bearer ${await login()}` };
+    const body = { name: 'City Driver', workType: 'RIDES', vehicleKind: 'BIKE', vehicleModel: 'Test', vehicleColor: 'White', plate: randomPlate(), upiId: 'test@okaxis' };
+    expect((await http.post('/v1/drivers').set(user).send({ ...body, cityId: 'no-such-city' }).expect(400)).body.message).toBe('Choose one of our cities');
+    const reg = await http.post('/v1/drivers').set(user).send({ ...body, cityId: cities[0].id }).expect(201);
+    expect(reg.body.driver.cityId).toBe(cities[0].id);
+    const driver = { Authorization: `Bearer ${reg.body.accessToken as string}` };
+    const last = cities[cities.length - 1].id;
+    await http.patch('/v1/drivers/me').set(driver).send({ cityId: last }).expect(200);
+    expect((await http.get('/v1/drivers/me').set(driver).expect(200)).body.cityId).toBe(last);
+    await http.patch('/v1/drivers/me').set(driver).send({ cityId: 'nope' }).expect(400);
+    // The saved city, sent again with an unrelated edit, is never re-checked (a city switched off later can't block it).
+    await prisma.city.update({ where: { id: last }, data: { isActive: false } });
+    try {
+      await http.patch('/v1/drivers/me').set(driver).send({ cityId: last, upiId: 'new@okaxis' }).expect(200);
+    } finally {
+      await prisma.city.update({ where: { id: last }, data: { isActive: true } });
+    }
+  });
+
   it("meter trips (D-42): stored once per phone id and counted in the driver's earnings", async () => {
     const driver = { Authorization: `Bearer ${await onlineDriver('AUTO', { lat: 11.0185, lng: 76.9727 })}` };
     const earnings = async () => (await http.get('/v1/drivers/me/earnings?period=today').set(driver).expect(200)).body;

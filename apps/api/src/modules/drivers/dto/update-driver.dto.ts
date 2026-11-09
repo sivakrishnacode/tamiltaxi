@@ -34,4 +34,10 @@ export class UpdateDriverDto {
   @IsOptional()
   @Matches(/^[\w.-]{2,}@[a-z]{2,}$/i, { message: 'Enter a valid UPI ID' })
   upiId?: string;
+
+  /** D-06: the service city the driver works in (an active city's id; the app picks the one nearest the phone). */
+  @IsOptional()
+  @IsString()
+  @Length(1, 40)
+  cityId?: string;
 }

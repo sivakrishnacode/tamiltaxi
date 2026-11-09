@@ -101,6 +101,7 @@ export class DriversService {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true, driver: true } });
     if (user.role === Role.ADMIN) throw new ForbiddenException(ADMIN_CANT_REGISTER);
     if (user.driver) return this.registered(userId, user.driver, user.role);
+    await this.assertServiceCity(dto.cityId);
     const { name, gender, ...vehicle } = dto;
     const plate = vehicle.plate.toUpperCase();
     if (await this.prisma.driver.count({ where: { plate } })) throw new ConflictException(PLATE_TAKEN);
@@ -132,6 +133,12 @@ export class DriversService {
   }
 
   /** The answer to a repeated registration: the driver as stored, with a fresh token. */
+  /** A city a driver picks (D-06) must be one of the active service cities. */
+  private async assertServiceCity(cityId: string | undefined): Promise<void> {
+    if (cityId === undefined) return;
+    if (!(await this.geo.activeCities()).some((c) => c.id === cityId)) throw new BadRequestException('Choose one of our cities');
+  }
+
   private async registered(userId: string, driver: Driver, role: Role): Promise<{ driver: Driver; accessToken: string; isNew: false }> {
     return { driver, accessToken: await this.auth.issueToken({ sub: userId, role, driverId: driver.id }), isNew: false };
   }
@@ -157,12 +164,13 @@ export class DriversService {
    * transaction with a row in their admin history. Not while they are on a trip (409).
    */
   async update(driverId: string, dto: UpdateDriverDto): Promise<DriverProfile> {
-    const { name, gender, ...vehicle } = dto;
+    const { name, gender, cityId: wantedCity, ...vehicle } = dto;
     const current = await this.prisma.driver.findUniqueOrThrow({
       where: { id: driverId },
       select: {
         status: true,
         plate: true,
+        cityId: true,
         userId: true,
         user: { select: { gender: true } },
         documents: { where: { type: KycDocType.VEHICLE_RC }, select: { status: true } },
@@ -184,12 +192,22 @@ export class DriversService {
     if (leavesApproval && (await this.prisma.trip.count({ where: { driverId, status: { in: ON_TRIP } } }))) {
       throw new ConflictException('Finish your trip before changing the vehicle');
     }
+    // The app sends the saved city with every profile save: checked only when it changes (a city switched off later
+    // must not block a UPI edit).
+    const cityId = wantedCity !== undefined && wantedCity !== current.cityId ? wantedCity : undefined;
+    await this.assertServiceCity(cityId);
     const user = name || gender ? { user: { update: { name, gender } } } : {};
     try {
       await this.prisma.$transaction(async (tx) => {
         await tx.driver.update({
           where: { id: driverId },
-          data: { ...vehicle, plate, ...user, ...(leavesApproval ? { status: DriverStatus.PENDING, isOnline: false } : {}) },
+          data: {
+            ...vehicle,
+            plate,
+            ...user,
+            ...(cityId ? { city: { connect: { id: cityId } } } : {}),
+            ...(leavesApproval ? { status: DriverStatus.PENDING, isOnline: false } : {}),
+          },
         });
         if (!resetsRc) return;
         const rc = { status: KycStatus.NOT_UPLOADED, fileUrl: null, rejectReason: `Upload the RC of your new vehicle (${plate})`, expiresOn: null, expiryNotifiedDays: null };
