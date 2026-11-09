@@ -22,6 +22,7 @@ import '../jobs/d19_collect_payment_screen.dart';
 import '../jobs/d20_delivery_request_screen.dart';
 import '../jobs/d21_delivery_in_progress_screen.dart';
 import '../jobs/d22_delivery_otp_screen.dart';
+import '../meter/d42_meter_screen.dart';
 import '../onboarding/d01_splash_screen.dart';
 import '../onboarding/d02_welcome_screen.dart';
 import '../onboarding/d03_phone_screen.dart';
@@ -145,6 +146,9 @@ final List<GalleryEntry> galleryEntries = [
             child: PauseServiceSheet(title: 'Parcels', reasons: ['Too far', 'Long waits', 'Low pay', 'Other']),
           )),
   _e('D-41', 'Rate card', _p6, (_) => const RateCardScreen(showcase: true)),
+  _e('D-42', 'Meter · start', _p6, (_) => const D42MeterScreen(showcase: true)),
+  _e('D-42b', 'Meter · running', _p6, (_) => D42MeterScreen(showcase: true, sample: D42MeterScreen.sampleRunning())),
+  _e('D-42c', 'Meter · collect', _p6, (_) => D42MeterScreen(showcase: true, sample: D42MeterScreen.sampleEnded())),
   // Part 7
   _e('S-10', 'Account on hold', _p7, (_) => const S10AccountOnHoldScreen(showcase: true)),
   _e('S-10b', 'Paused for cancellations', _p7,

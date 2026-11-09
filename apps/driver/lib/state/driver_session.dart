@@ -878,17 +878,19 @@ class DriverSessionController extends Notifier<DriverSessionState> {
     final access = await locator.access(ask: ask);
     if (!ref.mounted) return;
     ref.read(locationAccessProvider.notifier).set(access);
-    // Approximate is enough to show the car offline; going online asks for the precise location.
+    // Approximate is enough to show the car offline; going online asks for the precise location. While the meter runs
+    // its own fixes move the car ([showMeterFix]).
     if ((access != LocationAccess.granted &&
             access != LocationAccess.approximate) ||
-        state.online) {
+        state.online ||
+        _meterHasGps) {
       return;
     }
     final last = await locator.lastKnownFix();
     if (last != null && ref.mounted && !state.online) {
       _onFix(last, upload: false);
     }
-    if (!ref.mounted || state.online) return;
+    if (!ref.mounted || state.online || _meterHasGps) return;
     await _preview?.cancel();
     _preview = locator.previewPositions().listen((fix) {
       if (ref.mounted && !state.online) _onFix(fix, upload: false);
@@ -898,6 +900,29 @@ class DriverSessionController extends Notifier<DriverSessionState> {
   void _stopPreview() {
     _preview?.cancel();
     _preview = null;
+  }
+
+  /// The meter (D-42) has the phone's GPS: no offline preview meanwhile.
+  bool _meterHasGps = false;
+
+  /// Before the meter opens its GPS: offline first (no requests during a meter trip), then the preview stops, so the
+  /// meter's precise stream is the one the plugin opens (it has one stream for the whole app).
+  Future<void> handGpsToMeter() async {
+    _meterHasGps = true;
+    if (state.online) await goOffline();
+    _stopPreview();
+  }
+
+  /// The meter stopped its GPS: the offline preview shows where the driver is again.
+  void takeGpsBack() {
+    if (!_meterHasGps) return;
+    _meterHasGps = false;
+    unawaited(locateHere(ask: false));
+  }
+
+  /// A meter fix moves the car on Home (live; nothing is uploaded).
+  void showMeterFix(GpsFix fix) {
+    if (_live && !state.online) _onFix(fix, upload: false);
   }
 
   /// App back in the foreground: reconnect, pick up an offer missed meanwhile and check the job.

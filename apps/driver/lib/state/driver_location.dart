@@ -193,6 +193,30 @@ class DriverLocator {
   /// A fix about every 5 s while online (standing still included, so dispatch knows the driver is alive).
   Stream<GpsFix> positions() => geo.Geolocator.getPositionStream(locationSettings: _streamSettings()).map(_fix);
 
+  /// While the meter runs (D-42): a precise fix about every 3 s as a foreground service, so the meter keeps counting
+  /// with the screen off or another app open. The plugin has one stream for the whole app and hands it to every
+  /// caller as first opened, so the offline preview must be off before this opens it
+  /// ([DriverSessionController.handGpsToMeter]).
+  Stream<GpsFix> meterPositions() => geo.Geolocator.getPositionStream(locationSettings: _meterSettings()).map(_fix);
+
+  static geo.LocationSettings _meterSettings() {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return geo.AndroidSettings(
+        accuracy: geo.LocationAccuracy.high,
+        intervalDuration: const Duration(seconds: 3),
+        foregroundNotificationConfig: const geo.ForegroundNotificationConfig(
+          notificationTitle: 'Meter running',
+          notificationText: 'Tamil Taxi Driver is measuring this trip. Open the app to see the fare.',
+          notificationChannelName: 'Meter',
+          notificationIcon: geo.AndroidResource(name: 'ic_notification', defType: 'drawable'),
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
+    }
+    return const geo.LocationSettings(accuracy: geo.LocationAccuracy.high);
+  }
+
   Future<void> openSettings(LocationFix fix) async {
     try {
       switch (fix) {

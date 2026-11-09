@@ -5,6 +5,7 @@ import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import '../features/account/account_providers.dart';
 import 'booking_prefs.dart';
 import 'driver_session.dart';
+import 'meter.dart';
 
 /// The signed-in driver's profile (Karthik by default; the API driver with the live API).
 class DriverProfileController extends AsyncNotifier<DriverProfile> {
@@ -173,6 +174,8 @@ void resetDriverData(WidgetRef ref) {
 Future<void> signOutDriver(WidgetRef ref, {bool deleted = false}) async {
   final live = ref.read(isLiveApiProvider);
   await ref.read(driverSessionProvider.notifier).goOffline(tellServer: false);
+  // A meter trip and its saved rates belong to this driver, not the next one on this phone.
+  await ref.read(meterProvider.notifier).forget();
   if (!deleted) await ref.read(driverRepositoryProvider).logout();
   if (live) {
     ref.read(realtimeProvider).disconnect();

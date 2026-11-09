@@ -256,11 +256,15 @@ class TripInProgressBanner extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onOpen,
+    this.icon = Symbols.navigation_rounded,
   });
 
   final String title;
   final String subtitle;
   final VoidCallback onOpen;
+
+  /// The navigation arrow for a booked trip; the meter shows its own.
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +277,7 @@ class TripInProgressBanner extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(TtSpacing.gutter, TtSpacing.m, TtSpacing.m, TtSpacing.m),
           child: Row(
             children: [
-              const Icon(Symbols.navigation_rounded, color: Colors.white, fill: 1, size: 26),
+              Icon(icon, color: Colors.white, fill: 1, size: 26),
               const SizedBox(width: TtSpacing.m),
               Expanded(
                 child: Column(

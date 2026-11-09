@@ -17,6 +17,7 @@ import '../../state/demand_map.dart';
 import '../../state/driver_account.dart';
 import '../../state/driver_location.dart';
 import '../../state/driver_session.dart';
+import '../../state/meter.dart';
 import '../jobs/widgets/job_map.dart';
 import '../states/s10_account_on_hold_screen.dart';
 import '../states/s11_missed_request_banner.dart';
@@ -28,6 +29,7 @@ import 'widgets/demand_layer.dart';
 import 'widgets/zone_sheet.dart';
 import 'widgets/direction_panel.dart';
 import 'widgets/home_parts.dart';
+import 'widgets/meter_chip.dart';
 import 'widgets/navy_header.dart';
 
 /// Designed states of the home screen (D-13, D-14, D-14b, D-25a, D-25b, S-11, S-12, S-16).
@@ -81,6 +83,12 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
   @override
   void initState() {
     super.initState();
+    if (!_showcase) {
+      // A meter trip left running (the app closed, the phone restarted) comes back with its Home strip.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(meterProvider.notifier).restore();
+      });
+    }
     if (_api) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -211,6 +219,7 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
     final demo = ref.watch(demoSettingsProvider);
     final profile = ref.watch(driverProfileProvider).value ?? Seed.karthik;
     final prefs = _showcase ? null : ref.watch(bookingPrefsProvider).value;
+    final meterOn = !_showcase && ref.watch(meterProvider.select((m) => m.active));
 
     // ------------------------------------------------------------ view state
     final online = _live
@@ -255,6 +264,8 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
     final String subtitle;
     if (job != null) {
       subtitle = job.isDelivery ? 'On a delivery' : 'On a ride';
+    } else if (meterOn) {
+      subtitle = 'On a meter trip';
     } else if (gpsLost) {
       subtitle = 'Online · hidden from riders';
     } else if (quiet) {
@@ -443,6 +454,8 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
             onSurge: _act(() => context.push(Routes.demandAreas(surge: true)))!,
             onBusy: _act(() => context.push(Routes.demandAreas(surge: false)))!,
           );
+    // The meter tab, for a passenger off the app: online or offline, never during a booked trip or a meter trip.
+    final meterChip = job != null || meterOn ? null : MeterChip(onTap: _act(() => context.go(Routes.meter))!);
 
     // ---------------------------------------------------------- bottom panel
     final Widget basePanel;
@@ -482,6 +495,7 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
         price: price,
         onGoOnline: _goOnline,
         goingOnline: session.goingOnline,
+        meterOn: meterOn,
         onRenew: _act(() => context.push(Routes.autopay(purpose: 'pay')))!,
         onResume: _resumePlan,
         onPlan: _act(() => context.go(Routes.plan))!,
@@ -534,7 +548,9 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
                 final route = routeForJob(_live ? session.phase : JobPhase.toDrop, delivery: job.isDelivery);
                 if (route != null) context.push(route);
               })!,
-            ),
+            )
+          else if (meterOn)
+            MeterBanner(onOpen: () => context.go(Routes.meter)),
           if (gpsLost)
             S16GpsWeakBanner(
               onFix: _api ? _fixGps : null,
@@ -555,10 +571,13 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (chips != null)
+                        if (chips != null || meterChip != null)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(TtSpacing.gutter, 0, TtSpacing.gutter, TtSpacing.m),
-                            child: chips,
+                            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                              Expanded(child: chips ?? const SizedBox.shrink()),
+                              if (meterChip != null) ...[const SizedBox(width: TtSpacing.s), meterChip],
+                            ]),
                           ),
                         if (missed)
                           Padding(
@@ -617,6 +636,7 @@ class _OfflinePanel extends StatelessWidget {
     required this.price,
     required this.onGoOnline,
     this.goingOnline = false,
+    this.meterOn = false,
     required this.onRenew,
     required this.onResume,
     required this.onPlan,
@@ -633,6 +653,9 @@ class _OfflinePanel extends StatelessWidget {
   final int price;
   final VoidCallback onGoOnline;
   final bool goingOnline;
+
+  /// A meter trip is on: Go online waits until it ends (one GPS stream; no requests mid-trip).
+  final bool meterOn;
   final VoidCallback onRenew;
   final VoidCallback onResume;
   final VoidCallback onPlan;
@@ -641,6 +664,7 @@ class _OfflinePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.type;
     final children = <Widget>[];
+    final goOnline = meterOn ? null : onGoOnline;
     switch (status) {
       case PlanStatus.expired:
         children.addAll([
@@ -656,7 +680,7 @@ class _OfflinePanel extends StatelessWidget {
         ]);
       case PlanStatus.grace:
         children.addAll([
-          GoOnlineButton(onPressed: onGoOnline, loading: goingOnline),
+          GoOnlineButton(onPressed: goOnline, loading: goingOnline),
           const SizedBox(height: TtSpacing.xl),
           PlanStrip(
             warning: true,
@@ -667,12 +691,14 @@ class _OfflinePanel extends StatelessWidget {
       case PlanStatus.trial || PlanStatus.active || PlanStatus.cancelled:
         children.addAll([
           Text(
-            "You're offline. Go online to get ${delivery ? 'delivery' : 'ride'} requests.",
+            meterOn
+                ? 'End the meter trip to go online again.'
+                : "You're offline. Go online to get ${delivery ? 'delivery' : 'ride'} requests.",
             textAlign: TextAlign.center,
             style: t.body.copyWith(color: TtColors.navy700),
           ),
           const SizedBox(height: TtSpacing.l),
-          GoOnlineButton(onPressed: onGoOnline, loading: goingOnline),
+          GoOnlineButton(onPressed: goOnline, loading: goingOnline),
           if (showPlan) ...[
             const SizedBox(height: TtSpacing.l),
             PlanStrip(

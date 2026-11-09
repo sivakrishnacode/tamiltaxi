@@ -36,6 +36,9 @@ abstract final class Routes {
   static const plan = '/plan';
   static const account = '/account';
 
+  /// D-42: the meter for a passenger picked up off the app (a tab).
+  static const meter = '/meter';
+
   /// D-14c: the Surge or High demand areas (Home's chips).
   static const demandAreasPath = '/demand-areas';
   static String demandAreas({required bool surge}) => '$demandAreasPath?show=${surge ? 'surge' : 'busy'}';

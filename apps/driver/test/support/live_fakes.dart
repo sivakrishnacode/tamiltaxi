@@ -241,6 +241,13 @@ class FakeLocator extends DriverLocator {
   final previewFixes = StreamController<GpsFix>.broadcast();
   @override
   Stream<GpsFix> previewPositions() => previewFixes.stream;
+  final meterFixes = StreamController<GpsFix>.broadcast();
+  int meterListens = 0;
+  @override
+  Stream<GpsFix> meterPositions() {
+    meterListens++;
+    return meterFixes.stream;
+  }
   @override
   Future<bool> isReadyWithoutPrompt() async => true;
 }

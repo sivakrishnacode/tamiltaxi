@@ -292,6 +292,14 @@ Labels: plan, web, api
   only; add that it also sends account messages (welcome, driver approval) on WhatsApp
 - [ ] Tamil versions of the three welcome templates (WATX language `ta`), sent by the app language once the API knows it
 
+### Meter trips in Earnings and admin
+
+Labels: plan, driver, api
+
+The driver app's meter (D-42, 10 Nov 2026) keeps its trips on the phone only. Send each finished meter trip to the
+API once the phone is back online (km, minutes, fare, vehicle and city; no route, no passenger), so it shows in the
+driver's Earnings and admin can count the trips taken off the app.
+
 ### Remove old Rido resources
 
 Issue: #13 · Labels: plan, infra

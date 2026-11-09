@@ -101,6 +101,11 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ### Next release: 0.1.3 (code 5)
 
+- Meter: a new **Meter** tab next to Home (and a Meter button on the Home map) for a passenger picked up off the app.
+  Start meter takes the driver offline and counts the distance by GPS, with no internet needed; the fare is the app's
+  own for that distance at the driver's rates (autos: the government fare, and the night fare at night). It keeps
+  counting with the screen off and carries on if the app is closed; End trip shows the fare, its lines and the UPI QR
+  with the amount. Meter trips stay on the phone for now (not in Earnings).
 - Maps: zone and demand labels on Home, the pins on Surge / High demand areas and the "location lost" mark stay on
   their place while the map is dragged, instead of trailing behind it and catching up after. A tap on a pin still
   shows its area.

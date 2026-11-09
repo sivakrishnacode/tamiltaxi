@@ -28,6 +28,7 @@ import '../features/jobs/d20_delivery_request_screen.dart';
 import '../features/jobs/d21_delivery_in_progress_screen.dart';
 import '../features/jobs/d22_delivery_otp_screen.dart';
 import '../features/jobs/driver_chat_screen.dart';
+import '../features/meter/d42_meter_screen.dart';
 import '../features/onboarding/d01_splash_screen.dart';
 import '../features/onboarding/d02_welcome_screen.dart';
 import '../features/onboarding/d03_phone_screen.dart';
@@ -212,6 +213,12 @@ GoRouter createDriverRouter({
                 ),
               ],
             ),
+          ],
+        ),
+        // Last, so the other tabs keep their branch indexes; the bar shows it next to Home (DriverShell).
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: Routes.meter, builder: (_, _) => const D42MeterScreen()),
           ],
         ),
       ],
