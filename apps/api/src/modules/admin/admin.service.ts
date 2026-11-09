@@ -210,13 +210,14 @@ export class AdminService {
   }
 
   /** Riders: search (name, phone), blocked / women-driver preference filters, sort. */
+  /** Riders: passengers, and drivers who booked a ride in the rider app (their rider side only; driving is in Drivers). */
   async passengers(q: ListQueryDto): Promise<Paged<User>> {
     const { skip, take, page, pageSize } = paging(q);
     const where: Prisma.UserWhereInput = {
-      role: Role.PASSENGER,
+      OR: [{ role: Role.PASSENGER }, { role: Role.DRIVER, trips: { some: {} } }],
       isBlocked: flag(q.blocked),
       preferWomenDriver: q.women === 'true' ? true : undefined,
-      ...userSearch(q.q),
+      AND: userSearch(q.q),
     };
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({ where, skip, take, orderBy: passengerOrder(q.sort), include: { _count: { select: { trips: true } } } }),

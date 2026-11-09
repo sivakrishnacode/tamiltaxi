@@ -147,6 +147,19 @@ describe('Tamil Taxi features (e2e)', () => {
     });
   });
 
+  describe('riders list (GET /admin/passengers)', () => {
+    it('lists a driver once they book a ride in the rider app', async () => {
+      const admin = await adminAuth();
+      const d = await newDriver();
+      const { phone: p } = await prisma.user.findUniqueOrThrow({ where: { id: d.userId }, select: { phone: true } });
+      const listed = async (): Promise<boolean> =>
+        ((await http.get('/v1/admin/passengers').query({ q: p }).set(admin).expect(200)).body.items as { id: string }[]).some((u) => u.id === d.userId);
+      expect(await listed()).toBe(false);
+      await tripRow({ passengerId: d.userId, kind: 'RIDE', status: 'COMPLETED' });
+      expect(await listed()).toBe(true);
+    });
+  });
+
   describe('profile edits (PATCH /drivers/me)', () => {
     it('a new plate after approval sends the driver back to pending, offline, with the RC to upload again', async () => {
       const d = await approvedDriver();
@@ -168,6 +181,9 @@ describe('Tamil Taxi features (e2e)', () => {
       expect((await redis.get(`driver:state:${d.driverId}`)) ?? '').not.toMatch(/^1\|/);
       const history = (await http.get(`/v1/admin/users/${d.userId}/activity`).set(await adminAuth()).expect(200)).body as { summary: string }[];
       expect(history.map((h) => h.summary)).toContain(`New plate ${plate} in the app: RC to upload again`);
+      // The rider page's history leaves the driver profile out.
+      const asRider = (await http.get(`/v1/admin/users/${d.userId}/activity`).query({ side: 'rider' }).set(await adminAuth()).expect(200)).body as { summary: string }[];
+      expect(asRider.map((h) => h.summary)).not.toContain(`New plate ${plate} in the app: RC to upload again`);
       await http.post('/v1/drivers/me/online').set(d.auth).send(AT).expect(403);
     });
 

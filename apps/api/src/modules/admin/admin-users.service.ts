@@ -10,7 +10,7 @@ import { RedisService } from '../../core/redis/redis.service.js';
 import type { KycDocument, Prisma, User } from '../../generated/prisma/client.js';
 import { AdminLevel, CancelFault, CancelledBy, KycStatus, Role } from '../../generated/prisma/enums.js';
 import { type PassengerCancelRate, passengerCancelRate } from '../trips/cancel-rate.js';
-import { driverLastFixKey, type LastLocation, parseLastLocation, riderLastPinKey } from '../drivers/last-location.js';
+import { type LastLocation, parseLastLocation, riderLastPinKey } from '../drivers/last-location.js';
 
 /** Window of the passenger cancellation rate on the admin user page. */
 const PASSENGER_RATE_DAYS = 30;
@@ -52,11 +52,9 @@ export class AdminUsersService {
 
   /**
    * With the passenger's cancellation rate over the last 30 days (shown only; passengers are never blocked) and where
-   * the rider and driver apps last placed them (last-location.ts).
+   * the rider app last placed them (last-location.ts; a driver's GPS is on the driver page only).
    */
-  async user(id: string): Promise<
-    User & { cancelRate: PassengerCancelRate; lastLocation: { rider: LastLocation | null; driver: LastLocation | null } }
-  > {
+  async user(id: string): Promise<User & { cancelRate: PassengerCancelRate; lastLocation: LastLocation | null }> {
     const since = new Date(Date.now() - PASSENGER_RATE_DAYS * 86_400_000);
     const [user, booked, cancelled, atFault] = await Promise.all([
       this.userRow(id),
@@ -64,11 +62,10 @@ export class AdminUsersService {
       this.prisma.tripCancellation.count({ where: { passengerId: id, by: CancelledBy.PASSENGER, createdAt: { gte: since } } }),
       this.prisma.tripCancellation.count({ where: { passengerId: id, fault: CancelFault.PASSENGER, createdAt: { gte: since } } }),
     ]);
-    const [pin, fix] = await this.redis.mget(riderLastPinKey(id), ...(user.driver ? [driverLastFixKey(user.driver.id)] : []));
     return {
       ...user,
       cancelRate: passengerCancelRate({ since, booked, cancelled, atFault }),
-      lastLocation: { rider: parseLastLocation(pin), driver: parseLastLocation(fix) },
+      lastLocation: parseLastLocation(await this.redis.get(riderLastPinKey(id))),
     };
   }
 

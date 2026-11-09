@@ -86,11 +86,14 @@ export class AdminUsersController {
     return this.people.removeNote(id);
   }
 
-  /** Admin changes to this person (account + driver profile), newest first, with who made them. ?limit ≤ 200. */
+  /**
+   * Admin changes to this person (account + driver profile), newest first, with who made them. ?limit ≤ 200;
+   * `?side=rider` leaves the driver profile's changes out (the rider page).
+   */
   @Get('users/:id/activity')
   @Needs('riders.view', 'drivers.view')
-  activity(@Param('id') id: string, @Query('limit') limit?: string): Promise<ActivityEntry[]> {
-    return this.people.activity(id, Number(limit) > 0 ? Number(limit) : 50);
+  activity(@Param('id') id: string, @Query('limit') limit?: string, @Query('side') side?: string): Promise<ActivityEntry[]> {
+    return this.people.activity(id, Number(limit) > 0 ? Number(limit) : 50, side === 'rider');
   }
 
   /** A push to this person's phone; `devices` = phones it went to (0 = nothing sent). */
