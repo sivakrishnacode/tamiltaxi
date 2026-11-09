@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
+import { DomainEvents, DriverApprovedEvent } from '../../core/events/domain-events.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
 import type { Driver, KycDocument, Plan, Prisma, SupportTicket, Trip, User } from '../../generated/prisma/client.js';
@@ -64,6 +66,7 @@ export class AdminService {
     private readonly blocks: DriverBlocksService,
     private readonly statusSync: DriverStatusSync,
     private readonly redis: RedisService,
+    private readonly events: EventEmitter2,
   ) {}
 
   /** Filters (status, vehicle, online, gender, search) + sort, with the count per status for the tabs. */
@@ -119,6 +122,10 @@ export class AdminService {
     await this.driverState.invalidate(id);
     const driver = await this.statusSync.changed(id);
     if (before.status !== status) void this.notifier.driverStatus({ driverId: id, from: before.status, to: status, reason });
+    // Back from On hold is a reactivation, not an approval (like the push).
+    if (status === DriverStatus.APPROVED && before.status !== DriverStatus.APPROVED && before.status !== DriverStatus.ON_HOLD) {
+      this.events.emit(DomainEvents.DriverApproved, new DriverApprovedEvent(id));
+    }
     return driver;
   }
 

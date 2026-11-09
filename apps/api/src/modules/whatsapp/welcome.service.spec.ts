@@ -18,6 +18,7 @@ function setup(opts: { watx?: boolean; settings?: Record<string, unknown>; user?
   const prisma = {
     user: { findUnique: vi.fn(async () => user), findUniqueOrThrow: vi.fn(async () => ({ phone: '+919000000001', name: 'Siva Krishna' })) },
     welcomeMessage: { create, update },
+    driver: { findUnique: vi.fn(async ({ where }: { where: { id: string } }) => (where.id === 'd1' ? { userId: 'u1' } : null)) },
   } as unknown as PrismaService;
   const send = vi.fn(async () => opts.sendError ?? null);
   const watx = { isEnabled: opts.watx ?? true, send } as unknown as WatxClient;
@@ -78,6 +79,17 @@ describe('WelcomeService.deliver', () => {
     expect(await welcome.deliver('u1', 'DRIVER_REGISTERED')).toBe(false);
     expect(await welcome.deliver('u1', 'DRIVER_APPROVED')).toBe(true);
     expect(send).toHaveBeenCalledWith('+919000000101', 'welcome_driver_approved', ['Priya']);
+  });
+});
+
+describe('WelcomeService listeners', () => {
+  it('each domain event sends its own welcome; driver.approved finds the driver’s account', async () => {
+    const { welcome, send } = setup({ settings: { welcomeDriverRegisteredEnabled: true, welcomeDriverApprovedEnabled: true } });
+    await welcome.onRiderSignedUp({ userId: 'u1' });
+    await welcome.onDriverRegistered({ userId: 'u1', driverId: 'd1' });
+    await welcome.onDriverApproved({ driverId: 'd1' });
+    await welcome.onDriverApproved({ driverId: 'gone' });
+    expect(send.mock.calls.map((c) => (c as unknown[])[1])).toEqual(['welcome_rider', 'welcome_driver_registered', 'welcome_driver_approved']);
   });
 });
 

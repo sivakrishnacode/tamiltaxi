@@ -3,7 +3,6 @@ import { Logger } from '@nestjs/common';
 import type { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { Trip } from '../../generated/prisma/client.js';
 import type { SettingsService } from '../settings/settings.service.js';
-import type { WelcomeService } from '../whatsapp/welcome.service.js';
 import { NotifierService, type TripWithPeople } from './notifier.service.js';
 import type { PushService } from './push.service.js';
 
@@ -15,8 +14,7 @@ function setup(opts: { findDriver?: () => Promise<unknown>; plans?: boolean } = 
     trip: { findUnique: vi.fn(() => Promise.reject(new Error('db down'))) },
   } as unknown as PrismaService;
   const settings = { get: vi.fn(() => Promise.resolve(opts.plans ?? false)) } as unknown as SettingsService;
-  const welcome = { send: vi.fn() };
-  return { notifier: new NotifierService(push, prisma, settings, welcome as unknown as WelcomeService), toUser, welcome };
+  return { notifier: new NotifierService(push, prisma, settings), toUser };
 }
 
 describe('NotifierService', () => {
@@ -46,14 +44,6 @@ describe('NotifierService', () => {
     const { notifier, toUser } = setup({ plans: false });
     await notifier.kycReviewed({ driverId: 'd1', status: 'APPROVED' });
     expect(toUser).toHaveBeenCalledWith('u1', 'DRIVER', expect.objectContaining({ body: 'Go online to start earning' }));
-  });
-
-  it('approval also sends the driver-approved WhatsApp welcome; a rejection does not', async () => {
-    const { notifier, welcome } = setup();
-    await notifier.kycReviewed({ driverId: 'd1', type: 'AADHAAR', status: 'REJECTED', reason: 'Blurred' });
-    expect(welcome.send).not.toHaveBeenCalled();
-    await notifier.kycReviewed({ driverId: 'd1', status: 'APPROVED' });
-    expect(welcome.send).toHaveBeenCalledWith('u1', 'DRIVER_APPROVED');
   });
 
   it('approval push mentions plans when they are on', async () => {

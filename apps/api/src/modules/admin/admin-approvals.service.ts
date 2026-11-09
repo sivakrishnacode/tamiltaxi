@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
+import { DomainEvents, DriverApprovedEvent } from '../../core/events/domain-events.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DriverStatus, IdentityStatus, KycStatus } from '../../generated/prisma/enums.js';
@@ -57,6 +59,7 @@ export class AdminApprovalsService {
     private readonly notifier: NotifierService,
     private readonly driverState: DriverStateCache,
     private readonly statusSync: DriverStatusSync,
+    private readonly events: EventEmitter2,
   ) {}
 
   /**
@@ -145,6 +148,7 @@ export class AdminApprovalsService {
       await this.driverState.invalidate(d.id);
       await this.statusSync.changed(d.id);
       void this.notifier.kycReviewed({ driverId: d.id, status: 'APPROVED' });
+      this.events.emit(DomainEvents.DriverApproved, new DriverApprovedEvent(d.id));
       await this.prisma.auditLog.create({
         data: { actorId, action: 'POST /v1/admin/drivers/approve', entity: 'drivers', entityId: d.id, data: { body: { status: 'APPROVED' }, bulk: true } },
       });

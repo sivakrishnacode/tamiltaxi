@@ -1,5 +1,6 @@
 import { Global, Module, ValidationPipe } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { JwtModule } from '@nestjs/jwt';
 
 import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
@@ -18,7 +19,7 @@ import { UsageService } from './usage/usage.service.js';
 
 const env = loadEnv();
 
-/** Cross-cutting setup: config, database, Redis, durable jobs, the driver state cache, JWT and the per-request account lookup, file storage, usage counters, global guards (JWT, roles, rate limits), validation and error filter. */
+/** Cross-cutting setup: config, database, Redis, durable jobs, domain events (events/domain-events.ts), the driver state cache, JWT and the per-request account lookup, file storage, usage counters, global guards (JWT, roles, rate limits), validation and error filter. */
 @Global()
 @Module({
   imports: [
@@ -26,6 +27,7 @@ const env = loadEnv();
     PrismaModule,
     RedisModule,
     JobsModule,
+    EventEmitterModule.forRoot(),
     JwtModule.register({ global: true, secret: env.jwtSecret, signOptions: { expiresIn: env.jwtExpiresIn as never } }),
   ],
   providers: [

@@ -1,7 +1,9 @@
 import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 
 import type { Env } from '../../core/config/env.js';
 import { ENV } from '../../core/config/env.token.js';
+import { DomainEvents, DriverApprovedEvent, DriverRegisteredEvent, RiderSignedUpEvent } from '../../core/events/domain-events.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { WelcomeTrigger } from '../../generated/prisma/enums.js';
 import type { SettingKey } from '../settings/settings.defaults.js';
@@ -43,8 +45,9 @@ export interface WelcomeOverview {
 }
 
 /**
- * WhatsApp welcome messages through WATX (Admin › Automations › WhatsApp). Each trigger (a rider finishing sign-up,
- * a driver registering, a driver approved) sends its approved template once per account, when switched on.
+ * WhatsApp welcome messages through WATX (Admin › Engage › Automations). Listens to the domain events of each
+ * trigger (a rider finishing sign-up, a driver registering, a driver approved) and sends its approved template once
+ * per account, when switched on. Listener errors are logged by the event emitter and never reach the request.
  */
 @Injectable()
 export class WelcomeService {
@@ -57,9 +60,20 @@ export class WelcomeService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  /** [trigger] happened for [userId]: its welcome goes out in the background. Never throws or waits. */
-  send(userId: string, trigger: WelcomeTrigger): void {
-    void this.deliver(userId, trigger).catch((e: Error) => this.logger.warn(`Welcome ${trigger} to ${userId} not sent: ${e.message}`));
+  @OnEvent(DomainEvents.RiderSignedUp, { async: true })
+  async onRiderSignedUp(e: RiderSignedUpEvent): Promise<void> {
+    await this.deliver(e.userId, WelcomeTrigger.RIDER_SIGNUP);
+  }
+
+  @OnEvent(DomainEvents.DriverRegistered, { async: true })
+  async onDriverRegistered(e: DriverRegisteredEvent): Promise<void> {
+    await this.deliver(e.userId, WelcomeTrigger.DRIVER_REGISTERED);
+  }
+
+  @OnEvent(DomainEvents.DriverApproved, { async: true })
+  async onDriverApproved(e: DriverApprovedEvent): Promise<void> {
+    const driver = await this.prisma.driver.findUnique({ where: { id: e.driverId }, select: { userId: true } });
+    if (driver) await this.deliver(driver.userId, WelcomeTrigger.DRIVER_APPROVED);
   }
 
   /**

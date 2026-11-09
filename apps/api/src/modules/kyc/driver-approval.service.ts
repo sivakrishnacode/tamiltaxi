@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
+import { DomainEvents, DriverApprovedEvent } from '../../core/events/domain-events.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { DriverStatus, IdentityStatus } from '../../generated/prisma/enums.js';
 import { NotifierService } from '../notifications/notifier.service.js';
@@ -25,6 +27,7 @@ export class DriverApprovalService {
     private readonly notifier: NotifierService,
     private readonly driverState: DriverStateCache,
     private readonly settings: SettingsService,
+    private readonly events: EventEmitter2,
   ) {}
 
   /** Calls [listener] after each status change made here (e.g. a rejected document → REJECTED). */
@@ -77,7 +80,10 @@ export class DriverApprovalService {
     if (next === driver.status) return next;
     await this.prisma.driver.update({ where: { id: driverId }, data: { status: next, isOnline: next === DriverStatus.APPROVED ? undefined : false } });
     await this.driverState.invalidate(driverId);
-    if (next === DriverStatus.APPROVED) void this.notifier.kycReviewed({ driverId, status: 'APPROVED' });
+    if (next === DriverStatus.APPROVED) {
+      void this.notifier.kycReviewed({ driverId, status: 'APPROVED' });
+      this.events.emit(DomainEvents.DriverApproved, new DriverApprovedEvent(driverId));
+    }
     for (const listener of this.listeners) {
       await listener(driverId, next).catch((e: Error) => this.logger.warn(`Status listener failed for ${driverId}: ${e.message}`));
     }
