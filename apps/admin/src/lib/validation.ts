@@ -1,4 +1,5 @@
 import type { Settings } from "./types";
+import { isTemplateName } from "./whatsapp";
 
 export type SettingValue = number | boolean | string;
 export type SettingsInput = Partial<Record<keyof Settings, SettingValue>> & Record<string, SettingValue>;
@@ -6,6 +7,11 @@ export type SettingsErrors = Partial<Record<string, string>>;
 
 function inRange(v: unknown, min: number, max: number, isInteger = false): boolean {
   return typeof v === "number" && Number.isFinite(v) && v >= min && v <= max && (!isInteger || Number.isInteger(v));
+}
+
+/** A WATX template name exactly as approved: lowercase letters, digits and _. */
+function templateNameRule(v: SettingValue): string | null {
+  return typeof v === "string" && isTemplateName(v.trim()) ? null : "Use the template's name in WATX: lowercase letters, digits and _";
 }
 
 /** Rules for the known settings keys (apps/api/src/modules/settings/settings.defaults.ts). */
@@ -75,6 +81,12 @@ const RULES: Record<string, (v: SettingValue) => string | null> = {
   reminderQuietStartHour: (v) => (inRange(v, 0, 23, true) ? null : "Quiet from must be an hour 0–23"),
   reminderQuietEndHour: (v) => (inRange(v, 0, 23, true) ? null : "Quiet until must be an hour 0–23"),
   reminderDailyCap: (v) => (inRange(v, 1, 10, true) ? null : "Daily cap must be 1–10 reminders"),
+  welcomeRiderEnabled: (v) => (typeof v === "boolean" ? null : "The new-rider welcome must be on or off"),
+  welcomeDriverRegisteredEnabled: (v) => (typeof v === "boolean" ? null : "The driver-registered welcome must be on or off"),
+  welcomeDriverApprovedEnabled: (v) => (typeof v === "boolean" ? null : "The driver-approved welcome must be on or off"),
+  welcomeRiderTemplate: templateNameRule,
+  welcomeDriverRegisteredTemplate: templateNameRule,
+  welcomeDriverApprovedTemplate: templateNameRule,
   supportPhone: (v) => (typeof v === "string" && /^\+?[\d\s-]{8,20}$/.test(v.trim()) ? null : "Enter a phone number like +91 422 000 0000"),
 };
 

@@ -22,7 +22,7 @@ import { PLACEMENT_HINT, PLACEMENT_LABEL, PROMO_IMAGE_TYPES, PROMO_PLACEMENTS, p
 import type { PromoPlacement } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-import { createPromo, deletePromo, setBannerOrder, setPromoActive } from "../actions";
+import { createPromo, deletePromo, setBannerOrder, setPromoActive } from "../../actions";
 
 /** datetime-local (local time) → ISO, or "". */
 function toIso(local: string): string {

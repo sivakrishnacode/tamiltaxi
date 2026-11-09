@@ -7,8 +7,8 @@ describe("activePage", () => {
     expect(activePage("/").page.href).toBe("/");
     expect(activePage("/drivers").page.href).toBe("/drivers");
     expect(activePage("/drivers/approvals").page.href).toBe("/drivers/approvals");
-    expect(activePage("/automations/campaigns").page.href).toBe("/automations/campaigns");
-    expect(activePage("/automations").page.href).toBe("/automations");
+    expect(activePage("/engage/campaigns").page.href).toBe("/engage/campaigns");
+    expect(activePage("/engage").page.href).toBe("/engage");
   });
 
   it("tells a tab page from a detail page under it", () => {
@@ -41,10 +41,11 @@ describe("activeNav", () => {
       "/passengers": "Riders",
       "/users": "Riders",
       "/users/abc": "Riders",
-      "/automations": "Automations",
-      "/automations/campaigns": "Automations",
-      "/announcements": "Announcements",
-      "/promos": "Announcements",
+      "/engage": "Engage",
+      "/engage/automations": "Engage",
+      "/engage/campaigns": "Engage",
+      "/engage/in-app": "Engage",
+      "/engage/history": "Engage",
       "/cities": "Cities & zones",
       "/cities/coimbatore": "Cities & zones",
       "/settings": "Settings",
@@ -60,7 +61,7 @@ describe("activeNav", () => {
     expect(groupOf(activeNav("/drivers/approvals")).label).toBe("People");
     expect(groupOf(activeNav("/users/abc")).label).toBe("People");
     expect(groupOf(activeNav("/safety")).label).toBe("Operations");
-    expect(groupOf(activeNav("/automations/campaigns")).label).toBe("Engage");
+    expect(groupOf(activeNav("/engage/campaigns")).label).toBe("Engage");
     expect(groupOf(activeNav("/payments")).label).toBe("Setup");
   });
 });

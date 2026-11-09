@@ -1,6 +1,6 @@
-// Engage › Automations: reminder settings and festival/weekend campaigns. Pure helpers shared by the pages, their
+// Engage › Automations and Campaigns: reminder settings, reminder messages and festival/weekend campaigns. Pure helpers shared by the pages, their
 // Server Actions and the tests.
-import type { CampaignStatus, CampaignTarget, ReminderSettings } from "./types";
+import type { CampaignStatus, CampaignTarget, ReminderMessageKind, ReminderSettings } from "./types";
 
 /** The reminder keys of GET/PUT /admin/settings, with the API's defaults. Edited on Automations, not in Settings. */
 export const REMINDER_DEFAULTS: ReminderSettings = {
@@ -36,6 +36,69 @@ export function conversionLabel(sent: number, booked: number): string {
 /** "22:00" style hour for quiet-hour hints. */
 export function hourLabel(hour: number): string {
   return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? `${String(hour).padStart(2, "0")}:00` : "–";
+}
+
+// Reminder messages ---------------------------------------------------------------------------------------------------
+
+/** Words a reminder message may use in braces (the API fills them per rider; see reminder-messages.ts there). */
+export type Placeholder = "name" | "drop" | "time" | "vehicle";
+
+export const PLACEHOLDER_HINT: Record<Placeholder, string> = {
+  name: "First name",
+  drop: "Where they are going",
+  time: "Their usual time",
+  vehicle: "Their vehicle, e.g. an Auto",
+};
+
+export const KIND_PLACEHOLDERS: Record<ReminderMessageKind, readonly Placeholder[]> = {
+  SEARCH_LOCAL: ["name", "drop"],
+  SEARCH_OUTSTATION: ["name", "drop"],
+  ROUTINE: ["name", "drop", "time", "vehicle"],
+};
+
+export const MESSAGE_KIND_LABEL: Record<ReminderMessageKind, string> = {
+  SEARCH_LOCAL: "In town",
+  SEARCH_OUTSTATION: "Outstation",
+  ROUTINE: "Usual trip",
+};
+
+/** Example values for previews: what one rider would read. */
+export const SAMPLE_VALUES: Record<ReminderMessageKind, Record<Placeholder, string>> = {
+  SEARCH_LOCAL: { name: "Siva", drop: "Tidel Park", time: "", vehicle: "" },
+  SEARCH_OUTSTATION: { name: "Siva", drop: "Ooty", time: "", vehicle: "" },
+  ROUTINE: { name: "Siva", drop: "Brookefields Mall", time: "9:05 am", vehicle: "an Auto" },
+};
+
+export const MESSAGE_TITLE_MAX = 65;
+export const MESSAGE_BODY_MAX = 180;
+
+export interface ReminderMessageInput {
+  readonly kind: ReminderMessageKind;
+  readonly title: string;
+  readonly body: string;
+}
+
+/** The {words} in [text], in order. */
+export function placeholdersIn(text: string): string[] {
+  return [...text.matchAll(/\{([a-zA-Z]+)\}/g)].map((m) => m[1]);
+}
+
+/** The first problem with a reminder message, or null. The API checks again. */
+export function reminderMessageError(kind: ReminderMessageKind, title: string, body: string): string | null {
+  if (!(kind in KIND_PLACEHOLDERS)) return "Choose which reminder it is for";
+  if (!title.trim()) return "Write a title";
+  if (!body.trim()) return "Write a message";
+  if (title.trim().length > MESSAGE_TITLE_MAX) return `Keep the title within ${MESSAGE_TITLE_MAX} characters`;
+  if (body.trim().length > MESSAGE_BODY_MAX) return `Keep the message within ${MESSAGE_BODY_MAX} characters`;
+  const allowed = KIND_PLACEHOLDERS[kind] as readonly string[];
+  const unknown = [...placeholdersIn(title), ...placeholdersIn(body)].find((p) => !allowed.includes(p));
+  return unknown ? `{${unknown}} can't be used here: use ${allowed.map((p) => `{${p}}`).join(", ")}` : null;
+}
+
+/** [text] as one rider reads it, with the example values. */
+export function samplePreview(kind: ReminderMessageKind, text: string): string {
+  const values = SAMPLE_VALUES[kind];
+  return text.replace(/\{([a-zA-Z]+)\}/g, (whole, key: string) => values[key as Placeholder] || whole);
 }
 
 // Campaigns ---------------------------------------------------------------------------------------------------------

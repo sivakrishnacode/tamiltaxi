@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { AnnouncementAudience } from "@/lib/types";
 
-import { createAnnouncement, deleteAnnouncement, setAnnouncementActive } from "../actions";
+import { createAnnouncement, deleteAnnouncement, setAnnouncementActive } from "../../actions";
 
 const AUDIENCE_LABEL: Record<AnnouncementAudience, string> = {
   ALL: "Everyone",

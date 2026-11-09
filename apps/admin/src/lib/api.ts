@@ -72,6 +72,10 @@ import type {
   TicketStatus,
   TripDetail,
   Trip,
+  ReminderMessage,
+  ReminderMessageKind,
+  WelcomeOverview,
+  WelcomeTrigger,
 } from "./types";
 
 export { ApiError } from "./api-core";
@@ -382,6 +386,16 @@ export const adminApi = {
   deletePromo: (id: string) => apiFetch<null>(`/admin/promos/${enc(id)}`, { method: "DELETE" }),
   // Engage › Automations: reminder numbers and festival/weekend campaigns
   automations: () => apiFetch<AutomationsOverview>("/admin/automations"),
+  welcomeMessages: () => apiFetch<WelcomeOverview>("/admin/welcome-messages"),
+  reminderMessages: () => apiFetch<ReminderMessage[]>("/admin/reminder-messages"),
+  createReminderMessage: (data: { kind: ReminderMessageKind; title: string; body: string }) =>
+    apiFetch<ReminderMessage>("/admin/reminder-messages", { method: "POST", body: data }),
+  updateReminderMessage: (id: string, data: { title?: string; body?: string; isActive?: boolean }) =>
+    apiFetch<ReminderMessage>(`/admin/reminder-messages/${enc(id)}`, { method: "PATCH", body: data }),
+  deleteReminderMessage: (id: string) => apiFetch<null>(`/admin/reminder-messages/${enc(id)}`, { method: "DELETE" }),
+  /** The trigger's template ([template], else the saved one) to the signed-in admin's own WhatsApp. */
+  testWelcome: (trigger: WelcomeTrigger, template?: string) =>
+    apiFetch<{ ok: true }>("/admin/welcome-messages/test", { method: "POST", body: { trigger, template } }),
   campaigns: () => apiFetch<Campaign[]>("/admin/campaigns"),
   createCampaign: (data: CampaignCreateInput) => apiFetch<Campaign>("/admin/campaigns", { method: "POST", body: data }),
   cancelCampaign: (id: string) => apiFetch<Campaign>(`/admin/campaigns/${enc(id)}/cancel`, { method: "POST" }),

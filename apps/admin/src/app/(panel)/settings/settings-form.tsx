@@ -28,6 +28,7 @@ import { humanize } from "@/lib/format";
 import type { SettingsRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { surgeExample, type SettingValue } from "@/lib/validation";
+import { isWelcomeKey } from "@/lib/whatsapp";
 
 import { saveSettings } from "../actions";
 
@@ -207,7 +208,7 @@ function matchFields(g: Group, query: string): readonly FieldDef[] {
  * Engage › Automations instead. One draft for all sections, so switching never loses an edit; only changed keys are sent.
  */
 export function SettingsForm({ initial, section: initialSection }: { initial: SettingsRecord; section?: string }) {
-  const [types] = useState(() => Object.fromEntries(Object.entries(initial).filter(([k]) => !isReminderKey(k))) as Record<string, SettingValue>);
+  const [types] = useState(() => Object.fromEntries(Object.entries(initial).filter(([k]) => !isReminderKey(k) && !isWelcomeKey(k))) as Record<string, SettingValue>);
   const form = useSettingsDraft(types, saveSettings);
   const [find, setFind] = useState("");
 

@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { ApiError, adminApi, type AnnouncementInput, type CityInput, type FareInput, type ZoneInput } from "@/lib/api";
-import { campaignInputError, isReminderKey, type CampaignInput } from "@/lib/automations";
+import { campaignInputError, isReminderKey, reminderMessageError, type CampaignInput, type ReminderMessageInput } from "@/lib/automations";
 import { formatDate } from "@/lib/format";
 import { promoInputError } from "@/lib/promos";
 import { validateSettings, type SettingsInput } from "@/lib/validation";
+import { isTemplateName, isWelcomeKey, WELCOME_TRIGGERS } from "@/lib/whatsapp";
 import {
   AUDIENCES,
   DRIVER_STATUSES,
@@ -31,6 +32,8 @@ import {
   type Role,
   type TicketStatus,
   type VehicleKind,
+  type ReminderMessageKind,
+  type WelcomeTrigger,
 } from "@/lib/types";
 
 export type ActionResult<T = undefined> = { ok: true; message: string; data?: T } | { ok: false; error: string };
@@ -441,18 +444,18 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<Acti
   const res = await run(
     () => adminApi.createAnnouncement({ audience: input.audience, title, body, cityId: input.cityId || undefined, endsAt }),
     "Announcement published",
-    ["/announcements"],
+    ["/engage/in-app", "/engage"],
   );
   return plain(res);
 }
 
 export async function setAnnouncementActive(id: string, isActive: boolean): Promise<ActionResult> {
-  const res = await run(() => adminApi.setAnnouncementActive(id, isActive), isActive ? "Announcement shown" : "Announcement hidden", ["/announcements"]);
+  const res = await run(() => adminApi.setAnnouncementActive(id, isActive), isActive ? "Announcement shown" : "Announcement hidden", ["/engage/in-app", "/engage"]);
   return plain(res);
 }
 
 export async function deleteAnnouncement(id: string): Promise<ActionResult> {
-  const res = await run(() => adminApi.deleteAnnouncement(id), "Announcement deleted", ["/announcements"]);
+  const res = await run(() => adminApi.deleteAnnouncement(id), "Announcement deleted", ["/engage/in-app", "/engage"]);
   return plain(res);
 }
 
@@ -488,23 +491,23 @@ export async function createPromo(form: FormData): Promise<ActionResult> {
   if (input.startsAt) out.set("startsAt", input.startsAt);
   if (input.endsAt) out.set("endsAt", input.endsAt);
   out.set("image", file!, file!.name);
-  const res = await run(() => adminApi.createPromo(out), input.placement === "SPLASH" ? "Splash published" : "Banner published", ["/promos"]);
+  const res = await run(() => adminApi.createPromo(out), input.placement === "SPLASH" ? "Splash published" : "Banner published", ["/engage/in-app", "/engage"]);
   return plain(res);
 }
 
 export async function setPromoActive(id: string, isActive: boolean): Promise<ActionResult> {
-  const res = await run(() => adminApi.updatePromo(id, { isActive }), isActive ? "Picture shown" : "Picture hidden", ["/promos"]);
+  const res = await run(() => adminApi.updatePromo(id, { isActive }), isActive ? "Picture shown" : "Picture hidden", ["/engage/in-app", "/engage"]);
   return plain(res);
 }
 
 export async function setBannerOrder(id: string, sortOrder: number): Promise<ActionResult> {
   if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 999) return { ok: false, error: "Order is a number from 0 to 999" };
-  const res = await run(() => adminApi.updatePromo(id, { sortOrder }), "Order saved", ["/promos"]);
+  const res = await run(() => adminApi.updatePromo(id, { sortOrder }), "Order saved", ["/engage/in-app", "/engage"]);
   return plain(res);
 }
 
 export async function deletePromo(id: string): Promise<ActionResult> {
-  const res = await run(() => adminApi.deletePromo(id), "Picture deleted", ["/promos"]);
+  const res = await run(() => adminApi.deletePromo(id), "Picture deleted", ["/engage/in-app", "/engage"]);
   return plain(res);
 }
 
@@ -520,13 +523,43 @@ export async function saveSettings(input: SettingsInput): Promise<ActionResult> 
 
 // Automations (reminders) and campaigns ------------------------------------------------------------------------------
 
-/** Only the reminder keys of the settings (Engage › Automations); the Settings page saves the rest. */
-export async function saveReminderSettings(input: SettingsInput): Promise<ActionResult> {
-  if (Object.keys(input).some((k) => !isReminderKey(k))) return { ok: false, error: "Only reminder settings can be saved here" };
+/** Only the reminder and WhatsApp welcome keys of the settings (Engage › Automations); the Settings page saves the rest. */
+export async function saveAutomationSettings(input: SettingsInput): Promise<ActionResult> {
+  if (Object.keys(input).some((k) => !isReminderKey(k) && !isWelcomeKey(k))) return { ok: false, error: "Only automation settings can be saved here" };
   const errors = validateSettings(input);
   const first = Object.values(errors)[0];
   if (first) return { ok: false, error: first };
-  return plain(await run(() => adminApi.updateSettings(input), "Reminders saved", ["/automations"]));
+  return plain(await run(() => adminApi.updateSettings(input), "Automations saved", ["/engage/automations", "/engage"]));
+}
+
+/** A trigger's template ([template] as typed) to the signed-in admin's own WhatsApp. */
+export async function sendWelcomeTest(trigger: WelcomeTrigger, template: string): Promise<ActionResult> {
+  if (!WELCOME_TRIGGERS.some((t) => t.trigger === trigger)) return { ok: false, error: "Unknown trigger" };
+  const name = template.trim();
+  if (!isTemplateName(name)) return { ok: false, error: "Use the template's name in WATX: lowercase letters, digits and _" };
+  return plain(await run(() => adminApi.testWelcome(trigger, name), "Test sent: check WhatsApp on your phone", []));
+}
+
+/** One more wording for a reminder; each send picks one of the active ones at random. */
+export async function createReminderMessage(input: ReminderMessageInput): Promise<ActionResult> {
+  const error = reminderMessageError(input.kind, input.title, input.body);
+  if (error) return { ok: false, error };
+  const data = { kind: input.kind, title: input.title.trim(), body: input.body.trim() };
+  return plain(await run(() => adminApi.createReminderMessage(data), "Message added: it joins the rotation", ["/engage/automations"]));
+}
+
+export async function updateReminderMessage(id: string, kind: ReminderMessageKind, input: { title: string; body: string }): Promise<ActionResult> {
+  const error = reminderMessageError(kind, input.title, input.body);
+  if (error) return { ok: false, error };
+  return plain(await run(() => adminApi.updateReminderMessage(id, { title: input.title.trim(), body: input.body.trim() }), "Message saved", ["/engage/automations"]));
+}
+
+export async function setReminderMessageActive(id: string, isActive: boolean): Promise<ActionResult> {
+  return plain(await run(() => adminApi.updateReminderMessage(id, { isActive }), isActive ? "Message on: it joins the rotation" : "Message off", ["/engage/automations"]));
+}
+
+export async function deleteReminderMessage(id: string): Promise<ActionResult> {
+  return plain(await run(() => adminApi.deleteReminderMessage(id), "Message deleted", ["/engage/automations"]));
 }
 
 /** A push to every rider: now, or at [sendAt] (ISO). */
@@ -539,15 +572,15 @@ export async function createCampaign(input: CampaignInput): Promise<ActionResult
     target: input.target as CampaignTarget,
     sendAt: input.sendAt ? new Date(input.sendAt).toISOString() : undefined,
   };
-  return plain(await run(() => adminApi.createCampaign(data), data.sendAt ? "Campaign scheduled" : "Campaign sent to every rider", ["/automations/campaigns"]));
+  return plain(await run(() => adminApi.createCampaign(data), data.sendAt ? "Campaign scheduled" : "Campaign sent to every rider", ["/engage/campaigns", "/engage"]));
 }
 
 export async function cancelCampaign(id: string): Promise<ActionResult> {
-  return plain(await run(() => adminApi.cancelCampaign(id), "Campaign cancelled: it won't be sent", ["/automations/campaigns"]));
+  return plain(await run(() => adminApi.cancelCampaign(id), "Campaign cancelled: it won't be sent", ["/engage/campaigns", "/engage"]));
 }
 
 export async function deleteCampaign(id: string): Promise<ActionResult> {
-  return plain(await run(() => adminApi.deleteCampaign(id), "Campaign deleted", ["/automations/campaigns"]));
+  return plain(await run(() => adminApi.deleteCampaign(id), "Campaign deleted", ["/engage/campaigns", "/engage"]));
 }
 
 // Learned travel speeds -----------------------------------------------------------------------------------------------

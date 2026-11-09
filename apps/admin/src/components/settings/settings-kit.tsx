@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { validateSettings, type SettingValue, type SettingsErrors, type SettingsInput } from "@/lib/validation";
 
-// Building blocks of the settings forms (Settings, Engage › Automations): one draft, the same fields, one save bar.
+// Building blocks of the settings forms (Settings, Notifications): one draft, the same fields, one save bar.
 
 export interface FieldDef {
   readonly key: string;

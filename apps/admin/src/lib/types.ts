@@ -1026,6 +1026,22 @@ export interface ReminderSettings {
 
 export type ReminderKind = "SEARCH" | "ROUTINE";
 
+/** Which reminder a message is for: "Didn't book" in town or outstation, or the usual trip. */
+export type ReminderMessageKind = "SEARCH_LOCAL" | "SEARCH_OUTSTATION" | "ROUTINE";
+
+/** GET /admin/reminder-messages item: one wording of a reminder ({name}, {drop}, {time}, {vehicle}), with 30 days' results. */
+export interface ReminderMessage {
+  readonly id: string;
+  readonly kind: ReminderMessageKind;
+  readonly title: string;
+  readonly body: string;
+  readonly isActive: boolean;
+  readonly createdAt: string;
+  readonly sent30d: number;
+  /** Sends followed by a booking within an hour. */
+  readonly booked30d: number;
+}
+
 /** Last 7 days of one reminder: pushes sent, and rides booked within an hour of one. */
 export interface ReminderStats {
   readonly sent7d: number;
@@ -1050,6 +1066,42 @@ export interface AutomationsOverview {
   readonly search: ReminderStats;
   readonly routine: ReminderStats;
   readonly recent: ReminderLog[];
+}
+
+/** When a WhatsApp welcome goes out (API WelcomeTrigger). */
+export type WelcomeTrigger = "RIDER_SIGNUP" | "DRIVER_REGISTERED" | "DRIVER_APPROVED";
+
+/** WhatsApp welcomes: keys of GET/PUT /admin/settings edited on Engage › Automations (older APIs: absent). */
+export interface WelcomeSettings {
+  readonly welcomeRiderEnabled: boolean;
+  readonly welcomeRiderTemplate: string;
+  readonly welcomeDriverRegisteredEnabled: boolean;
+  readonly welcomeDriverRegisteredTemplate: string;
+  readonly welcomeDriverApprovedEnabled: boolean;
+  readonly welcomeDriverApprovedTemplate: string;
+}
+
+/** One WhatsApp welcome: sent ([sentAt]), refused ([error]) or still going out (neither). */
+export interface WelcomeLog {
+  readonly id: string;
+  readonly trigger: WelcomeTrigger;
+  readonly template: string;
+  readonly userId: string;
+  readonly userName: string | null;
+  readonly phone: string;
+  /** The account's driver profile, for driver welcomes' links. */
+  readonly driverId: string | null;
+  readonly createdAt: string;
+  readonly sentAt: string | null;
+  readonly error: string | null;
+}
+
+/** GET /admin/welcome-messages. */
+export interface WelcomeOverview {
+  /** WATX_API_KEY is set on the API: without it nothing is sent. */
+  readonly isConnected: boolean;
+  readonly triggers: Record<WelcomeTrigger, { readonly sent7d: number; readonly failed7d: number }>;
+  readonly recent: WelcomeLog[];
 }
 
 /** The passenger-app screen a campaign push opens. */

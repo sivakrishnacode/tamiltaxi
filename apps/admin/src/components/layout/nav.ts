@@ -5,7 +5,6 @@ import {
   HexagonIcon,
   IdCardIcon,
   LayoutDashboardIcon,
-  MegaphoneIcon,
   RadarIcon,
   RouteIcon,
   ServerCogIcon,
@@ -106,19 +105,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "Engage",
     items: [
       {
-        label: "Automations",
+        // Every message to riders and drivers: what sends itself, what admins send, what shows in the apps (9 Nov 2026).
+        label: "Engage",
         icon: BellRingIcon,
         pages: [
-          { href: "/automations", label: "Reminders" },
-          { href: "/automations/campaigns", label: "Campaigns" },
-        ],
-      },
-      {
-        label: "Announcements",
-        icon: MegaphoneIcon,
-        pages: [
-          { href: "/announcements", label: "Announcements" },
-          { href: "/promos", label: "Splash & banners" },
+          { href: "/engage", label: "Overview" },
+          { href: "/engage/automations", label: "Automations" },
+          { href: "/engage/campaigns", label: "Campaigns" },
+          { href: "/engage/in-app", label: "In-app" },
+          { href: "/engage/history", label: "History" },
         ],
       },
     ],
