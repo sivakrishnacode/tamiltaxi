@@ -284,6 +284,14 @@ PH-01 and PH-02 were redesigned on 18 Oct 2026. PH-03 (Day & extras) still has r
 (the day cards and the vehicle cards scroll sideways, so "Wed 21" and "Pickup" are cut), and PH-04 says "Pickup"
 where the new steps say "Pickup truck". Bring both in line with PH-01 / PH-02.
 
+### WhatsApp welcomes: privacy policy line and Tamil templates
+
+Labels: plan, web, api
+
+- [ ] Before switching a welcome on: the privacy policy (`apps/web/src/lib/legal.ts`) says WATX sends sign-in codes
+  only; add that it also sends account messages (welcome, driver approval) on WhatsApp
+- [ ] Tamil versions of the three welcome templates (WATX language `ta`), sent by the app language once the API knows it
+
 ### Remove old Rido resources
 
 Issue: #13 · Labels: plan, infra

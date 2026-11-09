@@ -94,6 +94,9 @@ Examples: `feat(driver): show H3 demand hexes on home map`, `fix(api): await Pri
 - **Admin is on a new Next.js (16):** read [apps/admin/AGENTS.md](apps/admin/AGENTS.md) and the docs in
   `node_modules/next/dist/docs/` before writing admin code.
 - **Prisma queries are lazy:** `void prisma.x.create(...)` never runs. Always `await` or attach `.catch()`.
+- **Event-driven API:** a side effect in another module (WhatsApp, pushes, reminders) listens to a domain event
+  (`apps/api/src/core/events/domain-events.ts`, `@OnEvent(name, { async: true })`) instead of being called from the
+  module where it happens. New events go in that file.
 - **No built-in city:** Tamil Taxi scales city by city. Never hard-code a city name, centre or bounds in runtime code:
   read the `City` rows (API `GeoService`, apps `serviceCitiesProvider` / `CityDefaults`, admin `cityView`). Seed and
   demo data may name Coimbatore.
@@ -284,3 +287,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 4 Nov 2026 | API modules: kyc is the identity check by hand (Didit removed) |
 | 4 Nov 2026 | Key facts: zones may use finer hexagons than their city (to res 10) |
 | 9 Nov 2026 | API modules: `whatsapp` (WATX client, welcome messages) |
+| 9 Nov 2026 | Rule 1.4: event-driven API (domain events + `@OnEvent` listeners) |

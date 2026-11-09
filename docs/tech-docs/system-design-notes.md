@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 5 Nov 2026 (Red Taxi's outstation pricing compared, round trips now priced by time; live surge guarded against fake demand; SD-20 to SD-22 added; earlier, 10 Oct: offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
+Last updated: 9 Nov 2026 (domain events for side effects, starting with the WhatsApp welcomes; SD-23 added; earlier, 5 Nov 2026: Red Taxi's outstation pricing compared, round trips now priced by time; live surge guarded against fake demand; SD-20 to SD-22 added; earlier, 10 Oct: offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
 
 ---
 
@@ -240,6 +240,19 @@ has to be charged at the end (we give 30 min free for ETA error), or riders book
 lets riders book 60 days ahead (we allow 7), and their fare breakdown is only shown after "Confirm pickup", so the
 exact hourly rule is a fit to their prices, not their formula.
 
+### 9 Nov 2026: side effects as domain events, not service calls
+
+The owner asked for event-driven code (NestJS events guide, docs.nestjs.com/application/events). First use: the
+WhatsApp welcomes. Users, drivers and the three approval paths only emit `rider.signed-up`, `driver.registered` and
+`driver.approved` (`src/core/events/domain-events.ts`); the WhatsApp module listens. Before, users, drivers and the
+notifier each injected the WhatsApp service, so every new side effect touched the module where the thing happened.
+
+Ours today vs a bus: EventEmitter2 is in-process and in memory. Emitting never waits for a listener and a failing
+listener is only logged, which is right for "nice to have" effects (a welcome message). But an event emitted just
+before a restart is lost, and with two API instances each listener runs only where the event was emitted. That is
+fine on one box (Stage 1). Learned: keep the event names and payload classes stable now, so moving to a durable
+transport later changes the emitter, not the modules. Next: SD-23 when an effect must not be lost.
+
 ## 4. Optimization backlog
 
 Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week or more).
@@ -266,5 +279,6 @@ Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week o
 | SD-18 | **Reminder opt-out in the app:** an Account › Notifications switch for "Trip suggestions" (stored on the user, checked before every reminder and campaign), besides the Android channel | Riders who find reminders pushy can stop them without losing trip updates; Play policy friendly | First complaint about reminders, or before marketing pushes grow | S |
 | SD-20 | **Rider location at booking:** the rider app sends the phone's GPS fix (and Android's mock-location flag) with `POST /trips`; a booking counts toward live demand only when the phone is within ~2 km of the pickup and the fix isn't mocked. Booking for someone elsewhere still works, it just doesn't move surge | Demand should come from people who are there | Next rider app release that touches booking | S |
 | SD-21 | **Unusual-demand alerts in the admin:** flag hexes whose surge came with few finished trips, many quick cancels or many new accounts, and show them on Live / Missed rides | Lets an admin look before riders pay a surge that wasn't real | When live surge is on in a city with real volume | M |
+| SD-23 | **Durable domain events:** keep the event names and classes, but write each event to an outbox table in the same transaction (or a Redis Stream) and have listeners read from it with retries; existing older direct calls (fares → reminders) move to events too | In-memory events vanish on a restart and run on one instance only | A listener whose effect must not be lost (payments, refunds), or a second API instance | M |
 | SD-22 | **Rider–driver link signals:** flag rider accounts whose phone keeps being where a driver's phone is, or whose first trips were all with one driver; such riders stop counting as demand | The usual sign of a driver using a second phone | With SD-21 | M |
 | SD-19 | **Campaigns per city:** subscribe phones to a `passengers-<cityId>` topic (from their last pickup) and let a campaign pick cities | A Pongal push for Coimbatore shouldn't reach a second city with other festivals | When a second city goes live | S |

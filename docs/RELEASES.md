@@ -221,7 +221,21 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `d3db661` (API and admin).
+API and admin, with database changes (migrations `20261109120000_welcome_messages` and
+`20261109140000_reminder_messages`).
+
+- **New Engage area in the admin:** one Engage item with Overview (the week's numbers, what is running, the latest
+  messages), Automations, Campaigns, In-app (announcements, splash and Home banners) and History (every message that
+  went out). Old links redirect.
+- **Reminder messages, picked at random:** admins add as many wordings as they like for each reminder (Didn't book in
+  town or outstation, Usual trip), with the rider's name, the place, the usual time or vehicle filled in. Each reminder
+  picks one at random, and each wording shows how many it sent and how many riders booked after it. The messages sent
+  so far are kept as the first ones.
+- **No reminder for a trip that can't be booked:** a rider checking fares from a place with no service (e.g. Ooty) no
+  longer gets a "Didn't book" push.
+- **WhatsApp welcome messages:** one WhatsApp message per person when a rider finishes sign-up, someone registers as
+  a driver, or a driver is approved. Each is switched on separately under Engage › Automations and stays off until its
+  template is approved in WATX; Send test to my WhatsApp checks a template first.
 
 ### 9 Nov 2026 (second) · API and admin at `d3db661`
 
