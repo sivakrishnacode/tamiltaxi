@@ -4,12 +4,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { EmptyState, Field, PageHeader } from "@/components/common/page";
-import { PlateBadge, StatusBadge } from "@/components/common/status";
+import { StatusBadge } from "@/components/common/status";
 import { TripRouteCell } from "@/components/common/trip-bits";
 import { LastLocationCard } from "@/components/people/last-location";
 import { PersonMenu } from "@/components/people/person-menu";
 import { PersonRecord } from "@/components/people/person-record";
-import { PersonTabs } from "@/components/people/person-tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { adminApi } from "@/lib/api";
-import { displayName, formatDate, formatDateTime, formatInr, formatPhone, humanize, initials, kycProgress, shortId, vehicleLabel } from "@/lib/format";
+import { displayName, formatDate, formatDateTime, formatInr, formatPhone, humanize, initials, shortId } from "@/lib/format";
 import { can, isOwner } from "@/lib/access";
 import { getAccess } from "@/lib/access-server";
 import { getSessionUser } from "@/lib/session";
@@ -33,22 +32,21 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
   const { id } = await params;
   const [u, me, access] = await Promise.all([adminApi.user(id), getSessionUser(), getAccess()]);
   const canChangeRole = isOwner(access);
-  // Drivers: their home city choices.
-  const cities = u.driver ? await adminApi.cities().catch(() => []) : [];
-  const driverKyc = u.driver ? kycProgress(u.driver.documents, u.identityStatus ?? "NOT_STARTED") : null;
   const name = displayName(u);
   const isSelf = !!me && me.phone === u.phone;
   const isDeleted = !!u.deletedAt;
+  // The rider side only: a driver who books rides is a passenger here; their driving is on the driver page.
+  const isDriver = u.role === "DRIVER";
 
   return (
     <>
-      {u.role === "PASSENGER" ? (
-        <Link href="/passengers" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeftIcon className="size-4" /> All riders
-        </Link>
-      ) : (
+      {u.role === "ADMIN" ? (
         <Link href="/users" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeftIcon className="size-4" /> All accounts
+        </Link>
+      ) : (
+        <Link href="/passengers" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeftIcon className="size-4" /> All riders
         </Link>
       )}
       <PageHeader
@@ -60,7 +58,7 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
             <span className="min-w-0">
               <span className="block truncate">{name}</span>
               <span className="mt-1 flex flex-wrap items-center gap-2 font-sans text-sm font-normal text-muted-foreground">
-                <Badge variant="outline">{humanize(u.role)}</Badge>
+                <Badge variant="outline">{isDriver ? "Passenger" : humanize(u.role)}</Badge>
                 {u.role === "ADMIN" && <Badge variant="secondary">{u.adminLevel === "SUPPORT" ? "Staff" : "Owner"}</Badge>}
                 {isDeleted && (
                   <Badge variant="secondary" className="bg-muted text-muted-foreground">
@@ -92,7 +90,7 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
                     </Link>
                   </Button>
                 ) : (
-                  <RoleControl userId={u.id} role={u.role} name={name} />
+                  !isDriver && <RoleControl userId={u.id} role={u.role} name={name} />
                 ))
               )}
               <PersonMenu
@@ -103,28 +101,11 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
                 isBlocked={!!u.isBlocked}
                 isSelf={isSelf}
                 canDelete={can(access, "accounts.delete")}
-                driver={
-                  u.driver
-                    ? {
-                        id: u.driver.id,
-                        isOnline: u.driver.isOnline,
-                        vehicleKind: u.driver.vehicleKind,
-                        workType: u.driver.workType,
-                        vehicleModel: u.driver.vehicleModel,
-                        vehicleColor: u.driver.vehicleColor,
-                        plate: u.driver.plate,
-                        upiId: u.driver.upiId,
-                        cityId: u.driver.cityId ?? null,
-                        cities: cities.map((c) => ({ id: c.id, name: c.name })),
-                      }
-                    : undefined
-                }
               />
             </>
           )
         }
       />
-      {u.driver && <PersonTabs userId={u.id} driverId={u.driver.id} active="account" />}
 
       {isDeleted && (
         <p className="mb-4 rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground">
@@ -169,35 +150,6 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-semibold">Driver profile</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {u.driver ? (
-              <dl className="grid grid-cols-2 gap-4">
-                <Field label="Status">
-                  <StatusBadge status={u.driver.status} />
-                </Field>
-                <Field label="Vehicle">{vehicleLabel(u.driver.vehicleKind)}</Field>
-                <Field label="Plate">
-                  <PlateBadge plate={u.driver.plate} />
-                </Field>
-                <Field label="KYC">
-                  {driverKyc && `${driverKyc.verified}/${driverKyc.total} verified`}
-                </Field>
-                <div className="col-span-2">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/drivers/${u.driver.id}`}>Open driver profile</Link>
-                  </Button>
-                </div>
-              </dl>
-            ) : (
-              <p className="text-sm text-muted-foreground">Not registered as a driver.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle className="flex items-center gap-2 font-semibold">
               <HeartHandshakeIcon className="size-4 text-coral-600" /> Emergency contacts
             </CardTitle>
@@ -218,42 +170,34 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
             )}
           </CardContent>
         </Card>
+
+        {u.lastLocation !== undefined && <LastLocationCard location={u.lastLocation} />}
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        {u.lastLocation && (
-          <LastLocationCard
-            rows={[
-              { label: "Rider app", source: "map pin, to ~110 m", location: u.lastLocation.rider },
-              ...(u.driver ? [{ label: "Driver app", source: "GPS", location: u.lastLocation.driver }] : []),
-            ]}
-          />
-        )}
-        <Card className={u.lastLocation ? "lg:col-span-2" : "lg:col-span-3"}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-semibold">
-              <MapPinIcon className="size-4 text-coral-600" /> Saved places
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {u.savedPlaces.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No saved places.</p>
-            ) : (
-              <ul className="grid gap-3 sm:grid-cols-2">
-                {u.savedPlaces.map((p) => (
-                  <li key={p.id} className="rounded-lg border p-3 text-sm">
-                    <span className="flex items-center gap-2 font-medium text-navy-900">
-                      {p.label} <Badge variant="outline">{humanize(p.kind)}</Badge>
-                    </span>
-                    <span className="block text-navy-700">{p.name}</span>
-                    <span className="block text-xs text-muted-foreground">{p.address}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-semibold">
+            <MapPinIcon className="size-4 text-coral-600" /> Saved places
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {u.savedPlaces.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No saved places.</p>
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {u.savedPlaces.map((p) => (
+                <li key={p.id} className="rounded-lg border p-3 text-sm">
+                  <span className="flex items-center gap-2 font-medium text-navy-900">
+                    {p.label} <Badge variant="outline">{humanize(p.kind)}</Badge>
+                  </span>
+                  <span className="block text-navy-700">{p.name}</span>
+                  <span className="block text-xs text-muted-foreground">{p.address}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-5">
         <Card className="gap-0 pb-0 xl:col-span-3">
@@ -322,7 +266,7 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
       </div>
 
       <Suspense fallback={<Skeleton className="mt-4 h-48 w-full rounded-xl" />}>
-        <PersonRecord userId={u.id} driverId={u.driver?.id} />
+        <PersonRecord userId={u.id} driverId={u.driver?.id} riderOnly />
       </Suspense>
     </>
   );

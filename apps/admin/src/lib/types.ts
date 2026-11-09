@@ -926,7 +926,8 @@ export interface UserDetail extends User {
   readonly trips: TripBase[];
   readonly tickets: SupportTicketBase[];
   readonly cancelRate?: PassengerCancelRate;
-  readonly lastLocation?: { readonly rider: LastLocation | null; readonly driver: LastLocation | null };
+  /** The rider app's last map pin (a driver's GPS is on the driver page only). */
+  readonly lastLocation?: LastLocation | null;
 }
 
 /** GET /admin/kyc item. */

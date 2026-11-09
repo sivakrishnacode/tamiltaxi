@@ -7,11 +7,15 @@ import { displayName, formatDateTime } from "@/lib/format";
 import { NotesPanel } from "./notes-panel";
 
 /**
- * Notes + history of one person, on both their driver page and their account page (same user id, same record).
- * Older APIs without these endpoints show the cards empty rather than breaking the page.
+ * Notes + history of one person, on their driver page and their rider page (same user id; the rider page's history
+ * leaves the driver profile's changes out, [riderOnly]). Older APIs without these endpoints show the cards empty
+ * rather than breaking the page.
  */
-export async function PersonRecord({ userId, driverId }: { userId: string; driverId?: string }) {
-  const [notes, activity] = await Promise.all([adminApi.notes(userId).catch(() => null), adminApi.activity(userId).catch(() => null)]);
+export async function PersonRecord({ userId, driverId, riderOnly = false }: { userId: string; driverId?: string; riderOnly?: boolean }) {
+  const [notes, activity] = await Promise.all([
+    adminApi.notes(userId).catch(() => null),
+    adminApi.activity(userId, undefined, riderOnly ? "rider" : undefined).catch(() => null),
+  ]);
   return (
     <div className="mt-4 grid gap-4 xl:grid-cols-2">
       <Card className="gap-0">

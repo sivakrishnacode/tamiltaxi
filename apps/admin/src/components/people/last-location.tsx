@@ -5,37 +5,18 @@ import { formatAgo, formatDateTime } from "@/lib/format";
 import { sosMapUrl } from "@/lib/safety";
 import type { LastLocation } from "@/lib/types";
 
-export interface LastLocationRow {
-  /** "Rider app", "Driver app". */
-  readonly label: string;
-  /** What the point is: "map pin, to ~110 m", "GPS". */
-  readonly source: string;
-  readonly location: LastLocation | null | undefined;
-}
-
-/** Where the apps last placed this person, with the time (admin user page). */
-export function LastLocationCard({ rows, className }: { rows: readonly LastLocationRow[]; className?: string }) {
+/** Where the rider app last placed this rider, with the time (admin rider page). */
+export function LastLocationCard({ location }: { location: LastLocation | null }) {
   return (
-    <Card className={className}>
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-semibold">
           <LocateFixedIcon className="size-4 text-coral-600" /> Last location
         </CardTitle>
-        <CardDescription>Kept for 30 days.</CardDescription>
+        <CardDescription>The rider app&apos;s map pin, to about 110 m. Kept for 30 days.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <dl className="space-y-4">
-          {rows.map((r) => (
-            <div key={r.label} className="space-y-0.5">
-              <dt className="text-xs font-medium text-muted-foreground">
-                {r.label} · {r.source}
-              </dt>
-              <dd className="text-sm text-navy-900">
-                <LastLocationValue location={r.location} />
-              </dd>
-            </div>
-          ))}
-        </dl>
+      <CardContent className="text-sm text-navy-900">
+        <LastLocationValue location={location} />
       </CardContent>
     </Card>
   );

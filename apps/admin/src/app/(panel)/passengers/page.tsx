@@ -113,7 +113,8 @@ export default async function PassengersPage({ searchParams }: PageProps<"/passe
         />
       </Card>
       <p className="mt-3 text-xs text-muted-foreground">
-        Open a rider to block them or change their role. Drivers and admins are in{" "}
+        Open a rider to block them or change their role. Drivers who book rides are listed here too, with only their
+        rides; their driving is under Drivers. Admins are in{" "}
         <Link href="/users" className="text-coral-600 hover:underline">
           All accounts
         </Link>

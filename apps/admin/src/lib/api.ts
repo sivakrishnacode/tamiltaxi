@@ -353,7 +353,9 @@ export const adminApi = {
   notes: (userId: string) => apiFetch<AdminNote[]>(`/admin/users/${enc(userId)}/notes`),
   addNote: (userId: string, body: string) => apiFetch<AdminNote>(`/admin/users/${enc(userId)}/notes`, { method: "POST", body: { body } }),
   deleteNote: (id: string) => apiFetch<null>(`/admin/notes/${enc(id)}`, { method: "DELETE" }),
-  activity: (userId: string, limit = 30) => apiFetch<ActivityEntry[]>(`/admin/users/${enc(userId)}/activity`, { query: { limit } }),
+  /** [side] `rider`: without the driver profile's changes (the rider page). */
+  activity: (userId: string, limit = 30, side?: "rider") =>
+    apiFetch<ActivityEntry[]>(`/admin/users/${enc(userId)}/activity`, { query: { limit, side } }),
   /** `devices` = phones the push went to (0 = none registered, nothing sent). */
   message: (userId: string, data: { title: string; body: string; app?: MessageApp }) =>
     apiFetch<{ devices: number }>(`/admin/users/${enc(userId)}/message`, { method: "POST", body: data }),

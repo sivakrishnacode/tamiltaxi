@@ -221,7 +221,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `3896d94` (API and admin).
+API and admin (no database change).
+
+- **Driver and rider pages kept apart:** no "Driver profile / Account & rides as rider" tabs. The driver page shows
+  only driving (its last location is the GPS); the rider page shows only riding: no Driver profile card, no driver
+  location, no driver changes in its History. Riders now also lists drivers who booked a ride, with only their rides;
+  All accounts opens a driver on their driver page. Notes are still shared between the two pages.
 
 ### 9 Nov 2026 · API and admin at `3896d94`
 

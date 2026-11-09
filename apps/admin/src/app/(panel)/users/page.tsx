@@ -95,7 +95,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/users">) {
                 <TableRow key={u.id} className="relative">
                   <TableCell className="pl-4">
                     <Link
-                      href={`/users/${u.id}`}
+                      href={u.driver ? `/drivers/${u.driver.id}` : `/users/${u.id}`}
                       className="flex items-center gap-2.5 font-medium text-navy-900 after:absolute after:inset-0 hover:text-coral-600"
                     >
                       <Avatar className="size-8">

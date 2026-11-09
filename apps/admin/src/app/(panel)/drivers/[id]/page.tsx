@@ -11,7 +11,6 @@ import { TripRouteCell } from "@/components/common/trip-bits";
 import { LastLocationValue } from "@/components/people/last-location";
 import { PersonMenu } from "@/components/people/person-menu";
 import { PersonRecord } from "@/components/people/person-record";
-import { PersonTabs } from "@/components/people/person-tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DocumentReviewer } from "@/components/people/document-reviewer";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,7 +126,6 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
           )
         }
       />
-      <PersonTabs userId={d.user.id} driverId={d.id} active="driver" />
 
       {d.user.deletedAt && (
         <p className="mb-4 rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground">
@@ -174,11 +172,6 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
               <Field label="Email">{d.user.email ?? "–"}</Field>
               <Field label="Gender">{humanize(d.user.gender)}</Field>
               <Field label="Works on">{d.workType === "RIDES" ? "Rides" : "Deliveries"}</Field>
-              <Field label="Account">
-                <Link href={`/users/${d.user.id}`} className="text-coral-600 hover:underline">
-                  Open account
-                </Link>
-              </Field>
               {d.lastLocation !== undefined && (
                 <Field label="Last location (GPS, kept 30 days)" className="col-span-2">
                   <LastLocationValue location={d.lastLocation} />
