@@ -114,6 +114,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
   locked until an admin approves them. The approval says "You're approved! Go online to get requests."
 - Account: Documents and Vehicle details are one item, **Vehicle & documents** (the vehicle with Edit on top of the
   documents).
+- Sign-up step 3: **City** is a dropdown of our cities with the one nearest the phone picked to start with; the driver
+  can choose another, and it is saved as their city. (It always said Virudhunagar: the first city on the server.)
+  Needs the API from Staging › 10 Nov (second).
 - Maps: zone and demand labels on Home, the pins on Surge / High demand areas and the "location lost" mark stay on
   their place while the map is dragged, instead of trailing behind it and catching up after. A tap on a pin still
   shows its area.
@@ -234,7 +237,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `cd32cf6` (API) and `619c322` (admin).
+API, no database change.
+
+- **Drivers choose their city at sign-up:** `POST /drivers` and `PATCH /drivers/me` take `cityId` (an active service
+  city, else 400 "Choose one of our cities"; on an edit only checked when it changes). Needed by the next driver
+  app, which sends it.
 
 ### 10 Nov 2026 · API at `cd32cf6`
 
