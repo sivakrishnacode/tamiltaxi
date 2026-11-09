@@ -140,8 +140,9 @@ class _D06PersonalDetailsScreenState
     }
     if (!mounted) return;
     setState(() => _saving = false);
-    // Back to the registration page, now with the documents open.
-    context.go(Routes.documents);
+    // The driver exists now: Home, where the verify banner leads to the documents (the Meter and the rest work
+    // meanwhile; Go online waits for the admin).
+    context.go(Routes.home);
   }
 
   /// The service city the driver signs up in (the API's cities; empty until they load).

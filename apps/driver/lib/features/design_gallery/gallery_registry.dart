@@ -100,6 +100,8 @@ final List<GalleryEntry> galleryEntries = [
   _e('D-14', 'Home · online, waiting', _p6, (_) => const D13HomeScreen(variant: HomeVariant.online, showcase: true)),
   _e('D-14b', 'Home · trip in progress banner', _p6,
       (_) => const D13HomeScreen(variant: HomeVariant.tripBanner, showcase: true)),
+  _e('D-14f', 'Home · verify documents to go online', _p6,
+      (_) => const D13HomeScreen(variant: HomeVariant.verify, showcase: true)),
   _e('D-14c', 'Surge areas', _p6, (_) => const D14cDemandAreasScreen(showcase: true)),
   _e('D-14d', 'High demand areas', _p6,
       (_) => const D14cDemandAreasScreen(view: AreaView.busy, showcase: true)),

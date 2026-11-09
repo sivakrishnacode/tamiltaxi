@@ -18,6 +18,7 @@ import '../../state/driver_account.dart';
 import '../../state/driver_location.dart';
 import '../../state/driver_session.dart';
 import '../../state/meter.dart';
+import '../../state/registration.dart';
 import '../jobs/widgets/job_map.dart';
 import '../states/s10_account_on_hold_screen.dart';
 import '../states/s11_missed_request_banner.dart';
@@ -30,10 +31,11 @@ import 'widgets/zone_sheet.dart';
 import 'widgets/direction_panel.dart';
 import 'widgets/home_parts.dart';
 import 'widgets/meter_chip.dart';
+import 'widgets/verify_banner.dart';
 import 'widgets/navy_header.dart';
 
 /// Designed states of the home screen (D-13, D-14, D-14b, D-25a, D-25b, S-11, S-12, S-16).
-enum HomeVariant { live, offline, online, tripBanner, grace, expired, missedRequest, quiet, gpsLost, cancelWarning }
+enum HomeVariant { live, offline, online, tripBanner, grace, expired, missedRequest, quiet, gpsLost, cancelWarning, verify }
 
 /// D-13 Home. One screen for D-13 (offline), D-14 (online), D-14b (trip-in-progress banner),
 /// D-25a / D-25b (plan grace / expired), S-11 (missed request), S-12 (online, quiet) and
@@ -220,6 +222,14 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
     final profile = ref.watch(driverProfileProvider).value ?? Seed.karthik;
     final prefs = _showcase ? null : ref.watch(bookingPrefsProvider).value;
     final meterOn = !_showcase && ref.watch(meterProvider.select((m) => m.active));
+    // Not approved yet: the verify banner, and Go online waits (the Meter and the rest work).
+    final awaiting = _api
+        ? (ref.watch(driverApprovalProvider).value?.awaitingApproval ?? false)
+        : _v == HomeVariant.verify;
+    final progress = _api
+        ? ref.watch(registrationProgressProvider)
+        : (_v == HomeVariant.verify ? const RegistrationProgress(steps: 6, done: 3, errors: 0, allIn: false) : null);
+    final underReview = progress != null && progress.allIn && progress.errors == 0;
 
     // ------------------------------------------------------------ view state
     final online = _live
@@ -266,6 +276,8 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
       subtitle = job.isDelivery ? 'On a delivery' : 'On a ride';
     } else if (meterOn) {
       subtitle = 'On a meter trip';
+    } else if (awaiting) {
+      subtitle = underReview ? 'Documents under review' : 'Verify to go online';
     } else if (gpsLost) {
       subtitle = 'Online · hidden from riders';
     } else if (quiet) {
@@ -327,6 +339,9 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
         },
         onAction: () => _fixLocation(access),
       );
+    } else if (awaiting) {
+      // Above the permission banners: those are for ride requests, which wait for the approval anyway.
+      topCard = VerifyBanner(progress: progress, onVerify: _act(() => context.push(Routes.documents))!);
     } else if (missing.isNotEmpty) {
       // Shown (online too) until allowed; one at a time, most important first.
       final p = missing.first;
@@ -495,7 +510,11 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
         price: price,
         onGoOnline: _goOnline,
         goingOnline: session.goingOnline,
-        meterOn: meterOn,
+        lockedText: meterOn
+            ? 'End the meter trip to go online again.'
+            : awaiting
+            ? (underReview ? 'You can go online once your documents are verified.' : 'Verify your documents to go online.')
+            : null,
         onRenew: _act(() => context.push(Routes.autopay(purpose: 'pay')))!,
         onResume: _resumePlan,
         onPlan: _act(() => context.go(Routes.plan))!,
@@ -636,7 +655,7 @@ class _OfflinePanel extends StatelessWidget {
     required this.price,
     required this.onGoOnline,
     this.goingOnline = false,
-    this.meterOn = false,
+    this.lockedText,
     required this.onRenew,
     required this.onResume,
     required this.onPlan,
@@ -654,8 +673,9 @@ class _OfflinePanel extends StatelessWidget {
   final VoidCallback onGoOnline;
   final bool goingOnline;
 
-  /// A meter trip is on: Go online waits until it ends (one GPS stream; no requests mid-trip).
-  final bool meterOn;
+  /// Why Go online is locked (shown above it): a meter trip is on (one GPS stream; no requests mid-trip), or the
+  /// documents aren't approved yet. Null: it isn't.
+  final String? lockedText;
   final VoidCallback onRenew;
   final VoidCallback onResume;
   final VoidCallback onPlan;
@@ -664,7 +684,7 @@ class _OfflinePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.type;
     final children = <Widget>[];
-    final goOnline = meterOn ? null : onGoOnline;
+    final goOnline = lockedText == null ? onGoOnline : null;
     switch (status) {
       case PlanStatus.expired:
         children.addAll([
@@ -691,9 +711,7 @@ class _OfflinePanel extends StatelessWidget {
       case PlanStatus.trial || PlanStatus.active || PlanStatus.cancelled:
         children.addAll([
           Text(
-            meterOn
-                ? 'End the meter trip to go online again.'
-                : "You're offline. Go online to get ${delivery ? 'delivery' : 'ride'} requests.",
+            lockedText ?? "You're offline. Go online to get ${delivery ? 'delivery' : 'ride'} requests.",
             textAlign: TextAlign.center,
             style: t.body.copyWith(color: TtColors.navy700),
           ),

@@ -95,7 +95,7 @@ void main() {
     expect(state().notice?.message, contains('paused'));
   });
 
-  test('pending review during a job routes to documents after payment', () async {
+  test('back under review during a job: the job finishes, then offline on Home (its verify banner)', () async {
     await session().goOnline();
     jobs.offersCtl.add(liveOffer('t1'));
     await pumpEventQueue();
@@ -107,7 +107,7 @@ void main() {
     expect(container.read(apiClientProvider).session.lastDriverStatus, 'PENDING');
     await session().collectPayment(PaymentMode.cash);
     expect(state().online, isFalse);
-    expect(state().notice?.goTo, '/signup/documents');
+    expect(state().notice?.goTo, isNull, reason: 'Home, not the registration page');
   });
 
   test('live state starts with no seed earnings', () {

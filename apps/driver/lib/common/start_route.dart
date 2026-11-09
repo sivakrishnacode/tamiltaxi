@@ -4,33 +4,19 @@ import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import '../router/routes.dart';
 import '../state/app_permissions.dart';
 
-/// Where a signed-in driver lands (live API): Home once approved, otherwise always the D-07 registration page,
-/// which shows what is missing, what was rejected (with the reason) or that the review is pending.
-///
-/// [approved]: true = approved, false = rejected, null = not decided yet.
-String applicationRoute({required bool? approved}) =>
-    approved == true ? Routes.home : Routes.documents;
-
-/// Asks the API for the driver's application status and picks the start route. Offline uses the last known
-/// approval: unapproved or unknown stays on Registration. On hold → Home: the account, help and trips stay reachable, and Go online
-/// explains the hold (S-10) instead of D-07 claiming it is under review.
-Future<String> driverStartRoute(DriverRepository repo, IdentityRepository identity) async {
-  bool? approved;
+/// Where a signed-in driver lands (live API): Home, approved or not. Until an admin approves the documents, Home
+/// shows the verify banner (Verify now → D-07) and keeps Go online locked; the Meter, Earnings and Account all work.
+/// On hold: Go online explains the hold (S-10). The check also keeps the last status for an offline start. A 401
+/// (the session is gone) is rethrown.
+Future<String> driverStartRoute(DriverRepository repo) async {
   try {
-    approved = await repo.checkApplication();
-  } on StillUnderReviewException {
-    approved = null;
-  } on AccountOnHoldException {
-    return Routes.home;
-  } on OfflineException {
-    final status = repo is ApiDriverRepository
-        ? repo.api.session.lastDriverStatus
-        : null;
-    return const {'APPROVED', 'ON_HOLD'}.contains(status)
-        ? Routes.home
-        : Routes.documents;
+    await repo.checkApplication();
+  } on ApiException catch (e) {
+    if (e.status == 401) rethrow;
+  } on Exception {
+    // Under review, on hold or offline: Home all the same.
   }
-  return applicationRoute(approved: approved);
+  return Routes.home;
 }
 
 /// D-03c first while anything it asks for is still off (after the OTP and at start-up, live API), then [route].

@@ -9,12 +9,13 @@ import '../../common/showcase.dart';
 import '../../router/routes.dart';
 import '../../state/booking_prefs.dart';
 import '../../state/driver_account.dart';
+import '../../state/registration.dart';
 import '../../state/live_helpers.dart';
 import '../home/widgets/navy_header.dart';
 import 'account_providers.dart';
 import 'services_screen.dart';
 
-/// D-26 Driver account: profile header, Documents, Vehicle details, Services, Rate card, Booking preferences, UPI ID,
+/// D-26 Driver account: profile header, Vehicle & documents, Services, Rate card, Booking preferences, UPI ID,
 /// Emergency contact, Help & support, Terms, Design gallery (dev builds) and Log out. No Delete account:
 /// a driver's records are kept at least 6 months for police enquiries, so drivers ask support to close it.
 class D26AccountScreen extends ConsumerStatefulWidget {
@@ -80,6 +81,9 @@ class _D26AccountScreenState extends ConsumerState<D26AccountScreen> {
         : verified == steps
             ? 'All $steps verified'
             : '$verified of $steps verified';
+    // Not approved yet: the registration page (uploads and what is left); approved: the vehicle and the documents.
+    final awaiting = !widget.showcase && (ref.watch(driverApprovalProvider).value?.awaitingApproval ?? false);
+    final vehicleSub = profile?.vehicleLabel ?? (profileFailed ? 'Not loaded' : 'Loading…');
 
     return Scaffold(
       backgroundColor: TtColors.background,
@@ -99,16 +103,10 @@ class _D26AccountScreenState extends ConsumerState<D26AccountScreen> {
             children: [
               TtListGroup(children: [
                 TtListTile(
-                  icon: Symbols.folder_shared_rounded,
-                  title: 'Documents',
-                  subtitle: docsSub,
-                  onTap: act(() => context.push(Routes.accountDocuments)),
-                ),
-                TtListTile(
                   icon: profile?.vehicleKind.icon ?? Symbols.directions_car_rounded,
-                  title: 'Vehicle details',
-                  subtitle: profile?.vehicleLabel ?? (profileFailed ? 'Not loaded' : 'Loading…'),
-                  onTap: act(() => context.push(Routes.vehicleDetails)),
+                  title: 'Vehicle & documents',
+                  subtitle: awaiting ? '$vehicleSub · verify to go online' : '$vehicleSub · $docsSub',
+                  onTap: act(() => context.push(awaiting ? Routes.documents : Routes.accountDocuments)),
                 ),
                 TtListTile(
                   icon: Symbols.apps_rounded,

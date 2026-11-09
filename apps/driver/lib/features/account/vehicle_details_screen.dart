@@ -8,6 +8,7 @@ import '../../router/routes.dart';
 import '../../state/driver_account.dart';
 import '../../state/driver_session.dart';
 import '../../state/live_helpers.dart';
+import '../../state/registration.dart';
 import 'widgets/edit_form_scaffold.dart';
 
 /// Account › Vehicle details: model, colour and number plate (prefilled from the loaded profile; a spinner, then
@@ -103,13 +104,14 @@ class _VehicleDetailsScreenState extends ConsumerState<VehicleDetailsScreen> {
     }
     if (!mounted) return;
     if (newPlate) {
-      // Under review again: offline here too (the server already is), and the RC row shows what to upload.
+      // Under review again: offline here too (the server already is); Home's verify banner leads to the RC to upload.
       ref
         ..invalidate(driverProfileProvider)
-        ..invalidate(kycProvider);
+        ..invalidate(kycProvider)
+        ..invalidate(driverApprovalProvider);
       await ref.read(driverSessionProvider.notifier).goOffline(tellServer: false);
       if (!mounted) return;
-      context.go(Routes.documents);
+      context.go(Routes.home);
       showTtSnack(context, 'Plate saved. Upload the RC of your new vehicle');
       return;
     }

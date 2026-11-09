@@ -57,17 +57,18 @@ void main() {
     expect(calls.where((x) => x.contains('emergency-contacts')), isEmpty, reason: 'the contact is unchanged');
   });
 
-  test('start route: on hold opens Home (S-10 on Go online), not "under review" on D-07', () async {
-    Future<String> routeFor(String status) async {
-      final client = MockClient((req) async => http.Response('{"id":"d1","status":"$status"}', 200, headers: _json));
+  test('start route: every signed-in driver opens Home (verify banner until approved); a lost session is rethrown',
+      () async {
+    Future<String> routeFor(String status, {int code = 200}) async {
+      final client = MockClient((req) async => http.Response('{"id":"d1","status":"$status"}', code, headers: _json));
       SharedPreferences.setMockInitialValues({'tamiltaxi.accessToken': 'token', 'tamiltaxi.driverId': 'd1'});
       final api = ApiClient(baseUrl: 'http://api.test/v1', session: await ApiSession.load(), client: client);
-      return driverStartRoute(ApiDriverRepository(api), ApiIdentityRepository(api));
+      return driverStartRoute(ApiDriverRepository(api));
     }
 
-    expect(await routeFor('ON_HOLD'), Routes.home);
-    expect(await routeFor('APPROVED'), Routes.home);
-    expect(await routeFor('PENDING'), Routes.documents);
-    expect(await routeFor('REJECTED'), Routes.documents);
+    for (final status in ['APPROVED', 'ON_HOLD', 'PENDING', 'REJECTED']) {
+      expect(await routeFor(status), Routes.home, reason: status);
+    }
+    expect(routeFor('APPROVED', code: 401), throwsA(isA<ApiException>()), reason: 'Splash then opens Welcome');
   });
 }

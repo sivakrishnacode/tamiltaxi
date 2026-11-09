@@ -9,6 +9,7 @@ import '../router/routes.dart';
 import '../state/driver_location.dart';
 import '../state/driver_session.dart';
 import '../state/live_helpers.dart';
+import '../state/registration.dart';
 
 /// Where a refused go-online sends the driver, from the API's 403: S-10 when an admin put the account on hold, S-10b
 /// with the end time when paused for too many cancellations, D-07 when the account is not approved (any more: a new
@@ -60,8 +61,9 @@ Future<bool> goOnlineOrExplain(BuildContext context, WidgetRef ref, {bool toHome
     final route = goOnlineRefusalRoute(e);
     if (e.tempBlockedUntil != null) container.invalidate(cancelRateProvider);
     if (route == Routes.documents) {
-      // Not approved: the registration page says what's missing; Home is no use until then.
-      router.go(Routes.documents);
+      // Not approved (Home had an old status): the registration page says what's missing; back leads Home.
+      container.invalidate(driverApprovalProvider);
+      router.push(Routes.documents);
       snack(e.message);
       return false;
     }

@@ -147,7 +147,7 @@ class _D03bOtpScreenState extends ConsumerState<D03bOtpScreen> {
     }
     String route;
     try {
-      route = await driverStartRoute(ref.read(driverRepositoryProvider), ref.read(identityRepositoryProvider));
+      route = await driverStartRoute(ref.read(driverRepositoryProvider));
     } on Exception {
       route = Routes.home;
     }

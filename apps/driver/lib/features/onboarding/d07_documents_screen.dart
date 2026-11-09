@@ -9,6 +9,7 @@ import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 import '../../router/routes.dart';
 import '../../state/driver_account.dart';
 import '../../state/live_helpers.dart';
+import '../../state/registration.dart';
 import 'widgets/profile_photo_card.dart';
 import 'widgets/signup_widgets.dart';
 
@@ -20,10 +21,10 @@ import 'widgets/signup_widgets.dart';
 /// Once everything is in, the page shows "Under review" and checks the application (live: every 30 s; mock: after
 /// [SimTimings.applicationReview]); approved → Home (or D-11 when paid plans are on). A rejected document or a
 /// rejected photo shows on its row ("1 error") with Re-upload / Retake. The app opens here
-/// on every start until the driver is approved ([applicationRoute]).
+/// for a new driver until their vehicle and details are saved; after that Home (with its verify banner) opens this.
 ///
-/// [readOnly] (Account → Documents) shows every document as verified, with no actions (live API: the real statuses,
-/// with Re-upload for a rejected document).
+/// [readOnly] (Account → Vehicle & documents, once approved) shows the vehicle (Edit → its details) and every document
+/// as verified, with no actions (live API: the real statuses, with Re-upload for a rejected document).
 class D07DocumentsScreen extends ConsumerStatefulWidget {
   const D07DocumentsScreen({super.key, this.readOnly = false, this.showcase = false});
 
@@ -218,39 +219,21 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
     final hasIdentity = identity?.isRequired ?? live;
     final identityApproved = identity?.isApproved ?? false;
     final identityDone = !hasIdentity || identityApproved || idDocs.every(isIn);
-    final idErrors = hasIdentity ? idDocs.where((d) => d.status == KycStatus.rejected).length : 0;
     final needsPhoto = live && hasIdentity;
     // The photo can be taken any time (an admin approves each), not only after the identity check.
     final photoDone =
         !needsPhoto ||
         profile?.photoPath != null ||
         (profile?.hasPendingPhoto ?? false);
-    final photoError =
-        needsPhoto &&
-        profile != null &&
-        profile.photoRejectReason != null &&
-        profile.photoPath == null &&
-        !profile.hasPendingPhoto;
-    // 3. Documents.
-    final docsDone = docs.where(isIn).length;
-    final docErrors = docs.where((d) => d.status == KycStatus.rejected).length;
-
-    // The identity is one step per document.
-    final idSteps = hasIdentity ? idDocs.length : 0;
-    final idDone = !hasIdentity
-        ? 0
-        : (identityApproved ? idDocs.length : idDocs.where(isIn).length);
-    final steps = 1 + idSteps + (needsPhoto ? 1 : 0) + docs.length;
-    // Steps after the details only count once they are open.
-    final done = detailsDone
-        ? 1 +
-              idDone +
-              (needsPhoto && photoDone ? 1 : 0) +
-              docsDone
-        : 0;
-    final errors = docErrors + idErrors + (photoError ? 1 : 0);
-    final allIn =
-        detailsDone && identityDone && photoDone && docsDone == docs.length;
+    // 3. Documents. The counts are Home's verify banner's too (one rule: [RegistrationProgress]).
+    final progress = RegistrationProgress.of(
+      detailsDone: detailsDone,
+      allDocs: allDocs,
+      identity: identity,
+      profile: profile,
+      live: live,
+    );
+    final (steps, done, errors, allIn) = (progress.steps, progress.done, progress.errors, progress.allIn);
     if (allIn && errors == 0 && !showcase) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _startMockReview());
     }
@@ -302,7 +285,8 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         children: [
           DocsHeader(
             title: 'Registration',
-            showBack: false,
+            // Opened from Home's verify banner or Account: back to them. The app's first page (sign-up): none.
+            showBack: Navigator.of(context).canPop(),
             summary: allIn && errors == 0 ? 'All done, under review' : '$done of $steps done',
             segments: [(done / steps, errors > 0 ? TtColors.error : TtColors.coral500)],
             onHelp: showcase ? null : () => context.push(Routes.help),
@@ -427,6 +411,8 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
     final verified = docs.where((d) => d.status == KycStatus.verified).length;
     final steps = docs.length + (hasPhoto ? 1 : 0);
     final stepsVerified = verified + (hasPhoto && profile.photoPath != null ? 1 : 0);
+    // The vehicle row: live, the driver's own once loaded (never the seed one); mock and the gallery, the seed driver.
+    final vehicle = live && !showcase ? profile : Seed.karthik;
 
     return Scaffold(
       backgroundColor: TtColors.background,
@@ -434,8 +420,8 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DocsHeader(
-            title: 'Documents',
-            summary: '$stepsVerified of $steps verified',
+            title: 'Vehicle & documents',
+            summary: '$stepsVerified of $steps documents verified',
             segments: [(stepsVerified / steps, TtColors.success)],
             onHelp: showcase ? null : () => context.push(Routes.help),
           ),
@@ -445,6 +431,20 @@ class _D07DocumentsScreenState extends ConsumerState<D07DocumentsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // The vehicle (Account had it as its own item): model, colour and plate, Edit → D-26 vehicle details.
+                  TtListGroup(children: [
+                    TtListTile(
+                      icon: vehicle?.vehicleKind.icon ?? Symbols.directions_car_rounded,
+                      title: vehicle?.vehicleLabel ?? 'Loading…',
+                      subtitle: vehicle == null
+                          ? null
+                          : [vehicle.vehicleKind.label, vehicle.plate].where((s) => s.isNotEmpty).join(' · '),
+                      trailing: Text('Edit', style: t.bodySemibold.copyWith(color: TtColors.coral600)),
+                      showChevron: false,
+                      onTap: showcase ? null : () => context.push(Routes.vehicleDetails),
+                    ),
+                  ]),
+                  const SizedBox(height: TtSpacing.l),
                   // Shown whenever the identity step applies (by hand too); hidden when it isn't asked.
                   if (!showcase) ...[
                     const ProfilePhotoCard(),

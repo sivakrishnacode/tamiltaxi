@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_driver/state/driver_location.dart';
+import 'package:tamiltaxi_driver/state/registration.dart';
 import 'package:tamiltaxi_driver/state/request_voice.dart';
 
 const kHere = LatLng(11.0168, 76.9558);
@@ -268,19 +269,25 @@ class SilentSpeaker implements RequestSpeaker {
 /// A live (API) app on fakes: [api] answers from [client] (default: every request fails as offline), the socket,
 /// dispatch and GPS are fakes. [prefs] seeds the stored session (e.g. a signed-in driver).
 class LiveRig {
-  LiveRig._(this.api, this.realtime, this.jobs, this.locator);
+  LiveRig._(this.api, this.realtime, this.jobs, this.locator, this.approval);
 
-  static Future<LiveRig> create({Map<String, Object> prefs = const {}, http.Client? client}) async {
+  /// [approval]: the driver's application (Home's verify banner and Go online lock); null = ask [client].
+  static Future<LiveRig> create({
+    Map<String, Object> prefs = const {},
+    http.Client? client,
+    DriverApproval? approval = DriverApproval.approved,
+  }) async {
     SharedPreferences.setMockInitialValues(prefs);
     final api = ApiClient(baseUrl: 'http://localhost:1/v1', session: ApiSession(await SharedPreferences.getInstance()), client: client);
     final realtime = FakeRealtime(api);
-    return LiveRig._(api, realtime, FakeJobs(api, realtime), FakeLocator());
+    return LiveRig._(api, realtime, FakeJobs(api, realtime), FakeLocator(), approval);
   }
 
   final ApiClient api;
   final FakeRealtime realtime;
   final FakeJobs jobs;
   final FakeLocator locator;
+  final DriverApproval? approval;
 
   /// Every repository on [api] (like the live app), with the fake socket, dispatch and GPS.
   List<Override> get overrides => [
@@ -289,5 +296,6 @@ class LiveRig {
         liveJobsProvider.overrideWithValue(jobs),
         driverLocatorProvider.overrideWithValue(locator),
         requestSpeakerProvider.overrideWithValue(SilentSpeaker()),
+        if (approval case final a?) driverApprovalProvider.overrideWith((ref) async => a),
       ];
 }

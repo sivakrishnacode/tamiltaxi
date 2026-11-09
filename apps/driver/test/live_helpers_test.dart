@@ -2,8 +2,6 @@
 // stored route, start route after log-in, API job → request card, phone / plate / UPI rules.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
-import 'package:tamiltaxi_driver/common/start_route.dart';
-import 'package:tamiltaxi_driver/router/routes.dart';
 import 'package:tamiltaxi_driver/state/driver_session.dart';
 import 'package:tamiltaxi_driver/state/live_helpers.dart';
 
@@ -93,17 +91,6 @@ void main() {
       expect(routeKm(route), closeTo(1.11, 0.02));
       expect(estimateMinutes(0.1), 1);
       expect(estimateMinutes(5), 15);
-    });
-  });
-
-  group('applicationRoute', () {
-    test('approved → Home', () {
-      expect(applicationRoute(approved: true), Routes.home);
-    });
-
-    test('anything else (missing, rejected, under review) → the D-07 registration page', () {
-      expect(applicationRoute(approved: false), Routes.documents);
-      expect(applicationRoute(approved: null), Routes.documents);
     });
   });
 

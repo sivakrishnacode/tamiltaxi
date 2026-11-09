@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_driver/features/home/d13_home_screen.dart';
@@ -30,7 +31,7 @@ Future<void> tapText(WidgetTester tester, String text) async {
 }
 
 void main() {
-  testWidgets('registration page: details first, then documents, review, then Home', (tester) async {
+  testWidgets('registration: details first, then Home; documents from there, review, then approved', (tester) async {
     final container = await pumpRoute(tester, Routes.documents);
     container.read(demoSettingsProvider.notifier).update((s) => s.copyWith(fastMode: true));
     await advance(tester, const Duration(milliseconds: 500));
@@ -43,7 +44,7 @@ void main() {
     expect(find.text('Opens after your vehicle and details'), findsNWidgets(3));
     expect(find.text('Upload'), findsNothing);
 
-    // Step 1: work type → vehicle → details → back here.
+    // Step 1: work type → vehicle → details → Home (the Meter and the rest work; Go online waits for the admin).
     await tapText(tester, 'Start');
     expect(find.byType(D04WorkTypeScreen), findsOneWidget);
     expect(find.text('Step 1 of 3'), findsOneWidget);
@@ -53,8 +54,13 @@ void main() {
     expect(find.text('Step 3 of 3'), findsOneWidget);
     await tapText(tester, 'Save and continue');
     await advance(tester, const Duration(seconds: 1));
-    expect(find.byType(D07DocumentsScreen), findsOneWidget);
+    expect(find.byType(D13HomeScreen), findsOneWidget);
     expect(container.read(signupProvider).detailsSaved, isTrue);
+
+    // Home's Verify now (and Account › Vehicle & documents) open the registration page, now with the documents.
+    GoRouter.of(tester.element(find.byType(D13HomeScreen))).push(Routes.documents);
+    await advance(tester, const Duration(milliseconds: 500));
+    expect(find.byType(D07DocumentsScreen), findsOneWidget);
     // The demo's RC is already uploaded (under review); the licence, Aadhaar and insurance are not.
     expect(find.text('2 of 5 done'), findsOneWidget);
     expect(find.text('Upload'), findsNWidgets(3));

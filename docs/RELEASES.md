@@ -108,6 +108,12 @@ Release: `passenger-v0.1.0+1` at `42008b6`
   with the amount. The running meter shows where the trip started (a small map with the way driven, and the address)
   so the passenger can check it. Meter trips count in Earnings (marked "Meter"); with no internet they are kept on
   the phone and sent once online.
+- Before approval: after the OTP and the vehicle and details steps, new drivers land on Home and can use the app
+  (Meter, Earnings, Rate card, Account). A banner that can't be closed says what is left ("Verify your documents to
+  go online · 3 left" → Verify now; "Documents under review"; "1 document needs a new upload") and Go online stays
+  locked until an admin approves them. The approval says "You're approved! Go online to get requests."
+- Account: Documents and Vehicle details are one item, **Vehicle & documents** (the vehicle with Edit on top of the
+  documents).
 - Maps: zone and demand labels on Home, the pins on Surge / High demand areas and the "location lost" mark stay on
   their place while the map is dragged, instead of trailing behind it and catching up after. A tap on a pin still
   shows its area.

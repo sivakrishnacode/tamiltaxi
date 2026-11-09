@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:tamiltaxi_driver/features/account/vehicle_details_screen.dart';
-import 'package:tamiltaxi_driver/features/onboarding/d07_documents_screen.dart';
+import 'package:tamiltaxi_driver/features/home/d13_home_screen.dart';
 import 'package:tamiltaxi_driver/router/routes.dart';
 
 import 'support/harness.dart';
@@ -70,7 +70,7 @@ Future<void> _type(WidgetTester tester, String label, String text) async {
 }
 
 void main() {
-  testWidgets('a new plate asks first, then opens the registration page', (tester) async {
+  testWidgets('a new plate asks first, then Home (back under review)', (tester) async {
     final api = _Api();
     final rig = await LiveRig.create(prefs: _signedIn, client: api.client);
     final container = await pumpRoute(tester, Routes.vehicleDetails, overrides: rig.overrides);
@@ -86,7 +86,7 @@ void main() {
     await _advance(tester, const Duration(seconds: 2));
 
     expect(api.patches.single['plate'], 'TN 38 CD 1234');
-    expect(find.byType(D07DocumentsScreen), findsOneWidget);
+    expect(find.byType(D13HomeScreen), findsOneWidget, reason: "Home, where the verify banner leads to the RC");
     await closeApp(tester, container);
   });
 

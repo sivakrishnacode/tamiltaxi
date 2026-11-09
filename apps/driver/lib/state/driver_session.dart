@@ -10,6 +10,7 @@ import 'driver_location.dart';
 import 'driver_account.dart';
 import '../router/routes.dart';
 import 'live_helpers.dart';
+import 'registration.dart';
 
 /// Where the driver's current job is.
 enum JobPhase {
@@ -994,21 +995,26 @@ class DriverSessionController extends Notifier<DriverSessionState> {
     _statusSub?.cancel();
     _statusSub = ref.read(realtimeProvider).on('driver.status').listen((data) {
       if (!ref.mounted) return;
+      // Home's verify banner and Go online follow the new status.
+      final wasWaiting = ref.read(driverApprovalProvider).value?.awaitingApproval ?? false;
       ref.invalidate(driverProfileProvider);
       ref.invalidate(kycProvider);
+      ref.invalidate(driverApprovalProvider);
       final status = data['status'];
       if (status is String) {
         unawaited(ref.read(apiClientProvider).session.saveDriverStatus(status));
       }
-      if (status == 'APPROVED' && data['isOnline'] != false) {
+      // Approved while waiting (on Home since sign-up), or a change for a driver who isn't online: nothing to take
+      // offline.
+      if (status == 'APPROVED' && (data['isOnline'] != false || !state.online)) {
         _pendingStatusRoute = null;
+        if (wasWaiting) {
+          state = state.copyWith(notice: const SessionNotice("You're approved! Go online to get requests."));
+        }
         return;
       }
-      final route = status == 'PENDING'
-          ? Routes.documents
-          : status == 'ON_HOLD'
-          ? Routes.accountOnHold
-          : null;
+      // Back under review (a new plate): Home shows the verify banner; on hold: S-10.
+      final route = status == 'ON_HOLD' ? Routes.accountOnHold : null;
       _pendingStatusRoute = state.onJob ? route : null;
       state = state.copyWith(
         online: false,
