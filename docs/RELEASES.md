@@ -221,6 +221,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `d3db661` (API and admin).
+
+### 9 Nov 2026 (second) · API and admin at `d3db661`
+
+Release: `staging-2026-11-09.2` at `d3db661`
+
 API and admin (no database change).
 
 - **Driver and rider pages kept apart:** no "Driver profile / Account & rides as rider" tabs. The driver page shows
