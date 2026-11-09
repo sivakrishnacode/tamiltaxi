@@ -228,7 +228,13 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-API at `766efb9`, with a database change (migration `20261110120000_meter_trips`).
+Nothing yet: staging runs `cd32cf6` (API) and `619c322` (admin).
+
+### 10 Nov 2026 · API at `cd32cf6`
+
+Release: `staging-2026-11-10` at `cd32cf6`
+
+API only, with a database change (migration `20261110120000_meter_trips`).
 
 - **Meter trips:** `POST /drivers/me/meter-trips` stores a trip measured with the driver app's meter (D-42) for a
   passenger picked up off the app, once per phone id (a resend is not counted twice); Earnings count them (total,
