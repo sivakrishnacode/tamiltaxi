@@ -5,6 +5,7 @@ import { JobsService } from '../../core/jobs/jobs.service.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { AppKind, ReminderKind, TripStatus } from '../../generated/prisma/enums.js';
+import { GeoService } from '../geo/geo.service.js';
 import { PushService } from '../notifications/push.service.js';
 import type { Settings } from '../settings/settings.defaults.js';
 import { SettingsService } from '../settings/settings.service.js';
@@ -72,7 +73,8 @@ const point = (p: QuotePoint): ReminderPoint => ({ name: p.name?.trim() ?? '', a
  * - usual trip: every 5 minutes (job `reminder.routine-scan`) completed local rides to the same drop at about the
  *   same time of day → "Going to <drop>?" `routineLeadMin` before the usual time.
  * Neither goes out in the quiet hours, past `reminderDailyCap` a day, twice about the same drop (search: 24 h, usual
- * trip: the IST day), to a blocked or deleted rider, or while the rider has a trip going. Each one sent is a
+ * trip: the IST day), to a blocked or deleted rider, while the rider has a trip going, or for a trip that can't be
+ * booked right now (the pickup outside the service area or in a no-pickup zone; a local drop in a no-drop zone). Each one sent is a
  * `Reminder` row (the cap, the dedupe and the admin stats count them).
  */
 @Injectable()
@@ -84,6 +86,7 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
     private readonly jobs: JobsService,
     private readonly push: PushService,
     private readonly settings: SettingsService,
+    private readonly geo: GeoService,
   ) {}
 
   onModuleInit(): void {
@@ -116,6 +119,8 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
     if (!s.searchReminderEnabled || isQuietHour(now, s)) return;
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { name: true, isBlocked: true, deletedAt: true } });
     if (!user || user.isBlocked || user.deletedAt) return;
+    // Fares are quoted anywhere (e.g. from Ooty, outside every city): only a trip the rider could book is reminded.
+    if (!(await this.isBookable(p.mode, p.pickup, p.drop))) return;
     const trip = await this.prisma.trip.findFirst({
       where: { passengerId: userId, OR: [{ createdAt: { gte: new Date(p.quotedAt) } }, { status: { in: ONGOING } }] },
       select: { id: true },
@@ -182,6 +187,7 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
       select: { id: true },
     });
     if (trip || (await this.isDeduped(r.passengerId, r.place, istDayStart(now), now, s))) return false;
+    if (!(await this.isBookable('LOCAL', r.pickup, r.drop))) return false;
     await this.send(r.passengerId, ReminderKind.ROUTINE, r.place, routineReminderText({ dropName: r.drop.name, usualMin: r.usualMin, vehicle: r.vehicle }), {
       type: 'suggest',
       kind: 'routine',
@@ -191,6 +197,15 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
       ...pointData('pickup', r.pickup),
     });
     return true;
+  }
+
+  /**
+   * Could the rider book this trip now? The booking's own rule (TripsService): the pickup inside a service area and in
+   * no zone stopping pickups; a local drop where drops are allowed (outstation goes to other towns).
+   */
+  private async isBookable(mode: 'LOCAL' | 'OUTSTATION', pickup: ReminderPoint, drop: ReminderPoint): Promise<boolean> {
+    const [from, to] = await Promise.all([this.geo.locate(pickup), mode === 'LOCAL' ? this.geo.locate(drop) : null]);
+    return from.isServiceable && (to === null || to.canDrop);
   }
 
   /** The daily cap is reached, or [place] was reminded since [placeSince]. */

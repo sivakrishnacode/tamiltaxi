@@ -12,7 +12,8 @@ const HOME = { name: 'Home', address: 'RS Puram, Coimbatore', lat: 11.0, lng: 76
 
 type User = { name: string | null; isBlocked: boolean; deletedAt: Date | null } | null;
 
-function setup(o: { user?: User; trip?: { id: string } | null; sent?: { place: string | null; sentAt: Date }[]; s?: Partial<Settings>; rows?: RoutineTrip[] } = {}) {
+/** [served]: whether a point may be booked (default everywhere): pickups need `isServiceable`, local drops `canDrop`. */
+function setup(o: { user?: User; trip?: { id: string } | null; sent?: { place: string | null; sentAt: Date }[]; s?: Partial<Settings>; rows?: RoutineTrip[]; served?: (p: { lat: number; lng: number }) => boolean } = {}) {
   const reminders: Record<string, unknown>[] = [];
   const prisma = {
     user: { findUnique: vi.fn(async () => (o.user === undefined ? { name: 'Siva Krishna', isBlocked: false, deletedAt: null } : o.user)) },
@@ -26,13 +27,30 @@ function setup(o: { user?: User; trip?: { id: string } | null; sent?: { place: s
   const jobs = { register: vi.fn(), schedule: vi.fn(async () => undefined), scheduledAt: vi.fn(async (): Promise<number | null> => null) };
   const push = { toUser: vi.fn() };
   const settings = { all: vi.fn(async () => ({ ...SETTING_DEFAULTS, ...o.s }) as Settings) };
-  const svc = new AutomationsService(prisma as never, jobs as never, push as never, settings as never);
+  const geo = { locate: vi.fn(async (p: { lat: number; lng: number }) => ({ isServiceable: o.served?.(p) ?? true, canDrop: o.served?.(p) ?? true })) };
+  const svc = new AutomationsService(prisma as never, jobs as never, push as never, settings as never, geo as never);
   return { svc, prisma, jobs, push, settings, reminders };
 }
 
 const payload = (quotedAt: Date, mode: 'LOCAL' | 'OUTSTATION' = 'OUTSTATION'): SearchPayload => ({ quotedAt: quotedAt.toISOString(), mode, pickup: HOME, drop: OOTY });
 
 describe('search reminder', () => {
+  it('is not sent for a trip that cannot be booked: a pickup outside the service area, or a local drop where drops stop', async () => {
+    const isCoimbatore = (p: { lat: number }) => p.lat < 11.2;
+    // From Ooty (no service there) to Coimbatore: quoted, but it can't be booked, so no reminder.
+    const fromOoty = setup({ served: isCoimbatore });
+    await fromOoty.svc.searchReminder('u1', { quotedAt: ist(9, 50).toISOString(), mode: 'OUTSTATION', pickup: OOTY, drop: HOME }, ist(10));
+    expect(fromOoty.push.toUser).not.toHaveBeenCalled();
+    // Local to a drop outside the service area: no reminder either.
+    const localOut = setup({ served: isCoimbatore });
+    await localOut.svc.searchReminder('u1', payload(ist(9, 50), 'LOCAL'), ist(10));
+    expect(localOut.push.toUser).not.toHaveBeenCalled();
+    // Outstation from Coimbatore to Ooty is bookable (outstation goes to other towns).
+    const toOoty = setup({ served: isCoimbatore });
+    await toOoty.svc.searchReminder('u1', payload(ist(9, 50)), ist(10));
+    expect(toOoty.push.toUser).toHaveBeenCalledTimes(1);
+  });
+
   it('a quote schedules the job for the rider (a newer quote replaces it) with the pickup and drop', async () => {
     const { svc, jobs } = setup();
     const before = Date.now();
@@ -178,6 +196,12 @@ describe('usual-trip reminder', () => {
       },
     });
     expect(reminders).toMatchObject([{ userId: 'u1', kind: 'ROUTINE', place: placeKey(BROOKEFIELDS) }]);
+  });
+
+  it('skips a usual trip whose pickup is now in a no-service zone', async () => {
+    const { svc, push } = setup({ rows, served: (p) => p.lng !== 76.95 });
+    expect(await svc.scanRoutines(ist(8, 50))).toBe(0);
+    expect(push.toUser).not.toHaveBeenCalled();
   });
 
   it('skips a rider with a trip going or booked in the last hour, one already reminded today, and quiet hours', async () => {
