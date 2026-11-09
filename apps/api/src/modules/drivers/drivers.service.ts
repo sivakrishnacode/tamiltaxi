@@ -30,7 +30,7 @@ import { isGoodsTruck } from '../fares/goods-modes.js';
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { Driver, KycDocument, Prisma } from '../../generated/prisma/client.js';
-import { DriverStatus, Gender, KycDocType, KycStatus, PlanPeriod, Role, SubscriptionStatus, TripStatus, type VehicleKind } from '../../generated/prisma/enums.js';
+import { DriverStatus, Gender, KycDocType, KycStatus, PlanPeriod, Role, SubscriptionStatus, TripStatus, type VehicleKind, WelcomeTrigger } from '../../generated/prisma/enums.js';
 import { AuthService } from '../auth/auth.service.js';
 import { GeoService } from '../geo/geo.service.js';
 import { TRIAL_DAYS } from '../subscriptions/plan-prices.js';
@@ -39,6 +39,7 @@ import { nearbyVehicles, type NearbyVehicle } from './nearby-vehicles.js';
 import { DriverLocationService } from './driver-location.service.js';
 import type { RegisterDriverDto } from './dto/register-driver.dto.js';
 import { NotifierService } from '../notifications/notifier.service.js';
+import { WelcomeService } from '../whatsapp/welcome.service.js';
 import { DriverApprovalService } from '../kyc/driver-approval.service.js';
 import { IDENTITY_DOCS, REQUIRED_DOCS, UPLOAD_DOCS } from '../kyc/driver-approval.js';
 import { SettingsService } from '../settings/settings.service.js';
@@ -69,6 +70,7 @@ export class DriversService {
     private readonly earnings: DriverEarningsService,
     private readonly files: FileStorageService,
     private readonly notifier: NotifierService,
+    private readonly welcome: WelcomeService,
     private readonly approval: DriverApprovalService,
     private readonly state: DriverStateCache,
     private readonly settings: SettingsService,
@@ -124,6 +126,7 @@ export class DriversService {
       if (existing) return this.registered(userId, existing, Role.DRIVER);
       throw new ConflictException(PLATE_TAKEN);
     }
+    this.welcome.send(userId, WelcomeTrigger.DRIVER_REGISTERED);
     return { driver, accessToken: await this.auth.issueToken({ sub: userId, role: Role.DRIVER, driverId: driver.id }), isNew: true };
   }
 

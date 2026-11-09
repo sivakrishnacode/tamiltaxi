@@ -21,6 +21,7 @@ import { SupportModule } from './modules/support/support.module.js';
 import { TripsModule } from './modules/trips/trips.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module.js';
 
 /** Root module: one module per domain. */
 @Module({
@@ -46,6 +47,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AdminModule,
     AutomationsModule,
     NotificationsModule,
+    WhatsAppModule,
   ],
 })
 export class AppModule {}

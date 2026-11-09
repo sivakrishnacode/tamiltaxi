@@ -312,6 +312,8 @@ model User {
   notesWritten       AdminNote[]            @relation("AdminNotesBy")
   /// Automated pushes this rider got (search and usual-trip reminders).
   reminders          Reminder[]
+  /// WhatsApp welcome messages this account got (at most one per trigger).
+  welcomeMessages    WelcomeMessage[]
 
   /// Admin lists: riders / accounts by role, newest first.
   @@index([role, createdAt])
@@ -945,6 +947,34 @@ model Reminder {
 
   @@index([userId, sentAt])
   @@index([sentAt])
+}
+
+/// When a WhatsApp welcome goes out (settings `welcome*Enabled` / `welcome*Template`, Admin › Automations › WhatsApp).
+enum WelcomeTrigger {
+  /// A new rider saved their name in the rider app (sign-up finished).
+  RIDER_SIGNUP
+  /// Someone registered as a driver in the driver app.
+  DRIVER_REGISTERED
+  /// A driver was approved (by an admin, or automatically).
+  DRIVER_APPROVED
+}
+
+/// One WhatsApp welcome (an approved WATX template): at most one per account and trigger.
+model WelcomeMessage {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trigger   WelcomeTrigger
+  /// The WATX template name it was sent with.
+  template  String
+  /// When WATX accepted it; null while sending or when it failed ([error]).
+  sentAt    DateTime?
+  /// Why WATX or WhatsApp refused it.
+  error     String?
+  createdAt DateTime       @default(now())
+
+  @@unique([userId, trigger])
+  @@index([createdAt])
 }
 
 /// The passenger screen a campaign push opens on tap.

@@ -2,8 +2,8 @@ import { Logger, ServiceUnavailableException } from '@nestjs/common';
 
 import type { Env } from '../../core/config/env.js';
 import type { RedisService } from '../../core/redis/redis.service.js';
+import type { WatxClient } from '../whatsapp/watx.client.js';
 import { GLOBAL_LOCK_KEY, GLOBAL_MAX_FAILURES, OtpService } from './otp.service.js';
-import type { WatxClient } from './watx.client.js';
 
 /** The Redis commands OtpService uses, in memory (TTLs are remembered, never counted down). */
 function fakeRedis(): RedisService & { store: Map<string, string> } {

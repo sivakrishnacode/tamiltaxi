@@ -2,10 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { Announcement, Trip } from '../../generated/prisma/client.js';
-import { AnnouncementAudience, AppKind, RideMode, Role, TripKind, TripStatus } from '../../generated/prisma/enums.js';
+import { AnnouncementAudience, AppKind, RideMode, Role, TripKind, TripStatus, WelcomeTrigger } from '../../generated/prisma/enums.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { CANCEL_CODE_LABEL } from '../trips/cancel-codes.js';
 import { extraOf } from '../trips/extra-fare.js';
+import { WelcomeService } from '../whatsapp/welcome.service.js';
 import { PUSH_TOPICS, PushService } from './push.service.js';
 
 type Party = { name: string | null; phone?: string | null };
@@ -48,6 +49,7 @@ export class NotifierService {
     private readonly push: PushService,
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
+    private readonly welcome: WelcomeService,
   ) {}
 
   /** Runs [send], logging instead of throwing. */
@@ -253,7 +255,7 @@ export class NotifierService {
     });
   }
 
-  /** An admin verified or rejected a KYC document, or approved the whole application. */
+  /** An admin verified or rejected a KYC document, or approved the whole application (also its WhatsApp welcome). */
   kycReviewed(params: { driverId: string; type?: string; status: 'VERIFIED' | 'REJECTED' | 'APPROVED'; reason?: string | null }): Promise<void> {
     return this.safeAsync('kyc reviewed', async () => {
       const driver = await this.prisma.driver.findUnique({ where: { id: params.driverId }, select: { userId: true } });
@@ -264,6 +266,7 @@ export class NotifierService {
         const plans = await this.settings.get('driverPlansEnabled').catch(() => false);
         const body = plans ? 'Choose a plan and go online to start earning' : 'Go online to start earning';
         this.push.toUser(driver.userId, AppKind.DRIVER, { title: "You're approved! 🎉", body, channel: 'account', data });
+        this.welcome.send(driver.userId, WelcomeTrigger.DRIVER_APPROVED);
       } else if (params.status === 'REJECTED') {
         const doc = DOC_LABEL[params.type ?? ''] ?? 'A document';
         this.push.toUser(driver.userId, AppKind.DRIVER, {

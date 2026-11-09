@@ -13,6 +13,7 @@ import { DocumentExpiryService } from '../src/modules/kyc/document-expiry.servic
 import { riderLastPinKey } from '../src/modules/drivers/last-location.js';
 import { NotifierService } from '../src/modules/notifications/notifier.service.js';
 import { TripEventsService } from '../src/modules/realtime/trip-events.service.js';
+import { WatxClient } from '../src/modules/whatsapp/watx.client.js';
 
 const ADMIN_PHONE = '9000000001';
 /** A stored photo so drivers approved directly in the database may go online (photo required on apps from 0.1.2). */
@@ -157,6 +158,69 @@ describe('Tamil Taxi features (e2e)', () => {
       expect(await listed()).toBe(false);
       await tripRow({ passengerId: d.userId, kind: 'RIDE', status: 'COMPLETED' });
       expect(await listed()).toBe(true);
+    });
+  });
+
+  describe('WhatsApp welcome messages', () => {
+    it('sends each switched-on welcome once, keeps failures, and lets an admin test a template', async () => {
+      const admin = await adminAuth();
+      // WATX itself is stubbed: everything else (triggers, settings, rows, admin routes) is real.
+      const watx = app.get(WatxClient);
+      const enabled = vi.spyOn(watx, 'isEnabled', 'get').mockReturnValue(true);
+      const send = vi.spyOn(watx, 'send').mockResolvedValue(null);
+      const switches = (on: boolean) => ({ welcomeRiderEnabled: on, welcomeDriverRegisteredEnabled: on, welcomeDriverApprovedEnabled: on });
+      await http.put('/v1/admin/settings').set(admin).send(switches(true)).expect(200);
+      const rows = (userId: string) => prisma.welcomeMessage.findMany({ where: { userId }, orderBy: { createdAt: 'asc' }, select: { trigger: true, template: true, sentAt: true, error: true } });
+      const sentTo = (to: string, template: string) => send.mock.calls.filter(([phone, name]) => phone === to && name === template).length;
+      try {
+        // A rider finishing sign-up (first name saved); a later name change is not a sign-up.
+        const rider = await login();
+        await http.patch('/v1/me').set(rider.auth).send({ name: 'Priya Nair' }).expect(200);
+        await vi.waitFor(async () => expect(await rows(rider.userId)).toEqual([{ trigger: 'RIDER_SIGNUP', template: 'welcome_rider', sentAt: expect.any(Date), error: null }]));
+        expect(send).toHaveBeenCalledWith(`+91${rider.phone}`, 'welcome_rider', ['Priya']);
+        await http.patch('/v1/me').set(rider.auth).send({ name: 'Priya N' }).expect(200);
+        expect(sentTo(`+91${rider.phone}`, 'welcome_rider')).toBe(1);
+
+        // A driver registering, then approved; approved again after a rejection: still one approval welcome.
+        const d = await newDriver();
+        const { phone: driverPhone } = await prisma.user.findUniqueOrThrow({ where: { id: d.userId }, select: { phone: true } });
+        await vi.waitFor(async () => expect((await rows(d.userId)).map((r) => r.trigger)).toEqual(['DRIVER_REGISTERED']));
+        expect(send).toHaveBeenCalledWith(driverPhone, 'welcome_driver_registered', ['Kavin']);
+        await http.patch(`/v1/admin/drivers/${d.driverId}`).set(admin).send({ status: 'APPROVED' }).expect(200);
+        await vi.waitFor(async () => expect((await rows(d.userId)).map((r) => [r.trigger, !!r.sentAt])).toEqual([['DRIVER_REGISTERED', true], ['DRIVER_APPROVED', true]]));
+        await http.patch(`/v1/admin/drivers/${d.driverId}`).set(admin).send({ status: 'REJECTED', reason: 'Blurred RC' }).expect(200);
+        await http.patch(`/v1/admin/drivers/${d.driverId}`).set(admin).send({ status: 'APPROVED' }).expect(200);
+        await new Promise((r) => setTimeout(r, 300));
+        expect(sentTo(driverPhone, 'welcome_driver_approved')).toBe(1);
+
+        // WhatsApp refusing it: the reason is kept and shown to admins.
+        const unlucky = await login(); // (its login code goes through the same stub: refuse only the welcome)
+        send.mockResolvedValueOnce('Template welcome_rider not found');
+        await http.patch('/v1/me').set(unlucky.auth).send({ name: 'Arun' }).expect(200);
+        await vi.waitFor(async () => expect((await rows(unlucky.userId))[0]?.error).toBe('Template welcome_rider not found'));
+        const overview = (await http.get('/v1/admin/welcome-messages').set(admin).expect(200)).body;
+        expect(overview.isConnected).toBe(true);
+        expect(overview.triggers.RIDER_SIGNUP.failed7d).toBeGreaterThanOrEqual(1);
+        expect(overview.recent).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ userId: unlucky.userId, trigger: 'RIDER_SIGNUP', sentAt: null, error: 'Template welcome_rider not found', driverId: null }),
+            expect.objectContaining({ userId: d.userId, trigger: 'DRIVER_APPROVED', driverId: d.driverId }),
+          ]),
+        );
+
+        // Send test: to the admin's own number, the typed template or the saved one; WhatsApp's refusal is a 502.
+        await http.post('/v1/admin/welcome-messages/test').set(admin).send({ trigger: 'DRIVER_APPROVED' }).expect(200);
+        expect(send).toHaveBeenLastCalledWith(`+91${ADMIN_PHONE}`, 'welcome_driver_approved', [expect.any(String)]);
+        send.mockResolvedValueOnce('Template nope not found');
+        const refused = await http.post('/v1/admin/welcome-messages/test').set(admin).send({ trigger: 'RIDER_SIGNUP', template: 'nope' }).expect(502);
+        expect(refused.body.message).toBe('Template nope not found');
+        await http.post('/v1/admin/welcome-messages/test').set(admin).send({ trigger: 'RIDER_SIGNUP', template: 'Not A Name' }).expect(400);
+        await http.post('/v1/admin/welcome-messages/test').set(rider.auth).send({ trigger: 'RIDER_SIGNUP' }).expect(403);
+      } finally {
+        await http.put('/v1/admin/settings').set(admin).send(switches(false)).expect(200);
+        enabled.mockRestore();
+        send.mockRestore();
+      }
     });
   });
 

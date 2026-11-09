@@ -145,6 +145,17 @@ export const SETTING_DEFAULTS = {
   reminderQuietEndHour: 8,
   /** Most automated reminders (search + usual trip) a rider gets per IST day. Admin campaigns don't count. */
   reminderDailyCap: 2,
+  /**
+   * WhatsApp welcome messages (WelcomeService, Admin › Automations › WhatsApp): an approved WATX template (Utility,
+   * `en_US`, one variable: the first name) sent once per account when its trigger happens: a new rider saves their
+   * name, someone registers as a driver, a driver is approved. Off until the template is approved in WATX.
+   */
+  welcomeRiderEnabled: false,
+  welcomeRiderTemplate: 'welcome_rider',
+  welcomeDriverRegisteredEnabled: false,
+  welcomeDriverRegisteredTemplate: 'welcome_driver_registered',
+  welcomeDriverApprovedEnabled: false,
+  welcomeDriverApprovedTemplate: 'welcome_driver_approved',
   /** Support phone shown in the apps. */
   supportPhone: '+91 422 000 0000',
   /** Paid driver plans. Off = the app is free: no plan screens, no plan check when going online. */

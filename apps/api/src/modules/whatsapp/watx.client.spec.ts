@@ -34,4 +34,16 @@ describe('WatxClient', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('timeout'))));
     await expect(client().sendTemplate('+919000000001', 'login_otp_driver', ['1'])).rejects.toMatchObject({ status: 503 });
   });
+
+  it('send answers null when WATX took it, else its reason, and never throws', async () => {
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"data":{"id":"m-1"}}', { status: 202 })));
+    expect(await client().send('+919000000001', 'welcome_rider', ['Priya'])).toBeNull();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":{"code":"meta_error","message":"Template welcome_rider not found"}}', { status: 502 })));
+    expect(await client().send('+919000000001', 'welcome_rider', ['Priya'])).toBe('Template welcome_rider not found');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>Bad gateway</html>', { status: 502 })));
+    expect(await client().send('+919000000001', 'welcome_rider', ['Priya'])).toBe('WATX answered 502');
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('timeout'))));
+    expect(await client().send('+919000000001', 'welcome_rider', ['Priya'])).toBe("WhatsApp couldn't be reached: timeout");
+  });
 });

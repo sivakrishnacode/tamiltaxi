@@ -19,8 +19,16 @@ export class WatxClient {
     return this.env.watx.apiKey.length > 0;
   }
 
-  /** POST /messages: the approved template [name] to [to] (+91…), its body [params] in order. 503 when it fails. */
+  /** Login codes: [send], but a failure is a 503 the apps show. */
   async sendTemplate(to: string, name: string, params: string[]): Promise<void> {
+    if ((await this.send(to, name, params)) !== null) throw new ServiceUnavailableException("Couldn't send the code on WhatsApp. Please try again");
+  }
+
+  /**
+   * POST /messages: the approved template [name] to [to] (+91…), its body [params] in order. Null when WATX took it,
+   * else why not (WATX's `error.message`, e.g. Meta's reason, or the network error). Never throws.
+   */
+  async send(to: string, name: string, params: string[]): Promise<string | null> {
     let res: Response;
     try {
       res = await fetch(`${BASE_URL}/messages`, {
@@ -31,10 +39,22 @@ export class WatxClient {
       });
     } catch (e) {
       this.logger.warn(`WATX ${name} failed: ${(e as Error).message}`);
-      throw new ServiceUnavailableException("Couldn't send the code on WhatsApp. Please try again");
+      return `WhatsApp couldn't be reached: ${(e as Error).message}`;
     }
-    if (res.ok) return;
-    this.logger.warn(`WATX ${name} → ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    throw new ServiceUnavailableException("Couldn't send the code on WhatsApp. Please try again");
+    if (res.ok) return null;
+    const text = await res.text();
+    this.logger.warn(`WATX ${name} → ${res.status}: ${text.slice(0, 300)}`);
+    return WatxClient.reason(res.status, text);
+  }
+
+  /** WATX's error envelope `{error: {code, message}}` as one line, else the status. */
+  static reason(status: number, body: string): string {
+    try {
+      const message = (JSON.parse(body) as { error?: { message?: unknown } }).error?.message;
+      if (typeof message === 'string' && message.trim()) return message.trim().slice(0, 300);
+    } catch {
+      // Not JSON: the status says enough.
+    }
+    return `WATX answered ${status}`;
   }
 }

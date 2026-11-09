@@ -200,7 +200,7 @@ controllers), `lib/features/<feature>/` (one file per screen, named after its fr
 `lib/features/design_gallery/` (frame registry + demo controls).
 
 API modules: admin, app-config, auth, automations (reminder pushes and campaigns), drivers, fares, geo (H3), health, kyc (identity checks by hand, document expiry), maps, notifications (FCM), places, promos (splash and Home banners), realtime, settings,
-subscriptions, support, trips, users.
+subscriptions, support, trips, users, whatsapp (WATX: login codes, welcome messages).
 
 ---
 
@@ -283,3 +283,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 4 Nov 2026 | Key facts: staging API and admin on `tamiltaxi.co.in` (sslip.io names still served) |
 | 4 Nov 2026 | API modules: kyc is the identity check by hand (Didit removed) |
 | 4 Nov 2026 | Key facts: zones may use finer hexagons than their city (to res 10) |
+| 9 Nov 2026 | API modules: `whatsapp` (WATX client, welcome messages) |

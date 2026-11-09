@@ -5,8 +5,8 @@ import type { Env } from '../../core/config/env.js';
 import { ENV } from '../../core/config/env.token.js';
 import { countHit, TooManyRequestsException } from '../../core/rate-limit/rate-limit.js';
 import { RedisService } from '../../core/redis/redis.service.js';
+import { WatxClient } from '../whatsapp/watx.client.js';
 import type { LoginApp } from './dto/verify-otp.dto.js';
-import { WatxClient } from './watx.client.js';
 
 const OTP_TTL_S = 300;
 const MAX_SENDS = 5;
