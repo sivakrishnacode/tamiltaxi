@@ -73,14 +73,16 @@ export function dedupeBlock(p: {
   return null;
 }
 
+/** A place's name for a message; empty for a map pin without an address (the apps name it "Pinned location"). */
+export const placeName = (name: string): string => (/^pinned location$/i.test(name.trim()) ? '' : name.trim());
+
 /** First word of a name, or null. */
 export const firstName = (name: string | null | undefined): string | null => (name ?? '').trim().split(/\s+/)[0] || null;
 
 /** "Siva, Ooty?" and what to do about it. */
 export function searchReminderText(p: { userName: string | null; dropName: string; mode: 'LOCAL' | 'OUTSTATION' }): { title: string; body: string } {
   const first = firstName(p.userName);
-  // A map pin without an address is named "Pinned location" by the apps: no place to name.
-  const drop = /^pinned location$/i.test(p.dropName.trim()) ? '' : p.dropName.trim();
+  const drop = placeName(p.dropName);
   const title = !drop ? 'Still planning your trip?' : first ? `${first}, ${drop}?` : `Still going to ${drop}?`;
   const body =
     p.mode === 'OUTSTATION'
@@ -101,10 +103,13 @@ const BOOK_A: Partial<Record<VehicleKind, string>> = {
 };
 
 /** "Going to Brookefields Mall?" with the usual time and vehicle. */
+/** "an Auto", "a Mini"… for a message ("a ride" for a vehicle without a name here). */
+export const vehiclePhrase = (vehicle: VehicleKind): string => BOOK_A[vehicle] ?? 'a ride';
+
 export function routineReminderText(p: { dropName: string; usualMin: number; vehicle: VehicleKind }): { title: string; body: string } {
   return {
     title: `Going to ${p.dropName.trim()}?`,
-    body: `Your usual ${formatClock(p.usualMin)} ride is a tap away. Book ${BOOK_A[p.vehicle] ?? 'a ride'} now.`,
+    body: `Your usual ${formatClock(p.usualMin)} ride is a tap away. Book ${vehiclePhrase(p.vehicle)} now.`,
   };
 }
 

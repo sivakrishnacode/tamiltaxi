@@ -13,7 +13,7 @@ const HOME = { name: 'Home', address: 'RS Puram, Coimbatore', lat: 11.0, lng: 76
 type User = { name: string | null; isBlocked: boolean; deletedAt: Date | null } | null;
 
 /** [served]: whether a point may be booked (default everywhere): pickups need `isServiceable`, local drops `canDrop`. */
-function setup(o: { user?: User; trip?: { id: string } | null; sent?: { place: string | null; sentAt: Date }[]; s?: Partial<Settings>; rows?: RoutineTrip[]; served?: (p: { lat: number; lng: number }) => boolean } = {}) {
+function setup(o: { user?: User; trip?: { id: string } | null; sent?: { place: string | null; sentAt: Date }[]; s?: Partial<Settings>; rows?: RoutineTrip[]; served?: (p: { lat: number; lng: number }) => boolean; messages?: { id: string; title: string; body: string }[] } = {}) {
   const reminders: Record<string, unknown>[] = [];
   const prisma = {
     user: { findUnique: vi.fn(async () => (o.user === undefined ? { name: 'Siva Krishna', isBlocked: false, deletedAt: null } : o.user)) },
@@ -23,6 +23,7 @@ function setup(o: { user?: User; trip?: { id: string } | null; sent?: { place: s
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => (reminders.push(data), data)),
     },
     $queryRaw: vi.fn(async () => o.rows ?? []),
+    reminderMessage: { findMany: vi.fn(async () => o.messages ?? []) },
   };
   const jobs = { register: vi.fn(), schedule: vi.fn(async () => undefined), scheduledAt: vi.fn(async (): Promise<number | null> => null) };
   const push = { toUser: vi.fn() };
@@ -35,6 +36,30 @@ function setup(o: { user?: User; trip?: { id: string } | null; sent?: { place: s
 const payload = (quotedAt: Date, mode: 'LOCAL' | 'OUTSTATION' = 'OUTSTATION'): SearchPayload => ({ quotedAt: quotedAt.toISOString(), mode, pickup: HOME, drop: OOTY });
 
 describe('search reminder', () => {
+  it('sends one of the admin messages at random and records which', async () => {
+    const messages = [
+      { id: 'm1', title: '{name}, {drop}?', body: 'Your cab is a tap away.' },
+      { id: 'm2', title: 'Still thinking about {drop}?', body: 'Book now, {name}.' },
+    ];
+    const { svc, push, reminders, prisma } = setup({ messages });
+    vi.spyOn(Math, 'random').mockReturnValue(0.9);
+    try {
+      await svc.searchReminder('u1', payload(ist(9, 50)), ist(10));
+    } finally {
+      vi.restoreAllMocks();
+    }
+    expect(prisma.reminderMessage.findMany).toHaveBeenCalledWith({ where: { kind: 'SEARCH_OUTSTATION', isActive: true }, select: { id: true, title: true, body: true } });
+    expect(push.toUser).toHaveBeenCalledWith('u1', 'PASSENGER', expect.objectContaining({ title: 'Still thinking about Ooty?', body: 'Book now, Siva.' }));
+    expect(reminders).toMatchObject([{ messageId: 'm2', title: 'Still thinking about Ooty?' }]);
+  });
+
+  it('falls back to the built-in text when no message fits (no name for a {name} message)', async () => {
+    const { svc, push, reminders } = setup({ user: { name: null, isBlocked: false, deletedAt: null }, messages: [{ id: 'm1', title: '{name}, {drop}?', body: 'x' }] });
+    await svc.searchReminder('u1', payload(ist(9, 50)), ist(10));
+    expect(push.toUser).toHaveBeenCalledWith('u1', 'PASSENGER', expect.objectContaining({ title: 'Still going to Ooty?' }));
+    expect(reminders).toMatchObject([{ messageId: null }]);
+  });
+
   it('is not sent for a trip that cannot be booked: a pickup outside the service area, or a local drop where drops stop', async () => {
     const isCoimbatore = (p: { lat: number }) => p.lat < 11.2;
     // From Ooty (no service there) to Coimbatore: quoted, but it can't be booked, so no reminder.
@@ -93,7 +118,7 @@ describe('search reminder', () => {
         pickupLng: '76.95',
       },
     });
-    expect(reminders).toEqual([{ userId: 'u1', kind: 'SEARCH', place: placeKey(OOTY), title: 'Siva, Ooty?', body: expect.any(String) }]);
+    expect(reminders).toEqual([{ userId: 'u1', kind: 'SEARCH', place: placeKey(OOTY), title: 'Siva, Ooty?', body: expect.any(String), messageId: null }]);
   });
 
   it('skips a rider who booked since the quote or has a trip going', async () => {

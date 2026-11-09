@@ -224,6 +224,26 @@ describe('Tamil Taxi features (e2e)', () => {
     });
   });
 
+  describe('reminder messages (Engage › Automations)', () => {
+    it('lists the built-in messages, refuses a word the reminder cannot fill, and adds, switches off and deletes one', async () => {
+      const admin = await adminAuth();
+      const list = async () => (await http.get('/v1/admin/reminder-messages').set(admin).expect(200)).body as { id: string; kind: string; isActive: boolean; sent30d: number }[];
+      const before = await list();
+      expect(before.map((m) => m.id)).toEqual(expect.arrayContaining(['rm_search_local_1', 'rm_search_outstation_1', 'rm_routine_1']));
+      expect(before.every((m) => typeof m.sent30d === 'number')).toBe(true);
+
+      const refused = await http.post('/v1/admin/reminder-messages').set(admin).send({ kind: 'SEARCH_LOCAL', title: 'Your {time} ride', body: 'Book now' }).expect(400);
+      expect(refused.body.message).toMatch(/\{time\} can't be used here/);
+
+      const created = (await http.post('/v1/admin/reminder-messages').set(admin).send({ kind: 'SEARCH_LOCAL', title: ' Still going to {drop}? ', body: 'Drivers are close by.' }).expect(201)).body;
+      expect(created).toMatchObject({ kind: 'SEARCH_LOCAL', title: 'Still going to {drop}?', isActive: true });
+      expect((await http.patch(`/v1/admin/reminder-messages/${created.id}`).set(admin).send({ isActive: false }).expect(200)).body.isActive).toBe(false);
+      await http.delete(`/v1/admin/reminder-messages/${created.id}`).set(admin).expect(204);
+      await http.delete(`/v1/admin/reminder-messages/${created.id}`).set(admin).expect(404);
+      expect((await list()).some((m) => m.id === created.id)).toBe(false);
+    });
+  });
+
   describe('profile edits (PATCH /drivers/me)', () => {
     it('a new plate after approval sends the driver back to pending, offline, with the RC to upload again', async () => {
       const d = await approvedDriver();

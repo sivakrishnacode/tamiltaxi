@@ -944,9 +944,37 @@ model Reminder {
   /// The drop it was about (dedupe: one reminder per drop per day).
   place  String?
   sentAt DateTime     @default(now())
+  /// The admin message it was written from (null: the built-in text, or the message was deleted since).
+  messageId String?
+  message   ReminderMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
 
   @@index([userId, sentAt])
   @@index([sentAt])
+}
+
+/// Which reminder a message is for (ReminderMessage).
+enum ReminderMessageKind {
+  /// "Didn't book", a local ride.
+  SEARCH_LOCAL
+  /// "Didn't book", an outstation ride.
+  SEARCH_OUTSTATION
+  /// Usual trip.
+  ROUTINE
+}
+
+/// One wording of a reminder push (Admin › Engage › Automations). Each send picks one of its kind's active messages at
+/// random among those whose placeholders ({name}, {drop}, {time}, {vehicle}) it can fill; none → the built-in text.
+model ReminderMessage {
+  id        String              @id @default(cuid())
+  kind      ReminderMessageKind
+  title     String
+  body      String
+  isActive  Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  reminders Reminder[]
+
+  @@index([kind])
 }
 
 /// When a WhatsApp welcome goes out (settings `welcome*Enabled` / `welcome*Template`, Admin › Automations › WhatsApp).

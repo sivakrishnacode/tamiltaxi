@@ -4,19 +4,23 @@ import type { Job } from '../../core/jobs/job-runner.js';
 import { JobsService } from '../../core/jobs/jobs.service.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { AppKind, ReminderKind, TripStatus } from '../../generated/prisma/enums.js';
+import { AppKind, ReminderKind, ReminderMessageKind, TripStatus } from '../../generated/prisma/enums.js';
 import { GeoService } from '../geo/geo.service.js';
 import { PushService } from '../notifications/push.service.js';
 import type { Settings } from '../settings/settings.defaults.js';
 import { SettingsService } from '../settings/settings.service.js';
+import { pickMessage, type Placeholder } from './reminder-messages.js';
 import {
   BOOKED_WITHIN_MIN,
   dedupeBlock,
   findRoutines,
+  firstName,
+  formatClock,
   isQuietHour,
   istDayStart,
   istMinuteOfDay,
   placeKey,
+  placeName,
   pointData,
   type ReminderPoint,
   type Routine,
@@ -29,6 +33,7 @@ import {
   type RoutineTrip,
   SEARCH_REMINDER_JOB,
   searchReminderText,
+  vehiclePhrase,
 } from './reminders.js';
 
 /** A rider on one of these has a trip going: no reminders. */
@@ -128,7 +133,12 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
     if (trip) return;
     const place = placeKey(p.drop);
     if (await this.isDeduped(userId, place, new Date(now.getTime() - DAY_MS), now, s)) return;
-    await this.send(userId, ReminderKind.SEARCH, place, searchReminderText({ userName: user.name, dropName: p.drop.name, mode: p.mode }), {
+    const text = await this.writeText(
+      p.mode === 'OUTSTATION' ? ReminderMessageKind.SEARCH_OUTSTATION : ReminderMessageKind.SEARCH_LOCAL,
+      { name: firstName(user.name) ?? undefined, drop: placeName(p.drop.name) },
+      searchReminderText({ userName: user.name, dropName: p.drop.name, mode: p.mode }),
+    );
+    await this.send(userId, ReminderKind.SEARCH, place, text, {
       type: 'suggest',
       kind: 'search',
       mode: p.mode,
@@ -188,7 +198,13 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
     });
     if (trip || (await this.isDeduped(r.passengerId, r.place, istDayStart(now), now, s))) return false;
     if (!(await this.isBookable('LOCAL', r.pickup, r.drop))) return false;
-    await this.send(r.passengerId, ReminderKind.ROUTINE, r.place, routineReminderText({ dropName: r.drop.name, usualMin: r.usualMin, vehicle: r.vehicle }), {
+    const user = await this.prisma.user.findUnique({ where: { id: r.passengerId }, select: { name: true } });
+    const text = await this.writeText(
+      ReminderMessageKind.ROUTINE,
+      { name: firstName(user?.name) ?? undefined, drop: placeName(r.drop.name), time: formatClock(r.usualMin), vehicle: vehiclePhrase(r.vehicle) },
+      routineReminderText({ dropName: r.drop.name, usualMin: r.usualMin, vehicle: r.vehicle }),
+    );
+    await this.send(r.passengerId, ReminderKind.ROUTINE, r.place, text, {
       type: 'suggest',
       kind: 'routine',
       mode: 'LOCAL',
@@ -218,13 +234,30 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
     return dedupeBlock({ now, sent, place, placeSince, dailyCap: s.reminderDailyCap }) !== null;
   }
 
-  private async send(userId: string, kind: ReminderKind, place: string, text: { title: string; body: string }, data: Record<string, string>): Promise<void> {
-    await this.prisma.reminder.create({ data: { userId, kind, place, ...text } });
-    this.push.toUser(userId, AppKind.PASSENGER, { ...text, channel: 'suggestions', data });
+  /** One of the admin's active messages of [kind] at random among those [values] can fill, else the built-in [fallback]. */
+  private async writeText(
+    kind: ReminderMessageKind,
+    values: Partial<Record<Placeholder, string>>,
+    fallback: { title: string; body: string },
+  ): Promise<{ title: string; body: string; messageId: string | null }> {
+    const messages = await this.prisma.reminderMessage.findMany({ where: { kind, isActive: true }, select: { id: true, title: true, body: true } });
+    const pick = pickMessage(messages, values);
+    return pick ? { title: pick.title, body: pick.body, messageId: pick.message.id } : { ...fallback, messageId: null };
+  }
+
+  private async send(
+    userId: string,
+    kind: ReminderKind,
+    place: string,
+    text: { title: string; body: string; messageId: string | null },
+    data: Record<string, string>,
+  ): Promise<void> {
+    await this.prisma.reminder.create({ data: { userId, kind, place, title: text.title, body: text.body, messageId: text.messageId } });
+    this.push.toUser(userId, AppKind.PASSENGER, { title: text.title, body: text.body, channel: 'suggestions', data });
     this.logger.log(`Reminder ${kind} to ${userId}: ${text.title}`);
   }
 
-  /** Last 7 days' reminders sent and booked by kind, and the newest 20. */
+  /** Last 7 days' reminders sent and booked by kind, and the newest 50. */
   async stats(now = new Date()): Promise<AutomationStats> {
     const booked = Prisma.sql`EXISTS (SELECT 1 FROM "Trip" t WHERE t."passengerId" = r."userId" AND t."createdAt" >= r."sentAt"
       AND t."createdAt" < r."sentAt" + ${BOOKED_WITHIN_MIN} * INTERVAL '1 minute')`;
@@ -235,7 +268,7 @@ export class AutomationsService implements OnModuleInit, OnApplicationBootstrap 
       this.prisma.$queryRaw<(Omit<AutomationStats['recent'][number], 'sentAt'> & { sentAt: Date })[]>`
         SELECT r.id, r.kind, r."userId", u.name AS "userName", u.phone, r.title, r.body, r."sentAt", ${booked} AS booked
         FROM "Reminder" r JOIN "User" u ON u.id = r."userId"
-        ORDER BY r."sentAt" DESC LIMIT 20`,
+        ORDER BY r."sentAt" DESC LIMIT 50`,
     ]);
     const of = (kind: ReminderKind) => {
       const row = totals.find((t) => t.kind === kind);
