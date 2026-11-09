@@ -221,8 +221,14 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `619c322` (API and admin).
+
+### 9 Nov 2026 (third) · API and admin at `619c322`
+
+Release: `staging-2026-11-09.3` at `619c322`
+
 API and admin, with database changes (migrations `20261109120000_welcome_messages` and
-`20261109140000_reminder_messages`).
+`20261109140000_reminder_messages`; the second one adds the three reminder messages sent so far).
 
 - **New Engage area in the admin:** one Engage item with Overview (the week's numbers, what is running, the latest
   messages), Automations, Campaigns, In-app (announcements, splash and Home banners) and History (every message that
