@@ -221,6 +221,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
+Nothing yet: staging runs `3896d94` (API and admin).
+
+### 9 Nov 2026 · API and admin at `3896d94`
+
+Release: `staging-2026-11-09` at `3896d94`
+
 API and admin (no database change).
 
 - **Last location with the time** on the admin user page (rider and driver) and the driver page: a driver's newest
