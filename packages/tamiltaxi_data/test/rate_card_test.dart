@@ -20,6 +20,18 @@ void main() {
     expect(RateCard.fromJson(const {}).cancellationFee, isNull, reason: 'the fee is off');
   });
 
+  test('Night fare: autos only, in IST hours, wrapping past midnight (the API isNightIst)', () {
+    const n = AutoNightFare(multiplier: 1.5, startHour: 22, endHour: 5);
+    // 22:00 IST = 16:30 UTC; 04:59 IST = 23:29 UTC; 05:00 IST = 23:30 UTC.
+    expect(n.multiplierFor(VehicleKind.auto, DateTime.utc(2026, 11, 9, 16, 30)), 1.5);
+    expect(n.multiplierFor(VehicleKind.auto, DateTime.utc(2026, 11, 9, 23, 29)), 1.5);
+    expect(n.multiplierFor(VehicleKind.auto, DateTime.utc(2026, 11, 9, 23, 30)), 1);
+    expect(n.multiplierFor(VehicleKind.auto, DateTime.utc(2026, 11, 9, 16, 29)), 1);
+    expect(n.multiplierFor(VehicleKind.cab, DateTime.utc(2026, 11, 9, 18)), 1, reason: 'cabs have no night fare');
+    const same = AutoNightFare(multiplier: 1.5, startHour: 5, endHour: 5);
+    expect(same.multiplierFor(VehicleKind.auto, DateTime.utc(2026, 11, 9, 18)), 1, reason: 'start == end is never');
+  });
+
   test('Parcel on Auto: up to 100 kg, served by autos and goods 3-wheelers, never a registered vehicle', () {
     expect(Seed.vehicle(VehicleKind.autoParcel).capacityKg, 100);
     expect(VehicleKind.autoParcel.isGoods, isTrue);

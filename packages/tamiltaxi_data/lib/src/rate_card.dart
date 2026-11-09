@@ -75,6 +75,18 @@ class AutoNightFare {
   final int startHour;
   final int endHour;
 
+  /// The vehicles that pay it (the API's `NIGHT_FARE_KINDS`).
+  static const kinds = {VehicleKind.auto, VehicleKind.autoPriority, VehicleKind.autoParcel};
+
+  /// The multiplier for [kind] at [at] (1 = none): from [startHour] (inclusive) to [endHour] (exclusive) in IST,
+  /// wrapping past midnight when start > end; start == end is never (the API's `isNightIst`).
+  double multiplierFor(VehicleKind kind, DateTime at) {
+    if (!kinds.contains(kind) || startHour == endHour) return 1;
+    final h = at.toUtc().add(const Duration(hours: 5, minutes: 30)).hour;
+    final night = startHour < endHour ? h >= startHour && h < endHour : h >= startHour || h < endHour;
+    return night ? multiplier : 1;
+  }
+
   /// Null when [j] isn't a night fare that applies (missing, or a multiplier of 1 or less).
   static AutoNightFare? fromJson(Object? j) {
     if (j is! Map || j['multiplier'] is! num || (j['multiplier'] as num) <= 1) return null;
