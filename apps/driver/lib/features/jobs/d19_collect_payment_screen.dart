@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 
@@ -13,6 +12,7 @@ import '../../state/live_helpers.dart';
 import '../home/widgets/navy_header.dart';
 import 'widgets/job_common.dart';
 import 'widgets/rate_customer_sheet.dart';
+import 'widgets/upi_qr.dart';
 
 /// D-19 Collect payment (and D-22b for deliveries): "Collect ₹38", the driver's own UPI QR,
 /// "Received cash" / "Received on UPI" → rate the passenger → D-14 with today's earnings up.
@@ -89,7 +89,6 @@ class _D19CollectPaymentScreenState extends ConsumerState<D19CollectPaymentScree
     final demoGoods = !liveApi && _isDelivery && !(profile?.vehicleKind.isGoods ?? true);
     final upi = (demoGoods ? Seed.selvam.upiId : profile?.upiId ?? '').trim();
     final payee = demoGoods ? Seed.selvam.name : profile?.name ?? '';
-    final qrData = 'upi://pay?pa=$upi&pn=${Uri.encodeComponent(payee)}&am=${_job.fare}&cu=INR';
     final fromReceiver = _job.parcel?.payer != ParcelPayer.sender;
     final live = !widget.showcase && ref.watch(driverSessionProvider.select((s) => s.job)) != null;
 
@@ -171,42 +170,7 @@ class _D19CollectPaymentScreenState extends ConsumerState<D19CollectPaymentScree
                       onRetry: () => ref.invalidate(driverProfileProvider),
                     )
                   else ...[
-                    Container(
-                      padding: const EdgeInsets.all(TtSpacing.m),
-                      decoration: BoxDecoration(
-                        color: TtColors.surface,
-                        borderRadius: const BorderRadius.all(Radius.circular(20)),
-                        border: Border.all(color: TtColors.divider),
-                        boxShadow: TtShadows.soft,
-                      ),
-                      child: Stack(alignment: Alignment.center, children: [
-                        QrImageView(
-                          data: qrData,
-                          size: 196,
-                          padding: EdgeInsets.zero,
-                          errorCorrectionLevel: QrErrorCorrectLevel.H,
-                          semanticsLabel: 'UPI QR code for $upi',
-                          eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: TtColors.navy900),
-                          dataModuleStyle:
-                              const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: TtColors.navy900),
-                        ),
-                        // The Tamil Taxi app icon (it was a coral "r" from the old name). Error correction H keeps the
-                        // code readable under it.
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: TtColors.surface,
-                            boxShadow: TtShadows.soft,
-                          ),
-                          padding: const EdgeInsets.all(3),
-                          child: ClipOval(
-                            child: Image.asset('assets/brand/launcher_rider.png', package: 'tamiltaxi_ui', fit: BoxFit.cover),
-                          ),
-                        ),
-                      ]),
-                    ),
+                    UpiQr(upiId: upi, payee: payee, amount: _job.fare),
                     const SizedBox(height: TtSpacing.m),
                     Text(upi, style: t.bodySemibold),
                   ],
