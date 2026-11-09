@@ -145,11 +145,15 @@ void main() {
     final e = earningsFromJson({
       'total': 540, 'rides': 6, 'onlineHours': 5.5, 'rating': 4.9, 'commissionSaved': 160,
       'bars': [{'label': '8 AM', 'amount': 120, 'rides': 2}],
-      'trips': [{'id': 't', 'at': '2026-09-26T05:31:00.000Z', 'from': 'A', 'to': 'B', 'fare': 60, 'paymentMode': 'UPI', 'distanceKm': 3, 'durationMin': 11, 'passengerName': 'P', 'isDelivery': false}],
+      'trips': [
+        {'id': 't', 'at': '2026-09-26T05:31:00.000Z', 'from': 'A', 'to': 'B', 'fare': 60, 'paymentMode': 'UPI', 'distanceKm': 3, 'durationMin': 11, 'passengerName': 'P', 'isDelivery': false},
+        {'id': 'm', 'at': '2026-09-26T05:01:00.000Z', 'from': 'Gandhipuram', 'to': '', 'fare': 100, 'paymentMode': 'CASH', 'distanceKm': 3.8, 'durationMin': 14, 'passengerName': '', 'isDelivery': false, 'isMeter': true},
+      ],
     });
     expect(e.onlineHours, 6);
     expect(e.bars.single.rides, 2);
-    expect(e.trips.single.paymentMode, PaymentMode.upi);
+    expect(e.trips.first.paymentMode, PaymentMode.upi);
+    expect(e.trips.map((t) => t.isMeter), [false, true], reason: 'a meter trip (D-42); older servers send no flag');
 
     final plan = planFromJson({
       'status': 'TRIAL', 'startsAt': '2026-09-01T00:00:00.000Z', 'endsAt': '2026-10-01T00:00:00.000Z', 'upiApp': 'PhonePe',

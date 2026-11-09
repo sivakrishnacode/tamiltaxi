@@ -450,6 +450,7 @@ EarningsSummary earningsFromJson(Json j) => EarningsSummary(
         durationMin: _i(t['durationMin']),
         passengerName: _s(t['passengerName']),
         isDelivery: t['isDelivery'] == true,
+        isMeter: t['isMeter'] == true,
       ),
   ],
 );

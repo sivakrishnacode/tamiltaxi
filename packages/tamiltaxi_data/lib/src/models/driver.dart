@@ -161,6 +161,7 @@ class EarningsTrip {
     this.waitingCharge = 0,
     this.previousCancellationFee = 0,
     this.extra = 0,
+    this.isMeter = false,
   });
 
   final String id;
@@ -183,6 +184,9 @@ class EarningsTrip {
   final String passengerName;
   final bool isDelivery;
 
+  /// A meter trip (D-42): a passenger picked up off the app. [from] is where it started; no [to] or passenger.
+  final bool isMeter;
+
   EarningsTrip copyWith({
     String? id,
     DateTime? time,
@@ -197,6 +201,7 @@ class EarningsTrip {
     int? waitingCharge,
     int? previousCancellationFee,
     int? extra,
+    bool? isMeter,
   }) =>
       EarningsTrip(
         id: id ?? this.id,
@@ -212,6 +217,7 @@ class EarningsTrip {
         waitingCharge: waitingCharge ?? this.waitingCharge,
         previousCancellationFee: previousCancellationFee ?? this.previousCancellationFee,
         extra: extra ?? this.extra,
+        isMeter: isMeter ?? this.isMeter,
       );
 }
 
