@@ -7,6 +7,7 @@ import 'package:tamiltaxi_ui/tamiltaxi_ui.dart';
 import '../../common/showcase.dart';
 import '../../router/routes.dart';
 import '../../state/driver_account.dart';
+import '../../state/driver_location.dart';
 import '../../state/live_helpers.dart';
 import 'widgets/signup_widgets.dart';
 
@@ -90,7 +91,8 @@ class _D06PersonalDetailsScreenState
       _upiValid &&
       PhoneInput.digitsOf(_emergency.text).length == 10 &&
       _modelValid &&
-      _plateValid;
+      _plateValid &&
+      _cityValid;
 
   String get _initials {
     final parts = _name.text
@@ -125,6 +127,7 @@ class _D06PersonalDetailsScreenState
             vehicleModel: _model.text.trim(),
             vehicleColor: _color.text.trim(),
             plate: _plate.text.trim().toUpperCase(),
+            cityId: _cityIdIn(_cities),
           ),
         );
     try {
@@ -145,11 +148,39 @@ class _D06PersonalDetailsScreenState
     context.go(Routes.home);
   }
 
-  /// The service city the driver signs up in (the API's cities; empty until they load).
-  String get _city {
-    final cities = ref.watch(serviceCitiesProvider).value ?? const <ServiceCity>[];
-    return nearestCity(cities, CityDefaults.center)?.name ?? '';
+  /// Where the phone is (its last known position, no prompt; null until known): picks the City.
+  LatLng? _here;
+
+  @override
+  void initState() {
+    super.initState();
+    _locate();
   }
+
+  Future<void> _locate() async {
+    final fix = await ref.read(driverLocatorProvider).lastKnownFix();
+    if (mounted && fix != null) setState(() => _here = fix.point);
+  }
+
+  /// The city the driver chose in the City dropdown (null: not changed here).
+  String? _picked;
+
+  List<ServiceCity> get _cities => ref.read(serviceCitiesProvider).value ?? const <ServiceCity>[];
+
+  /// The City: the one chosen here, else the saved one, else the only one or the one nearest the phone (null while
+  /// unknown: the driver chooses). Sent with the details; the API keeps it as the driver's city. (It used to be the
+  /// city nearest the default map centre, which is simply the API's first city.)
+  String? _cityIdIn(List<ServiceCity> cities) {
+    bool known(String? id) => id != null && cities.any((c) => c.id == id);
+    if (known(_picked)) return _picked;
+    if (known(_draft.cityId)) return _draft.cityId;
+    if (cities.length == 1) return cities.single.id;
+    final here = _here;
+    return here == null ? null : nearestCity(cities, here)?.id;
+  }
+
+  /// A city must be chosen once there are cities to choose from.
+  bool get _cityValid => _cities.isEmpty || _cityIdIn(_cities) != null;
 
   @override
   Widget build(BuildContext context) {
@@ -183,16 +214,11 @@ class _D06PersonalDetailsScreenState
                         : null,
                   ),
                   const SizedBox(height: TtSpacing.l),
-                  TtTextField(
-                    // A field reads its initial value once; keyed by the city, it shows it when the cities load.
-                    key: ValueKey(_city),
-                    label: 'City',
-                    initialValue: _city,
-                    enabled: false,
-                    suffix: const Icon(
-                      Symbols.lock_rounded,
-                      color: TtColors.navy500,
-                    ),
+                  _CityDropdown(
+                    cities: ref.watch(serviceCitiesProvider).value ?? const <ServiceCity>[],
+                    cityId: _cityIdIn(ref.watch(serviceCitiesProvider).value ?? const <ServiceCity>[]),
+                    showError: _showErrors && !_cityValid,
+                    onChanged: (id) => setState(() => _picked = id),
                   ),
                   const SizedBox(height: TtSpacing.l),
                   TtTextField(
@@ -353,5 +379,37 @@ class _D06PersonalDetailsScreenState
         ),
       ),
     );
+  }
+}
+
+/// D-06 City: the service cities in a dropdown, the one nearest the phone picked to start with.
+class _CityDropdown extends StatelessWidget {
+  const _CityDropdown({required this.cities, required this.cityId, required this.showError, required this.onChanged});
+
+  final List<ServiceCity> cities;
+  final String? cityId;
+  final bool showError;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text('City', style: t.bodySmallMedium.copyWith(color: TtColors.navy700)),
+      const SizedBox(height: 6),
+      DropdownButtonFormField<String>(
+        // A form field reads its first value once: keyed, it follows the suggestion as the cities and the position load.
+        key: ValueKey('city-$cityId-${cities.length}'),
+        initialValue: cityId,
+        items: [for (final c in cities) DropdownMenuItem(value: c.id, child: Text(c.name))],
+        onChanged: cities.isEmpty ? null : onChanged,
+        hint: Text(cities.isEmpty ? 'Loading cities…' : 'Choose your city', style: t.body.copyWith(color: TtColors.navy500)),
+        icon: const Icon(Symbols.expand_more_rounded, color: TtColors.navy500),
+        borderRadius: TtRadii.cardRadius,
+        dropdownColor: TtColors.surface,
+        style: t.body.copyWith(color: TtColors.navy900),
+        decoration: InputDecoration(errorText: showError ? 'Choose the city you drive in' : null),
+      ),
+    ]);
   }
 }

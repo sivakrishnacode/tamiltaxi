@@ -411,6 +411,7 @@ class ApiDriverRepository implements DriverRepository {
             'vehicleColor': profile.vehicleColor,
             'plate': profile.plate,
             'upiId': profile.upiId,
+            'cityId': ?profile.cityId,
           }),
         ),
       );
@@ -430,6 +431,7 @@ class ApiDriverRepository implements DriverRepository {
         'vehicleColor': profile.vehicleColor,
         'plate': profile.plate,
         'upiId': profile.upiId,
+        'cityId': ?profile.cityId,
       }),
     );
     // 201 for a new driver; 200 with the same driver and a fresh token when the first answer was lost and the

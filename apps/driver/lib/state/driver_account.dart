@@ -201,6 +201,7 @@ class SignupDraft {
     this.vehicleColor = '',
     this.plate = '',
     this.detailsSaved = false,
+    this.cityId,
   });
 
   /// Live API: nothing prefilled.
@@ -224,6 +225,9 @@ class SignupDraft {
   /// D-06 saved the details (live: the driver now exists), so the registration page opens the documents.
   final bool detailsSaved;
 
+  /// D-06's City: the service city the driver picked (null: not picked; D-06 suggests the one nearest the phone).
+  final String? cityId;
+
   SignupDraft copyWith({
     String? phone,
     WorkType? workType,
@@ -238,6 +242,7 @@ class SignupDraft {
     String? vehicleColor,
     String? plate,
     bool? detailsSaved,
+    String? cityId,
   }) =>
       SignupDraft(
         phone: phone ?? this.phone,
@@ -253,6 +258,7 @@ class SignupDraft {
         vehicleColor: vehicleColor ?? this.vehicleColor,
         plate: plate ?? this.plate,
         detailsSaved: detailsSaved ?? this.detailsSaved,
+        cityId: cityId ?? this.cityId,
       );
 }
 
@@ -291,6 +297,7 @@ class SignupController extends Notifier<SignupDraft> {
       vehicleModel: p.vehicleModel,
       vehicleColor: p.vehicleColor,
       plate: p.plate,
+      cityId: p.cityId,
       emergencyContact: contact != null && contact.phone.isNotEmpty ? contact.phone : state.emergencyContact,
     );
   }
@@ -326,6 +333,7 @@ class SignupController extends Notifier<SignupDraft> {
         rides: 0,
         upiId: state.upiId.trim(),
         gender: state.gender,
+        cityId: state.cityId,
       );
       if (repo.isLoggedIn) {
         await repo.updateProfile(profile);

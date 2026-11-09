@@ -15,12 +15,14 @@ const _json = {'content-type': 'application/json'};
 void main() {
   test('Edit after a restart starts from the saved driver; an unchanged contact is kept', () async {
     final calls = <String>[];
+    final patches = <String>[];
     final client = MockClient((req) async {
       calls.add('${req.method} ${req.url.path}');
+      if (req.method == 'PATCH') patches.add(req.body);
       if (req.method == 'GET' && req.url.path.endsWith('/drivers/me')) {
         return http.Response(
           '{"id":"d1","status":"PENDING","vehicleKind":"AUTO","vehicleModel":"Bajaj RE","vehicleColor":"Green",'
-          '"plate":"TN 37 AB 4521","upiId":"selvi@okaxis","user":{"name":"Selvi R","phone":"+919843012345","gender":"FEMALE"}}',
+          '"plate":"TN 37 AB 4521","upiId":"selvi@okaxis","cityId":"cbe","user":{"name":"Selvi R","phone":"+919843012345","gender":"FEMALE"}}',
           200,
           headers: _json,
         );
@@ -49,12 +51,19 @@ void main() {
     expect(d.plate, 'TN 37 AB 4521');
     expect(d.upiId, 'selvi@okaxis');
     expect(d.emergencyContact, '+919876512345');
+    expect(d.cityId, 'cbe', reason: 'the city saved at sign-up');
 
     calls.clear();
     c.read(signupProvider.notifier).update((d) => d.copyWith(plate: 'TN 37 AB 4522'));
     await c.read(signupProvider.notifier).commit();
     expect(calls.where((x) => x.startsWith('PATCH')), ['PATCH /v1/drivers/me']);
     expect(calls.where((x) => x.contains('emergency-contacts')), isEmpty, reason: 'the contact is unchanged');
+    expect(patches.last, contains('"cityId":"cbe"'), reason: 'the city goes with the details');
+
+    // A city chosen on D-06 goes with them too.
+    c.read(signupProvider.notifier).update((d) => d.copyWith(cityId: 'tpr'));
+    await c.read(signupProvider.notifier).commit();
+    expect(patches.last, contains('"cityId":"tpr"'));
   });
 
   test('start route: every signed-in driver opens Home (verify banner until approved); a lost session is rethrown',

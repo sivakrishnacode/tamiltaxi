@@ -80,6 +80,7 @@ class DriverProfile {
     this.photoPath,
     this.hasPendingPhoto = false,
     this.photoRejectReason,
+    this.cityId,
   });
 
   final String id;
@@ -105,6 +106,9 @@ class DriverProfile {
 
   /// Driver app: why an admin rejected the last photo.
   final String? photoRejectReason;
+
+  /// The service city the driver works in (picked at sign-up, D-06; else set when they first go online in one).
+  final String? cityId;
 
   String get firstName => name.split(' ').first;
 
@@ -133,6 +137,7 @@ class DriverProfile {
     String? photoPath,
     bool? hasPendingPhoto,
     String? photoRejectReason,
+    String? cityId,
   }) =>
       DriverProfile(
         id: id ?? this.id,
@@ -149,6 +154,7 @@ class DriverProfile {
         photoPath: photoPath ?? this.photoPath,
         hasPendingPhoto: hasPendingPhoto ?? this.hasPendingPhoto,
         photoRejectReason: photoRejectReason ?? this.photoRejectReason,
+        cityId: cityId ?? this.cityId,
       );
 }
 

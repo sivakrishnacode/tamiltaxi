@@ -141,6 +141,7 @@ DriverProfile driverFromJson(Json j) {
     photoPath: j['photoFile'] is String ? '/drivers/${_s(j['id'])}/photo?v=${j['photoFile']}' : null,
     hasPendingPhoto: j['pendingPhotoFile'] is String,
     photoRejectReason: j['photoRejectReason'] as String?,
+    cityId: j['cityId'] as String?,
   );
 }
 
