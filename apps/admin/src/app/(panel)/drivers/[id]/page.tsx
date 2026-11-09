@@ -8,6 +8,7 @@ import { PhotoTile } from "@/components/common/photo-tile";
 import { EmptyState, Field, PageHeader } from "@/components/common/page";
 import { ExpiryNote, KycProgress, OnlineDot, PlateBadge, StatusBadge } from "@/components/common/status";
 import { TripRouteCell } from "@/components/common/trip-bits";
+import { LastLocationValue } from "@/components/people/last-location";
 import { PersonMenu } from "@/components/people/person-menu";
 import { PersonRecord } from "@/components/people/person-record";
 import { PersonTabs } from "@/components/people/person-tabs";
@@ -178,6 +179,11 @@ export default async function DriverPage({ params }: PageProps<"/drivers/[id]">)
                   Open account
                 </Link>
               </Field>
+              {d.lastLocation !== undefined && (
+                <Field label="Last location (GPS, kept 30 days)" className="col-span-2">
+                  <LastLocationValue location={d.lastLocation} />
+                </Field>
+              )}
             </dl>
           </CardContent>
         </Card>

@@ -366,6 +366,8 @@ export interface DriverDetail extends Driver {
   readonly cancelRate?: DriverCancelRate;
   readonly blockedUntil?: string | null;
   readonly user: User;
+  /** The newest GPS fix, also after going offline. */
+  readonly lastLocation?: LastLocation | null;
 }
 
 /** Itemised quote stored on the trip (fare engine output). */
@@ -905,6 +907,17 @@ export interface SavedPlace {
   readonly note: string | null;
 }
 
+/**
+ * Where an app last placed someone (API drivers/last-location.ts, kept 30 days): a driver's newest GPS fix, a rider's
+ * map pin (their GPS unless they moved it, to ~110 m).
+ */
+export interface LastLocation {
+  readonly lat: number;
+  readonly lng: number;
+  /** When it was recorded (ISO). */
+  readonly at: string;
+}
+
 /** GET /admin/users/:id. */
 export interface UserDetail extends User {
   readonly driver: (DriverBase & { readonly documents: KycDocument[] }) | null;
@@ -913,6 +926,7 @@ export interface UserDetail extends User {
   readonly trips: TripBase[];
   readonly tickets: SupportTicketBase[];
   readonly cancelRate?: PassengerCancelRate;
+  readonly lastLocation?: { readonly rider: LastLocation | null; readonly driver: LastLocation | null };
 }
 
 /** GET /admin/kyc item. */

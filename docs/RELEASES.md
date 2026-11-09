@@ -221,7 +221,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `320e1df` (API and admin).
+API and admin (no database change).
+
+- **Last location with the time** on the admin user page (rider and driver) and the driver page: a driver's newest
+  GPS fix, also after going offline, and a rider's map pin (their phone's location on Home unless they moved the
+  pin, to about 110 m), each with an "Open map" link. Kept 30 days from the last update and deleted with the
+  account. Recording starts with this deploy: no earlier locations exist.
 
 ### 5 Nov 2026 (second) · API and admin at `320e1df`
 

@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { EmptyState, Field, PageHeader } from "@/components/common/page";
 import { PlateBadge, StatusBadge } from "@/components/common/status";
 import { TripRouteCell } from "@/components/common/trip-bits";
+import { LastLocationCard } from "@/components/people/last-location";
 import { PersonMenu } from "@/components/people/person-menu";
 import { PersonRecord } from "@/components/people/person-record";
 import { PersonTabs } from "@/components/people/person-tabs";
@@ -219,30 +220,40 @@ export default async function UserPage({ params }: PageProps<"/users/[id]">) {
         </Card>
       </div>
 
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-semibold">
-            <MapPinIcon className="size-4 text-coral-600" /> Saved places
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {u.savedPlaces.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No saved places.</p>
-          ) : (
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {u.savedPlaces.map((p) => (
-                <li key={p.id} className="rounded-lg border p-3 text-sm">
-                  <span className="flex items-center gap-2 font-medium text-navy-900">
-                    {p.label} <Badge variant="outline">{humanize(p.kind)}</Badge>
-                  </span>
-                  <span className="block text-navy-700">{p.name}</span>
-                  <span className="block text-xs text-muted-foreground">{p.address}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        {u.lastLocation && (
+          <LastLocationCard
+            rows={[
+              { label: "Rider app", source: "map pin, to ~110 m", location: u.lastLocation.rider },
+              ...(u.driver ? [{ label: "Driver app", source: "GPS", location: u.lastLocation.driver }] : []),
+            ]}
+          />
+        )}
+        <Card className={u.lastLocation ? "lg:col-span-2" : "lg:col-span-3"}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-semibold">
+              <MapPinIcon className="size-4 text-coral-600" /> Saved places
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {u.savedPlaces.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No saved places.</p>
+            ) : (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {u.savedPlaces.map((p) => (
+                  <li key={p.id} className="rounded-lg border p-3 text-sm">
+                    <span className="flex items-center gap-2 font-medium text-navy-900">
+                      {p.label} <Badge variant="outline">{humanize(p.kind)}</Badge>
+                    </span>
+                    <span className="block text-navy-700">{p.name}</span>
+                    <span className="block text-xs text-muted-foreground">{p.address}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-5">
         <Card className="gap-0 pb-0 xl:col-span-3">
