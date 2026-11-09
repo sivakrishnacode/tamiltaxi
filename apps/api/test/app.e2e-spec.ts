@@ -1039,6 +1039,54 @@ describe('Tamil Taxi API (e2e)', () => {
     for (const d of [driver, { Authorization: `Bearer ${other}` }]) await http.post('/v1/drivers/me/offline').set(d);
   }, 30_000);
 
+  it("meter trips (D-42): stored once per phone id and counted in the driver's earnings", async () => {
+    const driver = { Authorization: `Bearer ${await onlineDriver('AUTO', { lat: 11.0185, lng: 76.9727 })}` };
+    const earnings = async () => (await http.get('/v1/drivers/me/earnings?period=today').set(driver).expect(200)).body;
+    const before = await earnings();
+    const endedAt = new Date();
+    const trip = {
+      clientId: `meter-${Date.now()}-e2e`,
+      vehicleKind: 'AUTO',
+      startedAt: new Date(endedAt.getTime() - 14 * 60_000).toISOString(),
+      endedAt: endedAt.toISOString(),
+      distanceKm: 3.8,
+      fare: 100,
+      startLat: 11.0168,
+      startLng: 76.9558,
+      startName: 'Gandhipuram, 100 Feet Road',
+    };
+    const send = (body: object, as: { Authorization: string } = driver) => http.post('/v1/drivers/me/meter-trips').set(as).send(body);
+
+    // Sent twice at once (a retry after a lost reply): one trip.
+    const [first, again] = await Promise.all([send(trip), send(trip)]);
+    expect([first.status, again.status]).toEqual([200, 200]);
+    expect(again.body.id).toBe(first.body.id);
+    expect(await prisma.meterTrip.count({ where: { clientId: trip.clientId } })).toBe(1);
+
+    const after = await earnings();
+    expect(after.total).toBe(before.total + 100);
+    expect(after.rides).toBe(before.rides + 1);
+    expect(after.commissionSaved).toBe(before.commissionSaved);
+    expect(after.trips[0]).toMatchObject({
+      id: first.body.id,
+      isMeter: true,
+      from: 'Gandhipuram, 100 Feet Road',
+      to: '',
+      fare: 100,
+      distanceKm: 3.8,
+      durationMin: 14,
+    });
+
+    // Riders can't send them; nonsense times and fares are refused.
+    await send({ ...trip, clientId: 'meter-rider-1' }, { Authorization: `Bearer ${await login()}` }).expect(403);
+    const bad = { ...trip, clientId: 'meter-bad-1' };
+    await send({ ...bad, startedAt: new Date(endedAt.getTime() + 60_000).toISOString() }).expect(400);
+    await send({ ...bad, endedAt: new Date(endedAt.getTime() + 3 * 3600_000).toISOString() }).expect(400);
+    await send({ ...bad, fare: -5 }).expect(400);
+    await send({ ...bad, vehicleKind: 'ROCKET' }).expect(400);
+    await http.post('/v1/drivers/me/offline').set(driver);
+  }, 30_000);
+
   it('one ride OTP per rider: the same on every own ride; an admin change reaches the ride waiting to start', async () => {
     const { trip, driver, pax } = await assignedBikeTrip({ lat: 11.0185, lng: 76.9727 });
     const me = (await http.get('/v1/me').set(pax).expect(200)).body;

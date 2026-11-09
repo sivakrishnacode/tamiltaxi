@@ -11,10 +11,12 @@ import type { Driver, KycDocument } from '../../generated/prisma/client.js';
 import { KycDocType, Role, TripKind } from '../../generated/prisma/enums.js';
 import { type BookingPrefs, SERVICE_KEYS, type ServiceKey } from './booking-prefs.js';
 import { DriverEarningsService, type Earnings } from './driver-earnings.service.js';
+import { MeterTripsService } from './meter-trips.service.js';
 import { ADMIN_CANT_REGISTER, type DriverProfile, DriversService } from './drivers.service.js';
 import { AuditInterceptor } from '../admin/audit.interceptor.js';
 import { BookingPrefsDto, ServiceDto } from './dto/booking-prefs.dto.js';
 import { EarningsQueryDto } from './dto/earnings-query.dto.js';
+import { MeterTripDto } from './dto/meter-trip.dto.js';
 import { LocationDto } from './dto/location.dto.js';
 import { NearbyQueryDto } from './dto/nearby-query.dto.js';
 import { PARCEL_MAP_KINDS, RIDE_MAP_KINDS, type NearbyVehicle } from './nearby-vehicles.js';
@@ -28,6 +30,7 @@ export class DriversController {
   constructor(
     private readonly drivers: DriversService,
     private readonly earningsService: DriverEarningsService,
+    private readonly meterTrips: MeterTripsService,
     private readonly files: FileStorageService,
   ) {}
 
@@ -96,6 +99,14 @@ export class DriversController {
   @Get('drivers/me/earnings')
   earnings(@CurrentUser() user: AuthUser, @Query() q: EarningsQueryDto): Promise<Earnings> {
     return this.earningsService.summary(DriversController.driverId(user), q.period ?? 'today');
+  }
+
+  /** D-42: a finished meter trip, sent once the phone is online (again with the same `clientId`: the stored one). */
+  @Roles(Role.DRIVER)
+  @Post('drivers/me/meter-trips')
+  @HttpCode(200)
+  recordMeterTrip(@CurrentUser() user: AuthUser, @Body() body: MeterTripDto): Promise<{ id: string }> {
+    return this.meterTrips.record(DriversController.driverId(user), body);
   }
 
   @Roles(Role.DRIVER)

@@ -44,6 +44,8 @@ export interface Earnings {
     durationMin: number;
     passengerName: string;
     isDelivery: boolean;
+    /** A meter trip (D-42): a passenger picked up off the app; [from] is where it started, no [to] or passenger. */
+    isMeter: boolean;
   }[];
 }
 
@@ -71,8 +73,9 @@ function hourLabel(h: number): string {
 }
 
 /**
- * Driver earnings (D-23): today in 2-hour buckets, the last 7 days, or the last 4 weeks. Online time is tracked
- * per IST day in Redis when the driver goes online / offline (no Google calls, no extra tables).
+ * Driver earnings (D-23): today in 2-hour buckets, the last 7 days, or the last 4 weeks. Booked trips and meter trips
+ * (D-42, passengers picked up off the app) both count; commission saved is on booked trips only. Online time is
+ * tracked per IST day in Redis when the driver goes online / offline (no Google calls, no extra tables).
  */
 @Injectable()
 export class DriverEarningsService {
@@ -85,13 +88,14 @@ export class DriverEarningsService {
     const today = istMidnight(now);
     const days = period === 'today' ? 1 : period === 'week' ? 7 : 28;
     const from = new Date(today.getTime() - (days - 1) * DAY_MS);
-    const [driver, trips] = await Promise.all([
+    const [driver, trips, meterTrips] = await Promise.all([
       this.prisma.driver.findUniqueOrThrow({ where: { id: driverId }, select: { rating: true } }),
       this.prisma.trip.findMany({
         where: { driverId, status: { in: [TripStatus.COMPLETED, TripStatus.DELIVERED] }, endedAt: { gte: from } },
         orderBy: { endedAt: 'desc' },
         include: { passenger: { select: { name: true } } },
       }),
+      this.prisma.meterTrip.findMany({ where: { driverId, endedAt: { gte: from } }, orderBy: { endedAt: 'desc' } }),
     ]);
 
     const bars =
@@ -104,25 +108,21 @@ export class DriverEarningsService {
             })
           : Array.from({ length: 4 }, (_, i) => ({ label: `W${i + 1}`, start: from.getTime() + i * 7 * DAY_MS, end: from.getTime() + (i + 1) * 7 * DAY_MS }));
     const out = bars.map((b) => ({ label: b.label, amount: 0, rides: 0 }));
-    for (const t of trips) {
-      const at = t.endedAt!.getTime();
+    const paid = [
+      ...trips.map((t) => ({ at: t.endedAt!.getTime(), fare: t.fareTotal })),
+      ...meterTrips.map((m) => ({ at: m.endedAt.getTime(), fare: m.fare })),
+    ];
+    for (const { at, fare } of paid) {
       // Trips before the first / after the last "today" bucket count in the nearest one.
       let i = bars.findIndex((b) => at >= b.start && at < b.end);
       if (i < 0) i = at < bars[0].start ? 0 : bars.length - 1;
-      out[i].amount += t.fareTotal;
+      out[i].amount += fare;
       out[i].rides++;
     }
 
-    const total = trips.reduce((a, t) => a + t.fareTotal, 0);
-    return {
-      period,
-      total,
-      rides: trips.length,
-      onlineHours: Math.round((await this.onlineSeconds(driverId, from, days, now)) / 360) / 10,
-      rating: driver.rating,
-      commissionSaved: Math.round((total * COMMISSION_RATE) / 10) * 10,
-      bars: out,
-      trips: trips.slice(0, 50).map((t) => ({
+    const booked = trips.reduce((a, t) => a + t.fareTotal, 0);
+    const list: Earnings['trips'] = [
+      ...trips.slice(0, 50).map((t) => ({
         id: t.id,
         at: t.endedAt!.toISOString(),
         from: t.pickupName,
@@ -136,7 +136,37 @@ export class DriverEarningsService {
         durationMin: t.startedAt && t.endedAt ? Math.max(1, Math.round((t.endedAt.getTime() - t.startedAt.getTime()) / 60_000)) : t.durationMin,
         passengerName: t.passenger.name ?? 'Tamil Taxi customer',
         isDelivery: t.kind === 'PARCEL',
+        isMeter: false,
       })),
+      ...meterTrips.slice(0, 50).map((m) => ({
+        id: m.id,
+        at: m.endedAt.toISOString(),
+        from: m.startName ?? 'Meter trip',
+        to: '',
+        fare: m.fare,
+        waitingCharge: 0,
+        previousCancellationFee: 0,
+        extra: 0,
+        // Not asked: the meter's Done covers cash and UPI.
+        paymentMode: 'CASH',
+        distanceKm: m.distanceKm,
+        durationMin: m.durationMin,
+        passengerName: '',
+        isDelivery: false,
+        isMeter: true,
+      })),
+    ];
+    list.sort((a, b) => b.at.localeCompare(a.at));
+    return {
+      period,
+      total: booked + meterTrips.reduce((a, m) => a + m.fare, 0),
+      rides: trips.length + meterTrips.length,
+      onlineHours: Math.round((await this.onlineSeconds(driverId, from, days, now)) / 360) / 10,
+      rating: driver.rating,
+      // Street pickups pay no app a commission anyway.
+      commissionSaved: Math.round((booked * COMMISSION_RATE) / 10) * 10,
+      bars: out,
+      trips: list.slice(0, 50),
     };
   }
 
