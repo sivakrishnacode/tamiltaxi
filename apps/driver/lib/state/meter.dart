@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding;
@@ -102,6 +103,7 @@ enum MeterStatus {
 @immutable
 class MeterState {
   const MeterState({
+    this.id = '',
     this.status = MeterStatus.idle,
     this.vehicle = VehicleKind.auto,
     this.rule,
@@ -114,7 +116,13 @@ class MeterState {
     this.lastFixAt,
     this.upiId = '',
     this.payee = '',
+    this.start,
+    this.startName,
+    this.path = const [],
   });
+
+  /// Most points kept for the map of the way driven; past it every other one goes (the start and the last stay).
+  static const maxPathPoints = 1500;
 
   /// Fixes less accurate than this (metres) are skipped: indoors and under flyovers the position wanders.
   static const maxAccuracyM = 35.0;
@@ -130,6 +138,8 @@ class MeterState {
   /// [FareEngine.roadFactor], as roads aren't straight.
   static const gapAfter = Duration(seconds: 30);
 
+  /// The phone's id for the trip, sent with it so a resend is stored once.
+  final String id;
   final MeterStatus status;
   final VehicleKind vehicle;
   final FareRule? rule;
@@ -152,6 +162,15 @@ class MeterState {
   /// The driver's UPI ID and name for the QR (saved at the start, so the QR shows with no internet too).
   final String upiId;
   final String payee;
+
+  /// Where the trip started (the first usable fix), shown with [startName] so the passenger can check it.
+  final LatLng? start;
+
+  /// The start's address (null until looked up: it needs internet).
+  final String? startName;
+
+  /// The counted points, from [start]: the way driven on the meter's map.
+  final List<LatLng> path;
 
   bool get active => status != MeterStatus.idle;
 
@@ -199,15 +218,31 @@ class MeterState {
     final at = fix.at;
     final from = anchor;
     final fromAt = anchorAt;
-    if (from == null || fromAt == null) return _copy(anchor: fix.point, anchorAt: at, lastFixAt: at);
+    if (from == null || fromAt == null) {
+      return _copy(anchor: fix.point, anchorAt: at, lastFixAt: at, start: start ?? fix.point, path: [...path, fix.point]);
+    }
     final d = const Distance().as(LengthUnit.Meter, from, fix.point);
     if (d < minStepM) return _copy(lastFixAt: at);
     final seconds = at.difference(fromAt).inMilliseconds / 1000;
     if (seconds <= 0 || d / seconds > maxSpeedMs) return this;
     final last = lastFixAt;
     final gap = last == null || at.difference(last) > gapAfter;
-    return _copy(metres: metres + (gap ? d * FareEngine.roadFactor : d), anchor: fix.point, anchorAt: at, lastFixAt: at);
+    return _copy(
+      metres: metres + (gap ? d * FareEngine.roadFactor : d),
+      anchor: fix.point,
+      anchorAt: at,
+      lastFixAt: at,
+      path: _thinned([...path, fix.point]),
+    );
   }
+
+  static List<LatLng> _thinned(List<LatLng> points) {
+    if (points.length <= maxPathPoints) return points;
+    return [for (var i = 0; i < points.length; i++) if (i.isEven || i == points.length - 1) points[i]];
+  }
+
+  /// [name] found for [start].
+  MeterState withStartName(String name) => _copy(startName: name);
 
   MeterState _copy({
     MeterStatus? status,
@@ -216,8 +251,12 @@ class MeterState {
     LatLng? anchor,
     DateTime? anchorAt,
     DateTime? lastFixAt,
+    LatLng? start,
+    String? startName,
+    List<LatLng>? path,
   }) =>
       MeterState(
+        id: id,
         status: status ?? this.status,
         vehicle: vehicle,
         rule: rule,
@@ -230,12 +269,16 @@ class MeterState {
         lastFixAt: lastFixAt ?? this.lastFixAt,
         upiId: upiId,
         payee: payee,
+        start: start ?? this.start,
+        startName: startName ?? this.startName,
+        path: path ?? this.path,
       );
 
   /// The meter ended at [at].
   MeterState endedAtTime(DateTime at) => _copy(status: MeterStatus.ended, endedAt: at);
 
   Map<String, Object?> toJson() => {
+        'id': id,
         'status': status.name,
         'vehicle': vehicle.name,
         if (rule case final r?) 'rule': _ruleToJson(r),
@@ -248,12 +291,41 @@ class MeterState {
         'lastFixAt': lastFixAt?.toUtc().toIso8601String(),
         'upiId': upiId,
         'payee': payee,
+        if (start case final p?) 'start': [p.latitude, p.longitude],
+        'startName': startName,
+        // Flat [lat, lng, lat, lng…] to 5 decimals (about 1 m).
+        'path': [for (final p in path) ...[_round5(p.latitude), _round5(p.longitude)]],
       };
+
+  static double _round5(double v) => (v * 1e5).roundToDouble() / 1e5;
+
+  /// What `POST /drivers/me/meter-trips` takes for this ended trip (null when it can't be sent: never started).
+  Map<String, Object?>? toUpload() {
+    final from = startedAt;
+    final to = endedAt;
+    final p = start;
+    if (status != MeterStatus.ended || id.isEmpty || from == null || to == null || p == null) return null;
+    return {
+      'clientId': id,
+      'vehicleKind': enumToApi(vehicle),
+      'startedAt': from.toUtc().toIso8601String(),
+      'endedAt': to.toUtc().toIso8601String(),
+      'distanceKm': km,
+      'fare': fare,
+      'night': night,
+      'startLat': p.latitude,
+      'startLng': p.longitude,
+      if (startName case final n? when n.isNotEmpty) 'startName': n,
+    };
+  }
 
   factory MeterState.fromJson(Map<String, dynamic> j) {
     DateTime? time(Object? v) => v is String ? DateTime.tryParse(v)?.toLocal() : null;
     final a = j['anchor'];
+    final s = j['start'];
+    final flat = j['path'] is List ? (j['path'] as List).whereType<num>().toList() : const <num>[];
     return MeterState(
+      id: j['id'] as String? ?? '',
       status: MeterStatus.values.byName(j['status'] as String),
       vehicle: VehicleKind.values.byName(j['vehicle'] as String),
       rule: j['rule'] is Map ? _ruleFromJson(j['rule'] as Map) : null,
@@ -266,6 +338,9 @@ class MeterState {
       lastFixAt: time(j['lastFixAt']),
       upiId: j['upiId'] as String? ?? '',
       payee: j['payee'] as String? ?? '',
+      start: s is List && s.length == 2 ? LatLng((s[0] as num).toDouble(), (s[1] as num).toDouble()) : null,
+      startName: j['startName'] as String?,
+      path: [for (var i = 0; i + 1 < flat.length; i += 2) LatLng(flat[i].toDouble(), flat[i + 1].toDouble())],
     );
   }
 }
@@ -283,15 +358,40 @@ Future<T?> _withPrefs<T>(Future<T> Function(SharedPreferences prefs) use) async 
 const _tripKey = 'meter.trip';
 const _ratesKey = 'meter.rates';
 
+/// Ended meter trips waiting to be sent (JSON list of [MeterState.toUpload] bodies), oldest first.
+const _outboxKey = 'meter.outbox';
+
+/// "Near KG Hospital, 100 Feet Rd, Gandhipuram" from `GET /places/reverse` (the landmark, the street, the area); null
+/// when it found nothing.
+String? startLabelFromReverse(Object? res) {
+  if (res is! Map || res['place'] is! Map) return null;
+  final place = res['place'] as Map;
+  String text(Object? v) => v is String ? v.trim() : '';
+  final name = text(place['name']);
+  final street = text(place['address']).split(',').first.trim();
+  final landmark = text(place['landmark']);
+  final parts = [
+    if (landmark.isNotEmpty) landmark,
+    if (street.isNotEmpty && street != name) street,
+    if (name.isNotEmpty) name,
+  ];
+  return parts.isEmpty ? null : parts.join(', ');
+}
+
 /// The trip meter (D-42) for passengers picked up off the app. The driver starts it; it counts the distance from the
 /// phone's GPS and prices it with the fare engine at their vehicle's rates, with no server and no internet. The driver
 /// is offline while it runs (no requests mid-trip; the app has one GPS stream, which the meter then owns). Saved on
 /// the phone after every counted stretch, so it carries on after the app is closed or the phone restarts ([restore]).
+/// The start's address is looked up once there is internet, for the passenger to check. Each ended trip waits in an
+/// outbox on the phone until `POST /drivers/me/meter-trips` has it, then counts in Earnings.
 class MeterController extends Notifier<MeterState> {
   StreamSubscription<GpsFix>? _gps;
   Timer? _watchdog;
   DateTime? _listenedAt;
   bool _restored = false;
+  bool _naming = false;
+  DateTime? _namedAt;
+  bool _flushing = false;
 
   /// Without a usable fix for this long the GPS stream restarts (see [_heal]).
   static const _healAfter = Duration(seconds: 20);
@@ -306,6 +406,7 @@ class MeterController extends Notifier<MeterState> {
   Future<void> restore() async {
     if (_restored) return;
     _restored = true;
+    unawaited(flush());
     final raw = await _withPrefs((p) async => p.getString(_tripKey));
     if (raw == null || !ref.mounted || state.active) return;
     final MeterState saved;
@@ -328,6 +429,7 @@ class MeterController extends Notifier<MeterState> {
     if (!ref.mounted || state.active) return;
     final now = DateTime.now();
     state = MeterState(
+      id: _newId(now),
       status: MeterStatus.running,
       vehicle: rates.vehicle,
       rule: rates.rule,
@@ -341,12 +443,21 @@ class MeterController extends Notifier<MeterState> {
     await _openGps();
   }
 
-  /// End trip: the fare stays at what the meter shows; the GPS goes back to Home.
+  /// End trip: the fare stays at what the meter shows; the GPS goes back to Home. The trip goes in the outbox and is
+  /// sent now, or once the phone is online.
   Future<void> end() async {
     if (state.status != MeterStatus.running) return;
     _stopGps();
     state = state.endedAtTime(DateTime.now());
     await _save();
+    // One more try for the start's address, so the trip in Earnings says where it began.
+    if (state.startName == null) {
+      _namedAt = null;
+      await _nameStart().timeout(const Duration(seconds: 5), onTimeout: () {});
+    }
+    final upload = state.toUpload();
+    if (upload != null) await _addToOutbox(upload);
+    unawaited(flush());
   }
 
   /// Done (paid) or Cancel meter: the meter clears.
@@ -356,10 +467,91 @@ class MeterController extends Notifier<MeterState> {
     await _withPrefs((p) => p.remove(_tripKey));
   }
 
-  /// Log out: the meter and the saved rates go (they are this driver's).
+  /// Log out: the waiting trips are sent while still signed in, then the meter, the saved rates and the outbox go
+  /// (they are this driver's).
   Future<void> forget() async {
+    await flush();
     await clear();
-    await _withPrefs((p) => p.remove(_ratesKey));
+    await _withPrefs((p) async {
+      await p.remove(_ratesKey);
+      return p.remove(_outboxKey);
+    });
+  }
+
+  /// Sends the ended meter trips waiting on the phone, oldest first (live API). Each stays until the API has it; one
+  /// the API refuses (400: it never will take it) is dropped. Earnings and today's total refresh after a send.
+  Future<void> flush() async {
+    if (_flushing || !ref.read(isLiveApiProvider)) return;
+    _flushing = true;
+    var sent = false;
+    try {
+      while (ref.mounted) {
+        final waiting = await _outbox();
+        if (waiting.isEmpty) break;
+        final next = waiting.first;
+        try {
+          await ref.read(apiClientProvider).post('/drivers/me/meter-trips', next, true);
+          sent = true;
+        } on ApiException catch (e) {
+          if (e.status != 400) break;
+        } catch (_) {
+          break; // Offline: the next app start or meter trip tries again.
+        }
+        final rest = [for (final t in await _outbox()) if (t['clientId'] != next['clientId']) t];
+        await _withPrefs((p) => p.setString(_outboxKey, jsonEncode(rest)));
+      }
+    } finally {
+      _flushing = false;
+    }
+    if (sent && ref.mounted) {
+      ref.invalidate(earningsProvider);
+      unawaited(ref.read(driverSessionProvider.notifier).refreshToday());
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _outbox() async {
+    final raw = await _withPrefs<String?>((p) async => p.getString(_outboxKey));
+    if (raw == null) return [];
+    try {
+      return [for (final t in jsonDecode(raw) as List) if (t is Map<String, dynamic>) t];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _addToOutbox(Map<String, Object?> trip) async {
+    final waiting = await _outbox();
+    if (waiting.any((t) => t['clientId'] == trip['clientId'])) return;
+    await _withPrefs((p) => p.setString(_outboxKey, jsonEncode([...waiting, trip])));
+  }
+
+  /// Looks up the start's address once there is a start and internet (live API), at most every 30 s while it fails.
+  Future<void> _nameStart() async {
+    final p = state.start;
+    final now = DateTime.now();
+    final last = _namedAt;
+    if (p == null || state.startName != null || _naming || !ref.read(isLiveApiProvider)) return;
+    if (last != null && now.difference(last) < const Duration(seconds: 30)) return;
+    _naming = true;
+    _namedAt = now;
+    try {
+      final res = await ref.read(apiClientProvider).get('/places/reverse', query: {'lat': p.latitude, 'lng': p.longitude});
+      final name = startLabelFromReverse(res);
+      if (name != null && ref.mounted && state.active && state.start == p) {
+        state = state.withStartName(name);
+        await _save();
+      }
+    } catch (_) {
+      // No internet yet: the next fix tries again.
+    } finally {
+      _naming = false;
+    }
+  }
+
+  /// A trip id no other phone makes: the start time and 48 random bits.
+  static String _newId(DateTime now) {
+    final r = Random.secure();
+    return 'm${now.microsecondsSinceEpoch.toRadixString(36)}${r.nextInt(1 << 24).toRadixString(36)}${r.nextInt(1 << 24).toRadixString(36)}';
   }
 
   Future<void> _openGps() async {
@@ -400,6 +592,7 @@ class MeterController extends Notifier<MeterState> {
     final counted = next.anchor != state.anchor;
     state = next;
     if (counted) unawaited(_save());
+    if (state.startName == null) unawaited(_nameStart());
   }
 
   void _closeGps() {

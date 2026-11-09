@@ -213,14 +213,15 @@ class _TripList extends StatelessWidget {
                       style: TtTextStyles.tabular(t.bodySmall.copyWith(color: TtColors.navy500))),
                 ),
                 Expanded(
-                  child: Text('${trips[i].from} → ${trips[i].to}',
+                  child: Text(trips[i].isMeter ? 'Meter · ${trips[i].from}' : '${trips[i].from} → ${trips[i].to}',
                       style: t.body, maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
                 const SizedBox(width: TtSpacing.s),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: TtSpacing.s, vertical: 3),
                   decoration: BoxDecoration(color: TtColors.inputBg, borderRadius: BorderRadius.circular(6)),
-                  child: Text(trips[i].paymentMode == PaymentMode.upi ? 'UPI' : 'Cash',
+                  // A meter trip's Done covers cash and UPI.
+                  child: Text(trips[i].isMeter ? 'Meter' : trips[i].paymentMode == PaymentMode.upi ? 'UPI' : 'Cash',
                       style: t.caption.copyWith(color: TtColors.navy700, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: TtSpacing.m),

@@ -28,10 +28,20 @@ class D42MeterScreen extends ConsumerStatefulWidget {
   final MeterState? sample;
   final MeterRates? sampleRates;
 
+  /// Gallery (demo data): where the sample trips start, and the way driven so far.
+  static const _sampleStart = LatLng(11.0168, 76.9558);
+  static const _sampleStartName = 'Near Gandhipuram Bus Stand, 100 Feet Rd, Gandhipuram';
+  static List<LatLng> _samplePath(int points) =>
+      [for (var i = 0; i < points; i++) offsetPoint(_sampleStart, 380.0 * i, 70.0 + 4 * i)];
+
   /// Gallery: an auto meter 3.1 km and 11 min 42 s in (₹82).
   static MeterState sampleRunning() {
     final now = DateTime.now();
     return MeterState(
+      id: 'sample-running',
+      start: _sampleStart,
+      startName: _sampleStartName,
+      path: _samplePath(9),
       status: MeterStatus.running,
       rule: Seed.vehicle(VehicleKind.auto).fareRule,
       startedAt: now.subtract(const Duration(minutes: 11, seconds: 42)),
@@ -46,6 +56,10 @@ class D42MeterScreen extends ConsumerStatefulWidget {
   static MeterState sampleEnded() {
     final now = DateTime.now();
     return MeterState(
+      id: 'sample-ended',
+      start: _sampleStart,
+      startName: _sampleStartName,
+      path: _samplePath(11),
       status: MeterStatus.ended,
       rule: Seed.vehicle(VehicleKind.auto).fareRule,
       startedAt: now.subtract(const Duration(minutes: 14)),
@@ -425,13 +439,11 @@ class _RunningView extends StatelessWidget {
                       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         const Icon(Symbols.gps_fixed_rounded, size: 18, color: Color(0xFF4ADE80)),
                         const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'GPS good · started ${formatTime(meter.startedAt ?? now).toLowerCase()}',
-                            style: t.bodySmall.copyWith(color: Colors.white70),
-                          ),
-                        ),
+                        Flexible(child: Text('GPS good', style: t.bodySmall.copyWith(color: Colors.white70))),
                       ]),
+                    const SizedBox(height: TtSpacing.l),
+                    _StartCard(meter: meter),
+                    const SizedBox(height: TtSpacing.m),
                   ]),
                 ),
               ),
@@ -544,6 +556,21 @@ class _CollectView extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(TtSpacing.gutter, TtSpacing.l, TtSpacing.gutter, TtSpacing.l),
             child: Column(children: [
+              // Where it started, for the passenger to check.
+              Row(children: [
+                const PickupDot(size: 12),
+                const SizedBox(width: TtSpacing.m),
+                Expanded(
+                  child: Text(
+                    'Started at ${meter.startName ?? 'the point on the meter map'} · '
+                    '${formatTime(meter.startedAt ?? DateTime.now()).toLowerCase()}',
+                    style: t.body.copyWith(color: TtColors.navy700),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ]),
+              const SizedBox(height: TtSpacing.m),
               Container(
                 padding: const EdgeInsets.all(TtSpacing.l),
                 decoration: BoxDecoration(
@@ -598,6 +625,68 @@ class _CollectView extends StatelessWidget {
             border: Border(top: BorderSide(color: TtColors.divider)),
           ),
           child: TtButton(label: 'Done, money received', icon: Symbols.check_circle_rounded, onPressed: onDone),
+        ),
+      ]),
+    );
+  }
+}
+
+/// D-42b: where the trip started, on a map with the way driven and the vehicle now, and its address: the passenger
+/// can check on the driver's phone that the meter started where they got in.
+class _StartCard extends StatelessWidget {
+  const _StartCard({required this.meter});
+
+  final MeterState meter;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.type;
+    final start = meter.start;
+    final path = meter.path;
+    final here = path.isNotEmpty ? path.last : start;
+    final time = formatTime(meter.startedAt ?? DateTime.now()).toLowerCase();
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (start != null)
+          SizedBox(
+            height: 150,
+            child: TtMap(
+              center: start,
+              zoom: 16,
+              pickup: start,
+              route: path.length > 1 ? path : const [],
+              vehicles: [
+                if (here != null && here != start) MapVehicle(position: here, type: meter.vehicle.mapType),
+              ],
+              fitPoints: path.length > 1 ? [start, ...path] : null,
+              fitPadding: const EdgeInsets.all(32),
+              interactive: false,
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(TtSpacing.m),
+          child: Row(children: [
+            const PickupDot(size: 12),
+            const SizedBox(width: TtSpacing.m),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Started at · $time', style: t.caption.copyWith(color: Colors.white60)),
+                Text(
+                  start == null
+                      ? 'Waiting for GPS to mark the start…'
+                      : meter.startName ?? 'Looking up the address… (needs internet)',
+                  style: t.bodySemibold.copyWith(color: Colors.white),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ]),
+            ),
+          ]),
         ),
       ]),
     );

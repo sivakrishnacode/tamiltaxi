@@ -9,7 +9,8 @@ import '../../router/routes.dart';
 import '../../state/driver_account.dart';
 
 /// D-23b Trip detail sheet: route, time and trip reference, fare breakdown, the
-/// passenger and Help (→ support). Only what the trip record has: no made-up ratings or city codes.
+/// passenger and Help (→ support). Only what the trip record has: no made-up ratings or city codes. A meter trip
+/// (D-42) has where it started, no drop and no passenger.
 class D23bTripDetailSheet extends ConsumerWidget {
   const D23bTripDetailSheet({super.key, this.trip, this.showcase = false});
 
@@ -51,8 +52,8 @@ class D23bTripDetailSheet extends ConsumerWidget {
         : null;
     final extras = trip.waitingCharge + trip.previousCancellationFee + trip.extra;
     final useQuote = quote != null && quote.total + extras == trip.fare;
-    final kindLabel = trip.isDelivery ? 'Delivery' : '${vehicle.kind.label} ride';
-    final paid = trip.paymentMode == PaymentMode.upi ? 'paid on UPI' : 'paid in cash';
+    final kindLabel = trip.isMeter ? 'Meter trip' : trip.isDelivery ? 'Delivery' : '${vehicle.kind.label} ride';
+    final paid = trip.isMeter ? 'collected by you' : trip.paymentMode == PaymentMode.upi ? 'paid on UPI' : 'paid in cash';
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -77,14 +78,19 @@ class D23bTripDetailSheet extends ConsumerWidget {
           Row(children: [
             const PickupDot(size: 12),
             const SizedBox(width: TtSpacing.m),
-            Expanded(child: Text(place(trip.from), style: t.body, overflow: TextOverflow.ellipsis)),
+            Expanded(
+              child: Text(trip.isMeter ? 'Started at ${trip.from}' : place(trip.from),
+                  style: t.body, maxLines: trip.isMeter ? 2 : 1, overflow: TextOverflow.ellipsis),
+            ),
           ]),
-          const SizedBox(height: TtSpacing.m),
-          Row(children: [
-            const SizedBox(width: 20, child: Center(child: DropPin())),
-            const SizedBox(width: TtSpacing.m),
-            Expanded(child: Text(place(trip.to), style: t.body, overflow: TextOverflow.ellipsis)),
-          ]),
+          if (!trip.isMeter) ...[
+            const SizedBox(height: TtSpacing.m),
+            Row(children: [
+              const SizedBox(width: 20, child: Center(child: DropPin())),
+              const SizedBox(width: TtSpacing.m),
+              Expanded(child: Text(place(trip.to), style: t.body, overflow: TextOverflow.ellipsis)),
+            ]),
+          ],
         ]),
       ),
       const SizedBox(height: TtSpacing.m),
@@ -117,13 +123,31 @@ class D23bTripDetailSheet extends ConsumerWidget {
       ),
       const SizedBox(height: TtSpacing.m),
       Row(children: [
-        TtAvatar(initials: trip.passengerName.isEmpty ? '?' : trip.passengerName.substring(0, 1), size: 44),
+        if (trip.isMeter)
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(color: TtColors.coral50, shape: BoxShape.circle),
+            child: const Icon(Symbols.speed_rounded, fill: 1, color: TtColors.coral600),
+          )
+        else
+          TtAvatar(initials: trip.passengerName.isEmpty ? '?' : trip.passengerName.substring(0, 1), size: 44),
         const SizedBox(width: TtSpacing.m),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(trip.passengerName.isEmpty ? (trip.isDelivery ? 'Customer' : 'Passenger') : trip.passengerName,
-                style: t.bodySemibold, maxLines: 1, overflow: TextOverflow.ellipsis),
-            if (trip.passengerName.isNotEmpty) Text(trip.isDelivery ? 'Customer' : 'Passenger', style: t.caption),
+            Text(
+                trip.isMeter
+                    ? 'Passenger off the app'
+                    : trip.passengerName.isEmpty
+                        ? (trip.isDelivery ? 'Customer' : 'Passenger')
+                        : trip.passengerName,
+                style: t.bodySemibold,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            if (trip.isMeter)
+              Text('Measured with the meter', style: t.caption)
+            else if (trip.passengerName.isNotEmpty)
+              Text(trip.isDelivery ? 'Customer' : 'Passenger', style: t.caption),
           ]),
         ),
         TextButton.icon(

@@ -1,8 +1,9 @@
 // The meter (D-42) for passengers picked up off the app: how GPS fixes become kilometres, the fare at the driver's
-// rates, what is saved on the phone, and the whole flow from Home (online) to Done.
+// rates, where it started, what is saved on the phone and sent to the API, and the whole flow from Home to Done.
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart' show Text;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
@@ -23,6 +24,33 @@ MeterState _running() => MeterState(status: MeterStatus.running, rule: _auto, st
 
 GpsFix _fix(LatLng at, int seconds, {double accuracy = 5, bool mocked = false}) =>
     GpsFix(at, at: _t0.add(Duration(seconds: seconds)), accuracy: accuracy, isMocked: mocked);
+
+/// The API as the meter uses it: posts are kept (or refused with [failWith]); the address lookup finds Gandhipuram.
+class _MeterApi extends ApiClient {
+  _MeterApi(SharedPreferences prefs) : super(baseUrl: 'http://localhost:1/v1', session: ApiSession(prefs));
+
+  final sent = <Map<String, dynamic>>[];
+  Object? failWith;
+
+  @override
+  Future<dynamic> post(String path, [Object? body, bool idempotent = false]) async {
+    if (failWith case final e?) throw e;
+    expect(path, '/drivers/me/meter-trips');
+    sent.add(Map<String, dynamic>.from(body! as Map));
+    return {'id': 'srv-${sent.length}'};
+  }
+
+  @override
+  Future<dynamic> get(String path, {Map<String, Object?>? query}) async {
+    if (path == '/places/reverse') {
+      return {
+        'place': {'name': 'Gandhipuram', 'address': '100 Feet Rd, Gandhipuram, Coimbatore', 'landmark': 'Near KG Hospital'},
+        'isInServiceArea': true,
+      };
+    }
+    throw const ApiException(404, 'Not found');
+  }
+}
 
 void main() {
   group('Distance from GPS fixes', () {
@@ -204,5 +232,135 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Start meter'), findsOneWidget);
     await closeApp(tester, container);
+  });
+
+  group('Where it started', () {
+    test('The first usable fix is the start; counted stretches make the way driven', () {
+      var m = _running().withFix(_fix(kHere, 0, accuracy: 80));
+      expect(m.start, isNull, reason: 'an inaccurate fix is no start');
+      m = m.withFix(_fix(kHere, 1)).withFix(_fix(offsetPoint(kHere, 8, 90), 4)).withFix(_fix(offsetPoint(kHere, 300, 90), 40));
+      expect(m.start, kHere);
+      expect(m.path.length, 2, reason: 'the start and the counted point; the 8 m drift is not on it');
+    });
+
+    test('The address reads landmark, street, area; nothing found is null', () {
+      expect(
+        startLabelFromReverse({
+          'place': {'name': 'Gandhipuram', 'address': '100 Feet Rd, Gandhipuram, Coimbatore', 'landmark': 'Near KG Hospital'},
+        }),
+        'Near KG Hospital, 100 Feet Rd, Gandhipuram',
+      );
+      expect(startLabelFromReverse({'place': {'name': 'Gandhipuram', 'address': 'Gandhipuram, Coimbatore'}}), 'Gandhipuram');
+      expect(startLabelFromReverse({'place': null}), isNull);
+    });
+
+    test('Ended trips go up with their id, km, fare and start; running ones never', () {
+      final running = MeterState(
+        id: 'm1abcdefgh',
+        status: MeterStatus.running,
+        vehicle: VehicleKind.auto,
+        rule: _auto,
+        startedAt: _t0,
+        metres: 3820,
+        start: kHere,
+        startName: 'Gandhipuram',
+      );
+      expect(running.toUpload(), isNull);
+      final body = running.endedAtTime(_t0.add(const Duration(minutes: 14))).toUpload()!;
+      expect(body, {
+        'clientId': 'm1abcdefgh',
+        'vehicleKind': 'AUTO',
+        'startedAt': _t0.toUtc().toIso8601String(),
+        'endedAt': _t0.add(const Duration(minutes: 14)).toUtc().toIso8601String(),
+        'distanceKm': 3.8,
+        'fare': 100,
+        'night': 1.0,
+        'startLat': kHere.latitude,
+        'startLng': kHere.longitude,
+        'startName': 'Gandhipuram',
+      });
+      final back = MeterState.fromJson(jsonDecode(jsonEncode(running.withFix(_fix(kHere, 1)).toJson())) as Map<String, dynamic>);
+      expect((back.id, back.start, back.startName, back.path.length), ('m1abcdefgh', kHere, 'Gandhipuram', 1));
+    });
+  });
+
+  group('Sent to the API', () {
+    late ProviderContainer container;
+    late _MeterApi api;
+    late FakeLocator locator;
+    final rates = MeterRates(vehicle: VehicleKind.auto, rule: _auto, upiId: 'karthik@okaxis', payee: 'Karthik S');
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      api = _MeterApi(await SharedPreferences.getInstance());
+      locator = FakeLocator();
+      final realtime = FakeRealtime(api);
+      container = ProviderContainer(overrides: [
+        isLiveApiProvider.overrideWithValue(true),
+        apiClientProvider.overrideWithValue(api),
+        realtimeProvider.overrideWithValue(realtime),
+        liveJobsProvider.overrideWithValue(FakeJobs(api, realtime)),
+        driverLocatorProvider.overrideWithValue(locator),
+      ]);
+      container.listen(meterProvider, (_, _) {});
+    });
+
+    tearDown(() async {
+      await container.read(meterProvider.notifier).clear();
+      container.dispose();
+    });
+
+    Future<void> drive() async {
+      final meter = container.read(meterProvider.notifier);
+      await meter.start(rates);
+      final t = DateTime.now();
+      for (var i = 0; i <= 10; i++) {
+        locator.meterFixes.add(GpsFix(offsetPoint(kHere, 100.0 * i, 90), at: t.add(Duration(seconds: 10 * i)), accuracy: 5));
+        await Future<void>.delayed(Duration.zero);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+
+    test('The start gets its address; End trip sends the trip once, with it', () async {
+      await drive();
+      final m = container.read(meterProvider);
+      expect(m.startName, 'Near KG Hospital, 100 Feet Rd, Gandhipuram');
+      await container.read(meterProvider.notifier).end();
+      // The send runs on its own after End trip (the driver never waits for the network).
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(api.sent, hasLength(1));
+      expect(api.sent.single, containsPair('clientId', m.id));
+      expect(api.sent.single, containsPair('startName', 'Near KG Hospital, 100 Feet Rd, Gandhipuram'));
+      expect(api.sent.single['fare'], m.fare);
+      final prefs = await SharedPreferences.getInstance();
+      expect(jsonDecode(prefs.getString('meter.outbox')!), isEmpty);
+      // Another flush (the next app start) sends nothing again.
+      await container.read(meterProvider.notifier).flush();
+      expect(api.sent, hasLength(1));
+    });
+
+    test('No internet: the trip waits on the phone and goes once online; one the API refuses is dropped', () async {
+      await drive();
+      api.failWith = Exception('No internet');
+      await container.read(meterProvider.notifier).end();
+      // The send runs on its own after End trip (the driver never waits for the network).
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final prefs = await SharedPreferences.getInstance();
+      expect(jsonDecode(prefs.getString('meter.outbox')!), hasLength(1));
+      expect(api.sent, isEmpty);
+
+      api.failWith = null;
+      await container.read(meterProvider.notifier).flush();
+      expect(api.sent, hasLength(1));
+      expect(jsonDecode(prefs.getString('meter.outbox')!), isEmpty);
+
+      await container.read(meterProvider.notifier).clear();
+      await drive();
+      api.failWith = const ApiException(400, 'This meter trip is too old to add');
+      await container.read(meterProvider.notifier).end();
+      // The send runs on its own after End trip (the driver never waits for the network).
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(jsonDecode(prefs.getString('meter.outbox')!), isEmpty, reason: 'it would never be taken');
+    });
   });
 }
