@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 
 import { DriverStateCache } from '../../core/driver-state/driver-state.cache.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
+import { RedisService } from '../../core/redis/redis.service.js';
 import type { Driver, KycDocument, Plan, Prisma, SupportTicket, Trip, User } from '../../generated/prisma/client.js';
 import { DriverStatus, KycDocType, Role, TicketStatus, TripStatus } from '../../generated/prisma/enums.js';
 import type { Paged } from './admin.types.js';
@@ -13,6 +14,7 @@ import { SHOWN_DOCS } from './admin-approvals.service.js';
 import { istToday, parseDay } from '../kyc/document-expiry.js';
 import { type CancelRateStats, DriverBlocksService } from '../trips/driver-blocks.service.js';
 import { DriverStatusSync } from './driver-status-sync.service.js';
+import { driverLastFixKey, type LastLocation, parseLastLocation } from '../drivers/last-location.js';
 import { driverOrder, driverSearch, flag, passengerOrder, tripOrder, userSearch } from './list-filters.js';
 
 /** What the drivers list shows (no UPI id, no booking prefs, latest plan only). */
@@ -61,6 +63,7 @@ export class AdminService {
     private readonly driverState: DriverStateCache,
     private readonly blocks: DriverBlocksService,
     private readonly statusSync: DriverStatusSync,
+    private readonly redis: RedisService,
   ) {}
 
   /** Filters (status, vehicle, online, gender, search) + sort, with the count per status for the tabs. */
@@ -87,7 +90,9 @@ export class AdminService {
    * With the pause history, the cancellation rate now (7 days, trips/driver-blocks.service.ts) and the approval
    * checklist (documents + identity, as the Approvals queue shows it).
    */
-  async driver(id: string): Promise<Driver & { cancelRate: CancelRateStats; checklist: ApprovalChecklist; identityRequired: boolean }> {
+  async driver(
+    id: string,
+  ): Promise<Driver & { cancelRate: CancelRateStats; checklist: ApprovalChecklist; identityRequired: boolean; lastLocation: LastLocation | null }> {
     const driver = await this.prisma.driver.findUniqueOrThrow({
       where: { id },
       include: {
@@ -100,7 +105,8 @@ export class AdminService {
     });
     const identityRequired = this.approval.isIdentityRequired(driver);
     const checklist = approvalChecklist({ docs: driver.documents, identity: driver.user.identityStatus, isIdentityRequired: identityRequired });
-    return { ...driver, cancelRate: await this.blocks.stats(id), checklist, identityRequired };
+    const [cancelRate, fix] = await Promise.all([this.blocks.stats(id), this.redis.get(driverLastFixKey(id))]);
+    return { ...driver, cancelRate, checklist, identityRequired, lastLocation: parseLastLocation(fix) };
   }
 
   /**

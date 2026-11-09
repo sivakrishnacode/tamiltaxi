@@ -7,6 +7,7 @@ import { RedisService } from '../../core/redis/redis.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { CancelCode, CancelFault, CancelledBy, DriverStatus, IdentityStatus, KycStatus, TripStatus } from '../../generated/prisma/enums.js';
 import { DriversService } from '../drivers/drivers.service.js';
+import { driverLastFixKey, riderLastPinKey } from '../drivers/last-location.js';
 import { StoredFileRemover } from './stored-file-remover.js';
 
 /** A trip in one of these isn't finished: the account can't be deleted until it is. */
@@ -146,6 +147,8 @@ export class AccountDeletionService {
       await this.drivers.goOffline(driverId);
       await this.driverState.invalidate(driverId);
     }
+    // Where the apps last placed them (after going offline, so no late GPS fix writes it back).
+    await this.redis.del(riderLastPinKey(userId), ...(driverId ? [driverLastFixKey(driverId)] : []));
     const removed = await this.fileRemover.remove(files);
     this.logger.log(`Account ${userId} deleted (${by.kind}); ${removed} stored files removed`);
   }

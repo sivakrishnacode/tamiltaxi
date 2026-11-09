@@ -33,11 +33,12 @@ export class DriversController {
 
   /**
    * Free vehicles around a pickup for the rider's map (P-07, P-10, P-12): up to 15 within 3 km, a few of each kind,
-   * no ids, positions rounded to ~55 m. `trip=PARCEL` shows goods vehicles and two-wheelers.
+   * no ids, positions rounded to ~55 m. `trip=PARCEL` shows goods vehicles and two-wheelers. The point is kept as the
+   * rider's last location for the admin user page.
    */
   @Get('drivers/nearby')
-  nearby(@Query() q: NearbyQueryDto): Promise<{ vehicles: NearbyVehicle[] }> {
-    return this.drivers.nearbyVehicles({ lat: q.lat, lng: q.lng }, q.trip === TripKind.PARCEL ? PARCEL_MAP_KINDS : RIDE_MAP_KINDS);
+  nearby(@CurrentUser() user: AuthUser, @Query() q: NearbyQueryDto): Promise<{ vehicles: NearbyVehicle[] }> {
+    return this.drivers.nearbyVehicles({ lat: q.lat, lng: q.lng }, q.trip === TripKind.PARCEL ? PARCEL_MAP_KINDS : RIDE_MAP_KINDS, user.userId);
   }
 
   /** 201 with a new driver; 200 with the existing one when the user already registered (a retry). Admins → 403. */

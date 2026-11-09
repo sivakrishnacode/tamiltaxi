@@ -270,6 +270,12 @@ describe('Tamil Taxi API (e2e)', () => {
     expect(around.map((v: { id: string }) => v.id)).not.toContain(autoId);
     const again = (await http.get('/v1/drivers/nearby').query({ lat: pickup.lat, lng: pickup.lng }).set(pax).expect(200)).body.vehicles;
     expect(again.map((v: { id: string }) => v.id)).toEqual(around.map((v: { id: string }) => v.id));
+    // The point the rider's map asked about is their last location on the admin user page.
+    const riderId = (await http.get('/v1/me').set(pax).expect(200)).body.id as string;
+    const admin = await adminAuth();
+    const seen = (await http.get(`/v1/admin/users/${riderId}`).set(admin).expect(200)).body.lastLocation;
+    expect(seen).toMatchObject({ rider: { lat: pickup.lat, lng: pickup.lng }, driver: null });
+    expect(Date.now() - Date.parse(seen.rider.at)).toBeLessThan(60_000);
     const priority = (await http.post('/v1/trips').set(pax).send({ kind: 'RIDE', vehicleKind: 'AUTO_PRIORITY', pickup, drop: BROOKEFIELDS }).expect(201)).body;
     expect(priority.fareTotal).toBe(fare('AUTO_PRIORITY'));
     expect((await acceptWhenOffered(priority.id, auto)).status).toBe(200);
@@ -1714,6 +1720,12 @@ describe('Tamil Taxi API (e2e)', () => {
     // Offline drivers' uploads are ignored.
     await http.post('/v1/drivers/me/offline').set(driver).expect(200);
     expect((await http.post('/v1/drivers/me/locations').set(driver).send({ fixes: [{ lat: 11.02, lng: 76.97 }] }).expect(200)).body.accepted).toBe(0);
+    // Offline, the admin pages still show the newest fix and its time (last-location.ts).
+    const admin = await adminAuth();
+    const last = { lat: 11.021, lng: 76.975, at: new Date(t).toISOString() };
+    const userId = (await http.get('/v1/drivers/me').set(driver).expect(200)).body.userId as string;
+    expect((await http.get(`/v1/admin/drivers/${driverId}`).set(admin).expect(200)).body.lastLocation).toEqual(last);
+    expect((await http.get(`/v1/admin/users/${userId}`).set(admin).expect(200)).body.lastLocation).toEqual({ rider: null, driver: last });
   });
 
   it('checks drivers from a Redis cache on each fix, refreshed when an admin blocks or holds them', async () => {

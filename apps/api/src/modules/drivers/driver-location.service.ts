@@ -8,6 +8,7 @@ import { DEMAND_RES, SEEN_TTL_S, seenDriversKey } from '../geo/demand.service.js
 import { cellAt } from '../geo/h3.util.js';
 import { IDLE_KEY_TTL_S, lastTripEndKey, onlineSinceKey } from '../trips/driver-rank.js';
 import { ONLINE_SESSION_TTL_S, onlineSessionKey } from './driver-earnings.service.js';
+import { driverLastFixKey, encodeLastLocation, LAST_LOCATION_TTL_S, riderLastPinKey } from './last-location.js';
 
 /** Resolution used to index drivers (≈0.74 km² hexes, ~0.9 km between neighbouring centres). */
 export const DRIVER_H3_RES = 8;
@@ -79,6 +80,7 @@ export class DriverLocationService {
     const area = cellToParent(cell, DEMAND_RES);
     const [prev, prevArea] = await this.redis.mget(`driver:cell:${params.driverId}`, `driver:area:${params.driverId}`);
     const next = `${params.kind}|${cell}`;
+    const at = params.at ?? Date.now();
     const tx = this.redis.multi();
     if (prev && prev !== next) {
       const [pk, pc] = prev.split('|');
@@ -93,10 +95,12 @@ export class DriverLocationService {
       .set(`driver:cell:${params.driverId}`, next, 'EX', INDEX_TTL_S)
       .set(
         `driver:alive:${params.driverId}`,
-        `${params.lat},${params.lng},${params.at ?? Date.now()}${params.heading == null ? '' : `,${Math.round(params.heading)}`}`,
+        `${params.lat},${params.lng},${at}${params.heading == null ? '' : `,${Math.round(params.heading)}`}`,
         'EX',
         ALIVE_TTL_S,
       )
+      // What the admin pages show once `driver:alive` has expired (last-location.ts).
+      .set(driverLastFixKey(params.driverId), encodeLastLocation(params.lat, params.lng, at), 'EX', LAST_LOCATION_TTL_S)
       // Keeps the busy flag alive while the driver is on a trip (no-op when free).
       .expire(`driver:busy:${params.driverId}`, BUSY_TTL_S)
       // And the open online session (earnings' online hours) while the app sends fixes.
@@ -112,6 +116,11 @@ export class DriverLocationService {
       tx.srem(DriverLocationService.cellKey(pk as VehicleKind, pc), params.driverId);
     }
     await tx.del(`driver:alive:${params.driverId}`, `driver:cell:${params.driverId}`).exec();
+  }
+
+  /** Remembers the point a rider's map asked about (their last position as far as the server knows, last-location.ts). */
+  async noteRiderPin(userId: string, at: { lat: number; lng: number }): Promise<void> {
+    await this.redis.set(riderLastPinKey(userId), encodeLastLocation(at.lat, at.lng, Date.now()), 'EX', LAST_LOCATION_TTL_S);
   }
 
   /** Last known position, if the driver is online. */

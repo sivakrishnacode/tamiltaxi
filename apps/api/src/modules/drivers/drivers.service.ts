@@ -76,9 +76,16 @@ export class DriversService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  /** Free vehicles around [at] for the rider's map (nearby-vehicles.ts); marker ids keyed with the JWT secret. */
-  async nearbyVehicles(at: { lat: number; lng: number }, kinds: readonly VehicleKind[]): Promise<{ vehicles: NearbyVehicle[] }> {
-    return { vehicles: await nearbyVehicles(this.location, at, kinds, { key: this.env.jwtSecret }) };
+  /**
+   * Free vehicles around [at] for the rider's map (nearby-vehicles.ts); marker ids keyed with the JWT secret. [at] is
+   * also kept as [riderId]'s last location (last-location.ts).
+   */
+  async nearbyVehicles(at: { lat: number; lng: number }, kinds: readonly VehicleKind[], riderId: string): Promise<{ vehicles: NearbyVehicle[] }> {
+    const [vehicles] = await Promise.all([
+      nearbyVehicles(this.location, at, kinds, { key: this.env.jwtSecret }),
+      this.location.noteRiderPin(riderId, at),
+    ]);
+    return { vehicles };
   }
 
   /**

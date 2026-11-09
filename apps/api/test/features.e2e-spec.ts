@@ -10,6 +10,7 @@ import { RedisService } from '../src/core/redis/redis.service.js';
 import { accessKey, blockedFlagKey } from '../src/core/auth/user-access.service.js';
 import { FileStorageService } from '../src/core/storage/file-storage.service.js';
 import { DocumentExpiryService } from '../src/modules/kyc/document-expiry.service.js';
+import { riderLastPinKey } from '../src/modules/drivers/last-location.js';
 import { NotifierService } from '../src/modules/notifications/notifier.service.js';
 import { TripEventsService } from '../src/modules/realtime/trip-events.service.js';
 
@@ -484,8 +485,12 @@ describe('Tamil Taxi features (e2e)', () => {
       const admin = await adminAuth();
       const rider = await login();
       const me = (await http.get('/v1/me').set(admin).expect(200)).body as { id: string };
+      await http.get('/v1/drivers/nearby').query({ lat: 11.0168, lng: 76.9558 }).set(rider.auth).expect(200);
+      expect(await redis.get(riderLastPinKey(rider.userId))).not.toBeNull();
       await http.delete(`/v1/admin/users/${me.id}`).set(admin).expect(400);
       await http.delete(`/v1/admin/users/${rider.userId}`).set(admin).expect(204);
+      // Where the rider app last placed them goes with the account.
+      expect(await redis.get(riderLastPinKey(rider.userId))).toBeNull();
       await http.delete(`/v1/admin/users/${rider.userId}`).set(admin).expect(404);
       await http.get('/v1/me').set(rider.auth).expect(401);
       const history = (await http.get(`/v1/admin/users/${rider.userId}/activity`).set(admin).expect(200)).body as { summary: string }[];
