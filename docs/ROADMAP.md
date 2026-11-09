@@ -292,13 +292,22 @@ Labels: plan, web, api
   only; add that it also sends account messages (welcome, driver approval) on WhatsApp
 - [ ] Tamil versions of the three welcome templates (WATX language `ta`), sent by the app language once the API knows it
 
-### Meter trips in Earnings and admin
+### Meter trips in admin
 
-Labels: plan, driver, api
+Labels: plan, admin, api
 
-The driver app's meter (D-42, 10 Nov 2026) keeps its trips on the phone only. Send each finished meter trip to the
-API once the phone is back online (km, minutes, fare, vehicle and city; no route, no passenger), so it shows in the
-driver's Earnings and admin can count the trips taken off the app.
+Since 10 Nov 2026 the driver app's meter (D-42) sends each trip to the API (`MeterTrip`: km, minutes, fare, vehicle,
+where it started) and it counts in the driver's Earnings. Admin doesn't show them yet: add the count and fares to the
+driver page and the city overview, so street pickups taken off the app can be counted.
+
+### API e2e suite: tests time out when all files run
+
+Labels: plan, api
+
+Each e2e file passes on its own (app 71, automations 3, features 23, safety 7 on 10 Nov 2026), but a full
+`npm run test:e2e` fails 4–5 tests by timeout, different ones each run (dispatch ranking, search radius, campaigns,
+reminders). The files already run one at a time, so something a file leaves behind (Redis keys, drivers still
+indexed online) slows or misleads the next. Find it and clear it between files, so a full run is trustworthy again.
 
 ### Remove old Rido resources
 

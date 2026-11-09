@@ -105,7 +105,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
   Start meter takes the driver offline and counts the distance by GPS, with no internet needed; the fare is the app's
   own for that distance at the driver's rates (autos: the government fare, and the night fare at night). It keeps
   counting with the screen off and carries on if the app is closed; End trip shows the fare, its lines and the UPI QR
-  with the amount. Meter trips stay on the phone for now (not in Earnings).
+  with the amount. The running meter shows where the trip started (a small map with the way driven, and the address)
+  so the passenger can check it. Meter trips count in Earnings (marked "Meter"); with no internet they are kept on
+  the phone and sent once online.
 - Maps: zone and demand labels on Home, the pins on Surge / High demand areas and the "location lost" mark stay on
   their place while the map is dragged, instead of trailing behind it and catching up after. A tap on a pin still
   shows its area.
@@ -226,7 +228,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `619c322` (API and admin).
+API at `766efb9`, with a database change (migration `20261110120000_meter_trips`).
+
+- **Meter trips:** `POST /drivers/me/meter-trips` stores a trip measured with the driver app's meter (D-42) for a
+  passenger picked up off the app, once per phone id (a resend is not counted twice); Earnings count them (total,
+  rides, chart) and list them as meter trips. Commission saved stays on booked trips only.
 
 ### 9 Nov 2026 (third) · API and admin at `619c322`
 
