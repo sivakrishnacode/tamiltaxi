@@ -8,7 +8,7 @@ optimizations that follow. [using.tech.md](using.tech.md) says what the system *
 problem), add a dated entry to section 3 and put any optimization it suggests in the backlog (section 4) with a trigger.
 When a backlog item ships, mark it **Done (date)** and describe the change in `using.tech.md`.
 
-Last updated: 9 Nov 2026 (domain events for side effects, starting with the WhatsApp welcomes; SD-23 added; earlier, 5 Nov 2026: Red Taxi's outstation pricing compared, round trips now priced by time; live surge guarded against fake demand; SD-20 to SD-22 added; earlier, 10 Oct: offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
+Last updated: 10 Nov 2026 (a big metro as one city: search, zone pushes and body size fixed; SD-24 and SD-25 added; earlier, 9 Nov 2026: domain events for side effects, starting with the WhatsApp welcomes; SD-23 added; earlier, 5 Nov 2026: Red Taxi's outstation pricing compared, round trips now priced by time; live surge guarded against fake demand; SD-20 to SD-22 added; earlier, 10 Oct: offers go to several drivers at once, Rapido style; SD-17 added; earlier, 6 Oct: created from two talks: Uber's real-time map, and the "design Uber" interview answer; ride OTP: decided one code per rider; SD-1, SD-3 and SD-5 done)
 
 ---
 
@@ -253,6 +253,23 @@ before a restart is lost, and with two API instances each listener runs only whe
 fine on one box (Stage 1). Learned: keep the event names and payload classes stable now, so moving to a durable
 transport later changes the emitter, not the modules. Next: SD-23 when an effect must not be lost.
 
+### 10 Nov 2026: a big metro (Chennai) as one city
+
+Before adding Chennai the owner asked whether one service area that big breaks anything. Chennai with its suburbs
+(Tambaram, Avadi, OMR to Kelambakkam, Sriperumbudur) is about 1,800–2,500 km², or 2,400–3,400 res-8 hexes. The
+Coimbatore seed (an 18 km circle) is already 1,261, so Chennai is two to three times that, not a different scale.
+
+What doesn't grow with the city: the service check (one hex looked up in an in-memory set), matching (5 → 15 km from
+the pickup, not the whole city), live surge and learned ETA (per hex), and the apps (they get the outline, never the
+hex list). Rapido and Ola also run one city per metro with one fare table.
+
+What did grow: everything that treated "the city" as one place. Place search used one rectangle around every city
+(with Coimbatore and Chennai, most of Tamil Nadu). Busy-zone nudges and a one-zone Surge now pushed every driver in
+the city. And Express's 100 KB body limit stopped a service area over ~5,600 hexes from saving. All three were fixed
+the same day: search per city, pushes only to drivers within dispatch reach of the zone, 512 KB bodies. Learned: one
+city per metro, with zones for its parts; anything a rider or driver acts on should follow where they are, not the
+whole city. Left: SD-24 (zones as big as their city), SD-25 (search follows the phone into another city).
+
 ## 4. Optimization backlog
 
 Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week or more).
@@ -281,4 +298,6 @@ Status: **Open** unless marked. Effort: S (hours), M (a day or two), L (a week o
 | SD-21 | **Unusual-demand alerts in the admin:** flag hexes whose surge came with few finished trips, many quick cancels or many new accounts, and show them on Live / Missed rides | Lets an admin look before riders pay a surge that wasn't real | When live surge is on in a city with real volume | M |
 | SD-23 | **Durable domain events:** keep the event names and classes, but write each event to an outbox table in the same transaction (or a Redis Stream) and have listeners read from it with retries; existing older direct calls (fares → reminders) move to events too | In-memory events vanish on a restart and run on one instance only | A listener whose effect must not be lost (payments, refunds), or a second API instance | M |
 | SD-22 | **Rider–driver link signals:** flag rider accounts whose phone keeps being where a driver's phone is, or whose first trips were all with one driver; such riders stop counting as demand | The usual sign of a driver using a second phone | With SD-21 | M |
+| SD-24 | **Zones as big as their city:** a city-wide Surge now copies every service hex into its zone, but a zone saved with its cells is capped at 5,000 hexes (`ArrayMaxSize` in `zone.dto.ts`); raise the cap to the city's 20,000, or store a city-wide zone with no cells | Over 5,000 the city-wide zone's cells can't be saved again | A city over 5,000 hexes (≈ 3,700 km²) | S |
+| SD-25 | **Search follows the phone:** the rider app sends its GPS (or the city picked) as a `near` point with pickup searches, so place search uses the city the phone is in; today it falls back to the last map pin (`rider:lastpin`) | A rider searching a pickup in a city they haven't opened the map in yet gets their old city's places | Riders using the app in a second city | S |
 | SD-19 | **Campaigns per city:** subscribe phones to a `passengers-<cityId>` topic (from their last pickup) and let a campaign pick cities | A Pongal push for Coimbatore shouldn't reach a second city with other festivals | When a second city goes live | S |

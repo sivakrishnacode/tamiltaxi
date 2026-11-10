@@ -239,6 +239,8 @@ Tick an item here when its SD-n is marked Done there.
 - [ ] SD-22 Rider–driver link signals
 - [ ] SD-18 Reminder opt-out in the app
 - [ ] SD-19 Campaigns per city
+- [ ] SD-24 Zones as big as their city (5,000-hex zone cap)
+- [ ] SD-25 Place search follows the phone into another city
 
 ### Sign-in codes by SMS when the phone has no WhatsApp
 
@@ -277,6 +279,8 @@ Issue: #12 · Labels: plan, api, admin
   pickup there in turn, like airport queues)
 - [ ] Decide whether zone surge may apply to autos at all (they charge the government fare; Surge now leaves them out
   by default, a surge zone with no vehicles picked still covers them)
+- [ ] API errors: a body the parser rejects (malformed JSON, over 512 KB) comes back as a 500 and is logged as a
+  server error; return its own 400 / 413 (the parser's errors carry `status`)
 
 ### Cab and 3-wheeler fares next to the government auto fare
 
