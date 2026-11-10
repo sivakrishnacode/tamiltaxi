@@ -259,7 +259,13 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Staging runs `92ab7ee` (API) and `619c322` (admin). Waiting to go out (API only, no database change):
+Nothing yet: staging runs `059559b` (API) and `619c322` (admin).
+
+### 10 Nov 2026 (third) · API at `059559b`
+
+Release: `staging-2026-11-10.3` at `059559b`
+
+API only, no migration; Chennai's zones were added as data.
 
 - **Place search stays in the rider's city:** suggestions come from the city the pickup is in, else the one around
   the rider's last map pin, else the nearest city. Before, the search box covered every city at once, so a second
@@ -270,6 +276,10 @@ Staging runs `92ab7ee` (API) and `619c322` (admin). Waiting to go out (API only,
   whole city still tells all its drivers.
 - **Big service areas save:** the API reads request bodies up to 512 KB (was 100 KB), so a city's service area of up
   to 20,000 hexes can be saved from the admin. Before, a big metro over ~5,600 hexes (about 4,100 km²) failed.
+- **Chennai's starting zones:** 100 zones from OpenStreetMap (`seed:zones chennai`): pickup points at the airport,
+  Central, Egmore, CMBT, Kilambakkam, other railway stations, bus stands and 31 metro stations; demand areas at IT
+  parks, shopping streets and malls, crowded areas and big hospitals. No surge or no-service zones. Admins edit them
+  on the city's Zones tab.
 
 ### 10 Nov 2026 (second) · API at `92ab7ee`
 

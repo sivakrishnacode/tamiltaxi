@@ -241,6 +241,7 @@ Tick an item here when its SD-n is marked Done there.
 - [ ] SD-19 Campaigns per city
 - [ ] SD-24 Zones as big as their city (5,000-hex zone cap)
 - [ ] SD-25 Place search follows the phone into another city
+- [ ] SD-26 Driver map only when it changed (ETag / 304)
 
 ### Sign-in codes by SMS when the phone has no WhatsApp
 
