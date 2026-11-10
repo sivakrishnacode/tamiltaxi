@@ -259,7 +259,13 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Staging runs `059559b` (API) and `2a830e6` (admin). Waiting to go out (admin only):
+Nothing yet: staging runs `059559b` (API) and `292f6bf` (admin).
+
+### 10 Nov 2026 (fifth) · admin at `292f6bf`
+
+Release: `staging-2026-11-10.5` at `292f6bf`
+
+Admin only.
 
 - **Zones tab in full screen:** clicking a zone's label on the map now scrolls the list beside it to that zone (it
   did nothing in the map's full screen).
