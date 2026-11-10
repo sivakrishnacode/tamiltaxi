@@ -227,7 +227,6 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   // The zone picked by its label on the map or its row in the list, highlighted in both; [from] says which side moves
   // to it ([key] so a second pick moves again).
   const [focus, setFocus] = useState<{ id: string; key: number; from: "map" | "list" } | null>(null);
-  const itemRefs = useRef(new Map<string, HTMLLIElement>());
   const { ref: listRef, isMore, check: checkMore } = useMoreBelow(`${shown.length}-${!!draft}-${isFullscreen}`);
   const [isPending, startTransition] = useTransition();
 
@@ -277,8 +276,10 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   );
   useEffect(() => {
     if (!focus) return;
-    const list = focus.from === "map" ? listRef.current : null;
-    const item = itemRefs.current.get(focus.id);
+    // The row is looked up in the page, not kept in refs: full screen shows its own copy of the list, and the page's
+    // copy going away a moment later would clear refs the two copies share.
+    const item = focus.from === "map" ? document.querySelector<HTMLLIElement>(`li[data-zone-id="${CSS.escape(focus.id)}"]`) : null;
+    const list = item?.closest("ul");
     if (list && item) {
       // Scroll only the list where it scrolls on its own (wide screens); on phones the page brings it into view. A long
       // way jumps at once (gliding past dozens of zones is slow), a short one glides.
@@ -289,7 +290,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
     }
     const timer = setTimeout(() => setFocus(null), FOCUS_MS);
     return () => clearTimeout(timer);
-  }, [focus, listRef]);
+  }, [focus]);
   // A row clicked in the list: the map moves to its zone.
   const showCells = useMemo(() => {
     const zone = focus?.from === "list" ? city.zones.find((z) => z.id === focus.id) : undefined;
@@ -476,12 +477,7 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
               {shown.map((z) => (
                 <li
                   key={z.id}
-                  ref={(el) => {
-                    if (el) itemRefs.current.set(z.id, el);
-                    return () => {
-                      itemRefs.current.delete(z.id);
-                    };
-                  }}
+                  data-zone-id={z.id}
                   className={cn("cursor-pointer px-4 py-3 transition-colors duration-500 hover:bg-muted/50", focus?.id === z.id && "bg-coral-50 hover:bg-coral-50")}
                   // A click on the row (not its switch or buttons) shows the zone on the map.
                   onClick={(e) => !(e.target as HTMLElement).closest("button, a, input") && showOnMap(z)}
