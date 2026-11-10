@@ -91,6 +91,27 @@ hand only, no daily selfie, the zones on the Home map and the slimmer Home panel
 
 ---
 
+## Driver 0.1.3
+
+> The next Tamil Taxi Driver upload to Google Play
+
+### Ship Tamil Taxi Driver 0.1.3 to Google Play
+
+Labels: driver, release
+
+What goes in it is listed under **Tamil Taxi Driver › 0.1.3** in [RELEASES.md](RELEASES.md): the Meter, the app
+before approval, the city at sign-up, the Surge and High demand chips, the cleaner Home map and Google Play's review
+sheet.
+
+- [x] Raise `version:` in `apps/driver/pubspec.yaml` to `0.1.3+5` (and `kDriverAppVersion`)
+- [x] Build the bundle: `cd apps/driver && ../../scripts/flutter.sh build appbundle` (upload key)
+- [ ] Upload it to Production (India) with the release notes in RELEASES.md
+- [ ] Upload the new store screenshots in `docs/play-store/driver/`
+- [ ] On a Play install: a Meter trip shows in Earnings; a new driver sees the verify banner on Home
+- [x] In RELEASES.md, turn "Next release" into the 0.1.3 entry with its `Release:` line
+
+---
+
 ## Production launch
 
 > Both apps on Google Play production in India, with launch-grade operations

@@ -102,7 +102,22 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ## Tamil Taxi Driver · `com.tamiltaxi.driver`
 
-### Next release: 0.1.3 (code 5)
+### Next release: 0.1.4 (code 6)
+
+Nothing yet.
+
+### 0.1.3 (code 5) · 10 Nov 2026
+
+Release: `driver-v0.1.3+5` at `fba9a6b`
+
+- **Track:** Production (India). **Status:** bundle built 10 Nov 2026, `dist/tamiltaxi-driver-0.1.3-5.aab` (upload
+  key, 65.2 MB); to upload in Play Console. No new permissions since 0.1.2, and the Data safety answers already
+  cover the Meter (precise location, earnings per trip). Upload the new store screenshots with it.
+- **Built from** `fba9a6b`.
+- **Release notes:** "New Meter: for a passenger picked up off the app, the GPS meter counts the fare at the app's
+  rates, even without internet, and shows your UPI QR at the end. New drivers can use the app while their documents
+  are checked; Go online opens once approved. Choose your city at sign-up. Surge and High demand chips show where to
+  go, with directions. A cleaner Home map, and Go offline asks first."
 
 - Meter: a new **Meter** tab next to Home (and a Meter button on the Home map) for a passenger picked up off the app.
   Start meter takes the driver offline and counts the distance by GPS, with no internet needed; the fare is the app's
