@@ -15,8 +15,15 @@ Inputs (docs/play-store/raw/<app>/, app = passenger or driver):
                          heads_up_notifications_enabled 0 so no banner lands on a shot.
                       4. Account › Design gallery › search the frame ID › open it, wait ~8 s for the map, then
                          adb exec-out screencap -p > docs/play-store/raw/<app>/<name>.png
-                      Afterwards reinstall the normal build and undo steps 2 and 3.
+                         D-14 (driver "online"): zoom the map out one step first (it is a Google map: double-tap and
+                         drag up; with adb, `input tap` then `input motionevent DOWN/MOVE/UP`), so the busy areas show
+                         as a honeycomb with streets around them.
+                      5. Check the screen edges: some phones add an edge-lighting glow to captures.
+                      Afterwards reinstall the normal build and undo steps 2 and 3. A retaken capture may move the
+                      card a shot lifts out (`Pop` boxes in APPS): check the framed PNGs.
   feature-art.png   ChatGPT (Codex CLI) background art for the feature graphic: no text, empty on the left.
+
+Art: docs/design/assets/pictures/ (each app's welcome picture and Home's line art) for the first shot's card.
 
 Outputs (docs/play-store/<app>/):
   phone/NN-<name>.png        1440 × 2560 (9:16)
@@ -36,11 +43,12 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 FONTS = ROOT / "packages/tamiltaxi_ui/assets/google_fonts"
-# Playfair Display (OFL, scripts/fonts/): the serif for the store captions only, so it isn't bundled into the apps.
-SERIF = ROOT / "scripts/fonts/PlayfairDisplay.ttf"
+# Anek Tamil ExtraBold (OFL, scripts/fonts/): the store headlines only, so it isn't bundled into the apps.
+HEADLINE = ROOT / "scripts/fonts/AnekTamil.ttf"
 ASSETS = ROOT / "docs/design/assets"
 
-# A calm, CRED-like look (6 Nov 2026): warm grey, a black serif headline in lower case, one line under it, the phone.
+# A calm, CRED-like look (6 Nov 2026): warm grey, a black headline (Anek Tamil since 10 Nov), one line under it, the
+# phone; from the second shot on, the key part of the screen lifted out of the phone (Ola's listing).
 INK = (22, 22, 24)
 GREY = (92, 92, 98)
 CORAL = (216, 67, 21)
@@ -53,11 +61,23 @@ FRAME = (15, 23, 42)
 
 
 @dataclass(frozen=True)
+class Pop:
+    """The part of a capture lifted out of the phone, enlarged, with a shadow: its box in capture pixels, how much
+    bigger than on the phone, and whether it is round."""
+    box: tuple[int, int, int, int]
+    grow: float = 1.4
+    round: bool = False
+
+
+@dataclass(frozen=True)
 class App:
     logo: Path
     icon: Path
-    # Raw capture (with its Design gallery frame), caption, subline. In listing order. The first one carries the logo.
-    shots: list[tuple[str, str, str]]
+    # The first shot's art card: the app's welcome picture (docs/design/assets/pictures/).
+    welcome: Path
+    # Raw capture (with its Design gallery frame), caption, subline, the part lifted out. In listing order. The first
+    # one carries the logo, the art card and the manifesto line, and lifts nothing out.
+    shots: list[tuple[str, str, str, Pop | None]]
     feature_caption: str
     feature_sub: str
     # The one shot on a dark background (with a coral glow), as a change of pace in the row.
@@ -70,13 +90,20 @@ APPS = {
     "passenger": App(
         logo=ASSETS / "logo/tamil-taxi.png",
         icon=ASSETS / "app-icon/tamil-taxi-512.png",
+        welcome=ASSETS / "pictures/welcome-rider.webp",
         shots=[
-            ("home", "zero commission.\nmade in tamil nadu.", "bike, auto and cab rides across Coimbatore"),  # P-07
-            ("choose-ride", "see the fare\nbefore you book.", "locked when you book. no surprises."),  # P-10
-            ("driver-on-the-way", "watch your driver\narrive live.", "call or chat, and start with your ride code."),  # P-13
-            ("ride-safety", "ride safe,\nevery time.", "SOS to 112 and live trip sharing with family."),  # P-16
-            ("pay-driver", "your driver keeps\nevery rupee.", "pay directly by cash or UPI. 0% commission."),  # P-19
-            ("parcel", "send anything\nacross town.", "parcels by bike to truck, plus packers & movers."),  # PP-01
+            ("home", "Zero commission.\nMade in Tamil Nadu.", "The zero-commission promise, on the road in Coimbatore.",
+             None),  # P-07
+            ("choose-ride", "See the fare\nbefore you book.", "Locked when you book. No surprises.",
+             Pop((36, 1712, 1044, 1890))),  # P-10
+            ("driver-on-the-way", "Watch your driver\narrive live.", "Call or chat, and start with your ride code.",
+             Pop((36, 1585, 1044, 1800))),  # P-13
+            ("ride-safety", "Ride safe,\nevery time.", "SOS to 112 and live trip sharing with family.",
+             Pop((839, 1591, 1029, 1781), 2.2, round=True)),  # P-16: the SOS button
+            ("pay-driver", "Your driver keeps\nevery rupee.", "Pay directly by cash or UPI. 0% commission.",
+             Pop((36, 1600, 1044, 1770))),  # P-19
+            ("parcel", "Send anything\nacross town.", "Parcels by bike to truck, plus packers & movers.",
+             Pop((36, 1088, 1044, 1395), 1.32)),  # PP-01
         ],
         dark="pay-driver",
         feature_caption="Rides & parcels\nwith *0% commission*",
@@ -85,13 +112,22 @@ APPS = {
     "driver": App(
         logo=ASSETS / "logo/tamil-taxi-driver.png",
         icon=ASSETS / "app-icon/tamil-taxi-driver-512.png",
+        welcome=ASSETS / "pictures/welcome-driver.webp",
         shots=[
-            ("online", "zero commission.\nzero subscription.", "drive with Tamil Taxi and keep every fare."),  # D-14
-            ("ride-request", "see the fare\nbefore you accept.", "pickup, drop and distance up front."),  # D-15
-            ("to-pickup", "head straight\nto your rider.", "navigate, call or chat in one tap."),  # D-16
-            ("collect", "keep every rupee\nof every fare.", "riders pay you directly. 0% commission."),  # D-19
-            ("earnings", "know what\nyou earned.", "every trip, day and week."),  # D-23
-            ("delivery", "parcels and\nhouse moves too.", "more work between rides."),  # D-21
+            ("online", "Zero commission.\nZero subscription.", "The zero-commission promise, ready for every driver.",
+             None),  # D-14
+            ("ride-request", "See the fare\nbefore you accept.", "Pickup, drop and distance up front.",
+             Pop((36, 309, 1044, 1256), 1.18)),  # D-15
+            ("to-pickup", "Head straight\nto your rider.", "Navigate, call or chat in one tap.",
+             Pop((36, 1690, 1044, 1860))),  # D-16
+            ("collect", "Keep every rupee\nof every fare.", "Riders pay you directly. 0% commission.",
+             Pop((196, 1222, 884, 1310), 1.9)),  # D-19
+            ("earnings", "Know what\nyou earned.", "Every trip, day and week.",
+             Pop((0, 480, 1080, 735), 1.3)),  # D-23
+            ("meter-running", "A meter for\noff-app passengers.", "The government auto fare, worked out by GPS.",
+             Pop((42, 795, 1038, 995), 1.42)),  # D-42b
+            ("delivery", "Parcels and\nhouse moves too.", "More work between rides.",
+             Pop((36, 1540, 1044, 1675))),  # D-21
         ],
         dark="collect",
         feature_caption="Drive and keep\n*100% of every fare*",
@@ -113,10 +149,18 @@ def font(name: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(FONTS / name), size)
 
 
-def serif(size: int) -> ImageFont.FreeTypeFont:
-    f = ImageFont.truetype(str(SERIF), size)
-    f.set_variation_by_name("Bold")
+def headline(size: int) -> ImageFont.FreeTypeFont:
+    f = ImageFont.truetype(str(HEADLINE), size)
+    f.set_variation_by_name("ExtraBold")
     return f
+
+
+def fit(text: str, size: int, max_w: int) -> int:
+    """The headline size, from [size] down, at which every line of [text] fits in [max_w]."""
+    d = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    while any(d.textlength(line.replace("*", ""), font=headline(size)) > max_w - 8 for line in text.split("\n")):
+        size -= 2
+    return size
 
 
 def backdrop(w: int, h: int, glow_at: tuple[float, float], dark: bool) -> Image.Image:
@@ -180,11 +224,11 @@ def draw_caption(
 ) -> int:
     """Draws [text] (lines split on \\n, *word* in coral) and returns the y below it."""
     d = ImageDraw.Draw(img)
-    f = serif(size) if face == "serif" else font(face, size)
-    line_h = round(size * (1.12 if face == "serif" else 1.22))
+    f = headline(size) if face == "headline" else font(face, size)
+    line_h = round(size * (1.12 if face == "headline" else 1.22))
     for line in text.split("\n"):
         parts = [(p, i % 2 == 1) for i, p in enumerate(line.split("*")) if p]
-        # Centred on the ink (the glyphs' visible box), not the advance widths, so serif side bearings don't shift it.
+        # Centred on the ink (the glyphs' visible box), not the advance widths, so side bearings don't shift it.
         left, _, right, _ = d.textbbox((0, 0), "".join(p for p, _ in parts), font=f)
         width = right - left
         assert width <= max_w, f"caption too wide: {line!r}"
@@ -218,38 +262,152 @@ def logo_image(app: App, height: int) -> Image.Image:
     return logo.resize((round(logo.width * height / logo.height), height), Image.LANCZOS)
 
 
-def phone_shot(app: App, shot: Image.Image, caption: str, sub: str, first: bool, dark: bool) -> Image.Image:
-    """Headline and line on top, centred; the phone below, cut by the bottom edge when it runs past it."""
+def screen_capture(name: str, shot_name: str, raw: Path) -> Image.Image:
+    shot = clean_status_bar(Image.open(raw / f"{shot_name}.png"))
+    if box := BLUR.get((name, shot_name)):
+        shot.paste(shot.crop(box).filter(ImageFilter.GaussianBlur(12)), box[:2])
+    return shot
+
+
+def pop_card(shot: Image.Image, pop: Pop, scale: float, dark: bool) -> tuple[Image.Image, int]:
+    """[pop]'s part of [shot] at [scale], with rounded corners (or round), a shadow and a hairline; and its padding."""
+    x1, y1, x2, y2 = pop.box
+    w, h = round((x2 - x1) * scale), round((y2 - y1) * scale)
+    card = shot.crop(pop.box).resize((w, h), Image.LANCZOS)
+    pad = 70
+    r = min(w, h) // 2 if pop.round else 30
+
+    def shape(draw: ImageDraw.ImageDraw, xy: list[int], **kw) -> None:
+        draw.ellipse(xy, **kw) if pop.round else draw.rounded_rectangle(xy, r, **kw)
+
+    out = Image.new("RGBA", (w + 2 * pad, h + 2 * pad), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    shape(ImageDraw.Draw(shadow), [pad, pad + 26, pad + w, pad + h + 26], fill=(0, 0, 0, 170 if dark else 75))
+    out = Image.alpha_composite(out, shadow.filter(ImageFilter.GaussianBlur(30)))
+    mask = Image.new("L", (w, h), 0)
+    shape(ImageDraw.Draw(mask), [0, 0, w - 1, h - 1], fill=255)
+    out.paste(card, (pad, pad), mask)
+    if not pop.round:  # a hairline, so the card reads against a screen of the same colour
+        light = card.convert("L").resize((1, 1)).getpixel((0, 0)) >= 110
+        line = (0, 0, 0, 22) if light else (255, 255, 255, 70)
+        ImageDraw.Draw(out).rounded_rectangle([pad, pad, pad + w - 1, pad + h - 1], r, outline=line, width=3)
+    return out, pad
+
+
+def paste_phone_and_pop(
+    img: Image.Image, shot: Image.Image, pop: Pop | None, screen_w: int, at: tuple[int, int], dark: bool,
+    left_min: int, top_min: int,
+) -> None:
+    """The phone with its top-left at [at]; then [pop] lifted out over the same place on its screen, kept right of
+    [left_min], below [top_min] and inside the image."""
+    p = phone(shot, screen_w)
+    img.paste(p, at, p)
+    if pop is None:
+        return
+    k = screen_w / shot.width
+    card, pad = pop_card(shot, pop, k * pop.grow, dark)
+    inset = round(screen_w * 0.12) + round(screen_w * 0.028)  # phone(): shadow room + bezel
+    x1, y1, x2, y2 = pop.box
+    cx, cy = at[0] + inset + (x1 + x2) / 2 * k, at[1] + inset + (y1 + y2) / 2 * k
+    w, h = card.width - 2 * pad, card.height - 2 * pad
+    left = min(max(cx - w / 2, left_min), img.width - 50 - w)
+    top = min(max(cy - h / 2, top_min), img.height - 40 - h)
+    img.paste(card, (round(left) - pad, round(top) - pad), card)
+
+
+def art_card(app: App, w: int, h: int, r: int) -> tuple[Image.Image, int]:
+    """The first shot's card: Home's line art of the city behind the app's welcome picture, on a warm gradient, with
+    a shadow; and its padding. Our own art: no real person's photo or likeness goes on the listing."""
+    top, bottom = (255, 244, 234), (253, 196, 158)
+    art = Image.linear_gradient("L").resize((w, h))
+    art = Image.composite(Image.new("RGB", (w, h), bottom), Image.new("RGB", (w, h), top), art).convert("RGBA")
+    line = Image.open(ASSETS / "pictures/home-footer.png").convert("RGBA")
+    lw = round(w * 1.7)  # big enough that the temples and the clock tower fill the sky
+    line = line.resize((lw, round(line.height * lw / line.width)), Image.LANCZOS)
+    line.putalpha(line.getchannel("A").point(lambda a: a * 0.5))
+    art.alpha_composite(line, ((w - lw) // 2, round(-0.2 * line.height)))  # its top 40% is empty sky
+    pic = Image.open(app.welcome).convert("RGBA")
+    pw = round(w * 1.12)
+    pic = pic.resize((pw, round(pic.height * pw / pic.width)), Image.LANCZOS)
+    art.alpha_composite(pic, (round(w * -0.02), h - pic.height + 30))
+    pad = 60
+    out = Image.new("RGBA", (w + 2 * pad, h + 2 * pad), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle([pad, pad + 18, pad + w, pad + h + 18], r, fill=(60, 30, 10, 70))
+    out = Image.alpha_composite(out, shadow.filter(ImageFilter.GaussianBlur(28)))
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1], r, fill=255)
+    out.paste(art.convert("RGB"), (pad, pad), mask)
+    return out, pad
+
+
+def first_shot(app: App, shot: Image.Image, caption: str, sub: str) -> Image.Image:
+    """Logo, headline and line on top; the art card on the left with the phone over its right edge; under the card,
+    the manifesto's promise quoted with its source, and that the app is independent."""
     W, H = 1440, 2560
-    img = backdrop(W, H, (0.5, 0.66), dark)
-    ink, grey = text_inks(dark)
-    y = 190
-    if first and not dark:
-        logo = logo_image(app, 190)
-        img.paste(logo, ((W - logo.width) // 2, 150), logo)
-        y = 150 + logo.height + 70
-    y = draw_caption(img, caption, 130, y, 112, "center", W - 260, ink=ink, face="serif")
-    y = draw_sub(img, sub, 100, y + 44, 44, "center", W - 200, ink=grey, face="Inter-Regular.ttf")
-    p = phone(shot, 800)
-    img.paste(p, ((W - p.width) // 2, y + 80 - round(p.width * 0.1)), p)
+    img = backdrop(W, H, (0.5, 0.7), False)
+    logo = logo_image(app, 170)
+    img.paste(logo, ((W - logo.width) // 2, 120), logo)
+    y = draw_caption(img, caption, 130, 120 + 170 + 60, fit(caption, 112, W - 260), "center", W - 260, ink=INK,
+                     face="headline")
+    draw_sub(img, sub, 100, y + 40, 44, "center", W - 200, ink=GREY, face="Inter-Regular.ttf")
+    card, pad = art_card(app, 740, 1130, 56)
+    img.paste(card, (80 - pad, 840 - pad), card)
+    p = phone(shot, 620)
+    ppad = round(620 * 0.12)
+    img.paste(p, (W - 70 - (p.width - 2 * ppad) - ppad, 1080 - ppad), p)
+    quote = "“A Tamil Taxi app,\nno commission\nfrom drivers.”"
+    y = draw_caption(img, quote, 90, 2030, fit(quote, 58, 560), "left", 560, ink=INK, face="headline")
+    y = draw_sub(img, "TVK manifesto, 2026", 92, y + 14, 32, "left", 560, ink=CORAL, face="Inter-Medium.ttf")
+    y = draw_sub(img, "Tamil Taxi is an independent app,", 92, y + 30, 27, "left", 560, ink=GREY, face="Inter-Regular.ttf")
+    draw_sub(img, "not run by the Government.", 92, y - 6, 27, "left", 560, ink=GREY, face="Inter-Regular.ttf")
     return img
 
 
-def tablet_shot(app: App, shot: Image.Image, caption: str, sub: str, W: int, H: int, dark: bool) -> Image.Image:
+def phone_shot(shot: Image.Image, caption: str, sub: str, pop: Pop | None, dark: bool) -> Image.Image:
+    """Headline and line on top, centred; the phone below, cut by the bottom edge; [pop] lifted out of it."""
+    W, H = 1440, 2560
+    img = backdrop(W, H, (0.5, 0.62), dark)
+    ink, grey = text_inks(dark)
+    y = draw_caption(img, caption, 130, 170, fit(caption, 112, W - 260), "center", W - 260, ink=ink, face="headline")
+    y = draw_sub(img, sub, 100, y + 40, 44, "center", W - 200, ink=grey, face="Inter-Regular.ttf")
+    sw = 740
+    pw = phone(shot, sw).width
+    paste_phone_and_pop(img, shot, pop, sw, ((W - pw) // 2, y + 70 - round(sw * 0.12)), dark, 50, y + 30)
+    return img
+
+
+def tablet_shot(app: App, shot: Image.Image, caption: str, sub: str, pop: Pop | None, W: int, H: int, first: bool,
+                dark: bool) -> Image.Image:
+    """Logo (first shot), headline and line on the left; the phone on the right, [pop] lifted out of it."""
     s = H / 1440
     img = backdrop(W, H, (0.73, 0.55), dark)
     ink, grey = text_inks(dark)
     left = round(170 * s)
     text_w = round(W * 0.5) - left
     top = round(430 * s)
-    if not dark:
+    if first:
         logo = logo_image(app, round(150 * s))
         img.paste(logo, (left, top), logo)
         top += logo.height + round(60 * s)
-    y = draw_caption(img, caption, left, top, round(108 * s), "left", text_w, ink=ink, face="serif")
-    draw_sub(img, sub, left, y + round(26 * s), round(46 * s), "left", text_w, ink=grey, face="Inter-Regular.ttf")
-    p = phone(shot, round(565 * s))
-    img.paste(p, (round(W * 0.73) - p.width // 2, (H - p.height) // 2 + round(30 * s)), p)
+    y = draw_caption(img, caption, left, top, fit(caption, round(108 * s), text_w), "left", text_w, ink=ink,
+                     face="headline")
+    # The line, wrapped to the text column (the first shots' lines are long).
+    size, f = round(46 * s), font("Inter-Regular.ttf", round(46 * s))
+    lines = [""]
+    for word in sub.split():
+        joined = f"{lines[-1]} {word}".strip()
+        if f.getlength(joined) <= text_w:
+            lines[-1] = joined
+        else:
+            lines.append(word)
+    y += round(26 * s)
+    for line in lines:
+        y = draw_sub(img, line, left, y, size, "left", text_w, ink=grey, face="Inter-Regular.ttf")
+    sw = round(565 * s)
+    p = phone(shot, sw)
+    at = (round(W * 0.73) - p.width // 2, (H - p.height) // 2 + round(30 * s))
+    paste_phone_and_pop(img, shot, pop, sw, at, dark, round(W * 0.52), round(40 * s))
     return img
 
 
@@ -279,15 +437,18 @@ def build(name: str) -> None:
     out = ROOT / "docs/play-store" / name
     for d in ("phone", "tablet-7in", "tablet-10in"):
         (out / d).mkdir(parents=True, exist_ok=True)
-    for i, (shot_name, caption, sub) in enumerate(app.shots, 1):
-        shot = clean_status_bar(Image.open(raw / f"{shot_name}.png"))
-        if box := BLUR.get((name, shot_name)):
-            shot.paste(shot.crop(box).filter(ImageFilter.GaussianBlur(12)), box[:2])
+    for d in ("phone", "tablet-7in", "tablet-10in"):  # a shot dropped from APPS mustn't linger
+        for old in (out / d).glob("*.png"):
+            old.unlink()
+    for i, (shot_name, caption, sub, pop) in enumerate(app.shots, 1):
+        shot = screen_capture(name, shot_name, raw)
         stem = f"{i:02d}-{shot_name}.png"
         dark = shot_name == app.dark
-        phone_shot(app, shot, caption, sub, i == 1, dark).save(out / "phone" / stem, optimize=True)
-        tablet_shot(app, shot, caption, sub, 1920, 1080, dark).save(out / "tablet-7in" / stem, optimize=True)
-        tablet_shot(app, shot, caption, sub, 2560, 1440, dark).save(out / "tablet-10in" / stem, optimize=True)
+        first = i == 1
+        img = first_shot(app, shot, caption, sub) if first else phone_shot(shot, caption, sub, pop, dark)
+        img.save(out / "phone" / stem, optimize=True)
+        for d, (w, h) in (("tablet-7in", (1920, 1080)), ("tablet-10in", (2560, 1440))):
+            tablet_shot(app, shot, caption, sub, pop, w, h, first, dark).save(out / d / stem, optimize=True)
         print(name, "framed", stem)
     if (raw / "feature-art.png").exists():
         feature_graphic(app, raw).save(out / "feature-graphic.png", optimize=True)

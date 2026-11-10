@@ -9,12 +9,13 @@ Everything Play Console asks for, answered from the code, plus the store graphic
 | [passenger.md](passenger.md) | Tamil Taxi (rider): store listing text, every App content answer, Data safety form, release notes |
 | [driver.md](driver.md) | Tamil Taxi Driver: what differs from the rider app, and the extra declarations (foreground services, full-screen alerts) |
 | [passenger/](passenger/) | Rider store graphics: `icon-512.png`, `feature-graphic.png`, `phone/` (6), `tablet-7in/` (6), `tablet-10in/` (6) |
-| [driver/](driver/) | Driver store graphics, the same set |
+| [driver/](driver/) | Driver store graphics, the same set with 7 screenshots of each kind (the 6th is the Meter) |
 | [raw/](raw/) | The phone captures and ChatGPT art the graphics are framed from, one folder per app |
 
 The screenshots are the real apps on an Android phone with Google Maps: Design gallery frames in mock mode, with
 the phone's location turned off for the app so every place is a seed place. `scripts/store_screenshots.py` paints out
-the phone's notification icons and frames each one with a caption. Names, numbers, places and fares in them are demo
+the phone's notification icons and frames each one with a caption; the first shot adds a card of our own art (each
+app's welcome picture in front of Home's line art of the city). Names, numbers, places and fares in them are demo
 data; the driver's UPI QR is blurred so nobody pays the demo UPI ID. The feature graphics' art was made with
 ChatGPT; the logos and text on them are ours.
 
@@ -75,7 +76,14 @@ python3 scripts/store_screenshots.py [passenger|driver]   # raw/<app>/ captures 
 Captions are in the script's `APPS` table. The top of the script says how to retake the raw captures (mock-mode build
 with the Design gallery, location off, clean status bar, `adb`).
 
-Look (6 Nov 2026, after CRED's listing): warm grey background, a black serif headline in lower case (Playfair Display,
-`scripts/fonts/`, OFL; not bundled into the apps), one grey line under it, the phone below. The first shot carries the
-logo; one shot per app (`dark` in `APPS`) is near-black with a coral glow. The feature graphic keeps its earlier design.
-No public figure's photo goes on the listing: Google Play's policy forbids implying an endorsement the app doesn't have.
+Look (10 Nov 2026; the calm base after CRED's listing, 6 Nov): warm grey background, a black headline in sentence case
+(Anek Tamil ExtraBold, `scripts/fonts/`, OFL; not bundled into the apps), one grey line under it, the phone below.
+From the second shot on, the key part of the screen is lifted out of the phone, enlarged, with a shadow, like Ola's
+listing (`Pop` in `APPS`; tablets too). The first shot carries the logo, the art card beside the phone, and under it
+the manifesto's promise quoted with its source ("TVK manifesto, 2026") and "Tamil Taxi is an independent app, not run
+by the Government". One shot per app (`dark` in `APPS`) is near-black with a coral glow. The feature graphic keeps its
+earlier design.
+
+No public figure's photo or likeness goes on the listing, not even a cartoon or figurine of one: Google Play's
+policy forbids implying an endorsement or government link the app doesn't have, and a famous person's likeness needs
+their consent in India (checked again 10 Nov 2026).

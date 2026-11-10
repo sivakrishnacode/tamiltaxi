@@ -49,8 +49,8 @@ Questions? Use Help & support in the app or write to support@tamiltaxi.co.in.
 |---|---|
 | App icon | `driver/icon-512.png` |
 | Feature graphic | `driver/feature-graphic.png` (ChatGPT art: label it as AI-made, like the icon) |
-| Phone screenshots | `driver/phone/01…06`: online with busy areas, ride request, going to pickup, collect 100%, earnings, delivery on the way |
-| 7-inch / 10-inch tablet screenshots | `driver/tablet-7in/01…06`, `driver/tablet-10in/01…06` |
+| Phone screenshots | `driver/phone/01…07`: online with busy areas, ride request, going to pickup, collect 100%, earnings, the Meter, delivery on the way |
+| 7-inch / 10-inch tablet screenshots | `driver/tablet-7in/01…07`, `driver/tablet-10in/01…07` |
 
 ## App access
 
