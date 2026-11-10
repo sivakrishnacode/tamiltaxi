@@ -6,7 +6,8 @@ import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { RedisService } from '../../core/redis/redis.service.js';
 import { DriverStatus, ZoneKind } from '../../generated/prisma/enums.js';
 import { MISSED_SQL } from '../admin/admin-missed.service.js';
-import { atMostResolution, cellAt } from '../geo/h3.util.js';
+import { driversNotFar } from '../drivers/last-location.js';
+import { atMostResolution, cellAt, cellsBounds } from '../geo/h3.util.js';
 import { isZoneLive } from '../geo/zone-schedule.js';
 import { NotifierService } from '../notifications/notifier.service.js';
 import { SettingsService } from '../settings/settings.service.js';
@@ -41,8 +42,10 @@ export function nudgeText(zoneName: string, waiting: number): { title: string; b
 /**
  * Busy-zone nudges: every 5 minutes (job `nudge.zone-scan`), each live DEMAND or SURGE zone with `nudgeDrivers` on
  * that is busy ([isBusy]: unserved or searching riders picked up there in the last 15 minutes, free drivers inside
- * now) pushes the city's approved offline drivers. Never in the reminders' quiet hours, a zone at most every 30 minutes,
- * a driver at most once an hour (Redis `nudge:zone:<id>`, `nudge:driver:<id>`).
+ * now) pushes the city's approved offline drivers who could get there: last seen within dispatch reach of the zone
+ * (`maxSearchRadiusKm`), or not seen in 30 days ([driversNotFar]), so a big city's drivers across town aren't told.
+ * Never in the reminders' quiet hours, a zone at most every 30 minutes, a driver at most once an hour (Redis
+ * `nudge:zone:<id>`, `nudge:driver:<id>`).
  */
 @Injectable()
 export class ZoneNudgesService implements OnModuleInit, OnApplicationBootstrap {
@@ -78,7 +81,8 @@ export class ZoneNudgesService implements OnModuleInit, OnApplicationBootstrap {
 
   /** Nudges drivers about the busy zones now. Returns how many pushes went out. */
   async scan(now: Date): Promise<number> {
-    if (isQuietHour(now, await this.settings.all())) return 0;
+    const s = await this.settings.all();
+    if (isQuietHour(now, s)) return 0;
     const zones = (
       await this.prisma.zone.findMany({
         where: { nudgeDrivers: true, isActive: true, kind: { in: [ZoneKind.DEMAND, ZoneKind.SURGE] }, city: { isActive: true } },
@@ -113,16 +117,17 @@ export class ZoneNudgesService implements OnModuleInit, OnApplicationBootstrap {
       const toZone = (cell: string) => (tripRes < TRIP_RES ? cellToParent(cell, tripRes) : cell);
       const waiting = rows.filter((r) => tripCells.has(toZone(r.cell))).reduce((a, r) => a + Number(r.waiting), 0);
       const freeInside = free.filter((p) => cells.has(cellAt(p.lat, p.lng, res))).length;
-      if (!isBusy(waiting, freeInside)) continue;
+      const box = cellsBounds(zone.cells, 0);
+      if (!box || !isBusy(waiting, freeInside)) continue;
       if ((await this.redis.set(`nudge:zone:${zone.id}`, '1', 'EX', ZONE_COOLDOWN_S, 'NX')) !== 'OK') continue;
       const drivers = await this.prisma.driver.findMany({
         where: { cityId: zone.cityId, status: DriverStatus.APPROVED, isOnline: false, user: { isBlocked: false, deletedAt: null } },
         select: { id: true },
       });
       const text = nudgeText(zone.name, waiting);
-      for (const d of drivers) {
-        if ((await this.redis.set(`nudge:driver:${d.id}`, '1', 'EX', DRIVER_COOLDOWN_S, 'NX')) !== 'OK') continue;
-        void this.notifier.driverAccount({ driverId: d.id, kind: 'zone_busy', ...text });
+      for (const id of await driversNotFar(this.redis, drivers.map((d) => d.id), box, s.maxSearchRadiusKm)) {
+        if ((await this.redis.set(`nudge:driver:${id}`, '1', 'EX', DRIVER_COOLDOWN_S, 'NX')) !== 'OK') continue;
+        void this.notifier.driverAccount({ driverId: id, kind: 'zone_busy', ...text });
         sent++;
       }
     }

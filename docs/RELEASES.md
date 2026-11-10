@@ -264,6 +264,10 @@ Staging runs `92ab7ee` (API) and `619c322` (admin). Waiting to go out (API only,
 - **Place search stays in the rider's city:** suggestions come from the city the pickup is in, else the one around
   the rider's last map pin, else the nearest city. Before, the search box covered every city at once, so a second
   city far away (Chennai) would have brought in the towns between (Salem, Trichy…) for a Coimbatore rider.
+- **Driver pushes about one zone go to drivers near it:** busy-zone nudges and a Surge now over one zone skip
+  drivers whose last GPS fix is more than 15 km (the dispatch reach) beyond the zone; drivers with no known position
+  still get them. In a big city, a busy zone in Tambaram no longer pings drivers in Ennore. A Surge now over the
+  whole city still tells all its drivers.
 
 ### 10 Nov 2026 (second) · API at `92ab7ee`
 

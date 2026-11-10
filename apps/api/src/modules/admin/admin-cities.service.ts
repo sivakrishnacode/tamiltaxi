@@ -1,17 +1,20 @@
 import { BadRequestException, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
+import { RedisService } from '../../core/redis/redis.service.js';
 import { type City, type CityFareRule, Prisma, type Zone } from '../../generated/prisma/client.js';
 import { DriverStatus, VehicleKind, ZoneKind } from '../../generated/prisma/enums.js';
+import { driversNotFar } from '../drivers/last-location.js';
 import { FARE_RULES } from '../fares/fare-rules.js';
 import { effectivePricing, isPricingSection, type ModePricing, parsePricingSection, type PricingSection } from '../fares/pricing.js';
 import { type RentalPackage, RENTAL_PACKAGES } from '../fares/ride-modes.js';
 import { GeoService } from '../geo/geo.service.js';
 import { MapsService } from '../maps/maps.service.js';
 import { NotifierService } from '../notifications/notifier.service.js';
+import { SettingsService } from '../settings/settings.service.js';
 import { getResolution, isValidCell } from 'h3-js';
 
-import { cellsForCircle, DEFAULT_H3_RESOLUTION, MAX_ZONE_RESOLUTION, validateCells } from '../geo/h3.util.js';
+import { cellsBounds, cellsForCircle, DEFAULT_H3_RESOLUTION, MAX_ZONE_RESOLUTION, validateCells } from '../geo/h3.util.js';
 import type { CreateCityDto, UpdateCityDto } from './dto/city.dto.js';
 import type { FareRuleDto } from './dto/fare-rule.dto.js';
 import type { CreateZoneDto, SurgeNowDto, UpdateZoneDto } from './dto/zone.dto.js';
@@ -49,6 +52,8 @@ export class AdminCitiesService implements OnApplicationBootstrap {
     private readonly geo: GeoService,
     private readonly notifier: NotifierService,
     private readonly maps: MapsService,
+    private readonly redis: RedisService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Cities made before place IDs (or whose lookup failed) get one in the background; start-up doesn't wait. */
@@ -132,7 +137,8 @@ export class AdminCitiesService implements OnApplicationBootstrap {
   /**
    * "Surge now" (rain, a festival rush): a SURGE zone from now for [hours] over the whole service area or one zone's
    * cells, for some vehicles or all; it ends by itself. With [notifyDrivers], the city's approved drivers for those
-   * vehicles get a push. Returns the zone and how many drivers were told.
+   * vehicles get a push; over one zone only those who could get there ([driversNotFar] within `maxSearchRadiusKm`),
+   * not a big city's drivers across town. Returns the zone and how many drivers were told.
    */
   async surgeNow(cityId: string, dto: SurgeNowDto, now = new Date()): Promise<{ zone: Zone; notified: number }> {
     const city = await this.prisma.city.findUniqueOrThrow({ where: { id: cityId }, select: { name: true, serviceCells: true } });
@@ -153,15 +159,17 @@ export class AdminCitiesService implements OnApplicationBootstrap {
         select: { id: true },
       });
       const until = endsAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
-      for (const d of drivers) {
+      const box = source ? cellsBounds(cells, 0) : null;
+      const ids = box ? await driversNotFar(this.redis, drivers.map((d) => d.id), box, (await this.settings.all()).maxSearchRadiusKm) : drivers.map((d) => d.id);
+      for (const id of ids) {
         void this.notifier.driverAccount({
-          driverId: d.id,
+          driverId: id,
           kind: 'surge_now',
           title: `Fares ×${dto.multiplier.toFixed(2).replace(/0$/, '')} in ${city.name} until ${until}`,
           body: "It's busy and riders are waiting. 0% commission: the whole fare is yours. Go online.",
         });
       }
-      notified = drivers.length;
+      notified = ids.length;
     }
     return { zone, notified };
   }

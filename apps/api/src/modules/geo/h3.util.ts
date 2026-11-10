@@ -73,6 +73,13 @@ export function cellsBounds(cells: Iterable<string>, marginDeg = 0.01): LatLngBo
   return { low: { lat: s - marginDeg, lng: w - marginDeg }, high: { lat: n + marginDeg, lng: e + marginDeg } };
 }
 
+/** Whether [point] is inside [bounds] widened by [km] on every side. */
+export function nearBounds(bounds: LatLngBounds, point: { lat: number; lng: number }, km: number): boolean {
+  const dLat = km / 111.32;
+  const dLng = km / (111.32 * Math.cos((point.lat * Math.PI) / 180));
+  return point.lat >= bounds.low.lat - dLat && point.lat <= bounds.high.lat + dLat && point.lng >= bounds.low.lng - dLng && point.lng <= bounds.high.lng + dLng;
+}
+
 /** Hexagon corners as [lat, lng] pairs. */
 export function cellPolygon(cell: string): [number, number][] {
   return cellToBoundary(cell);

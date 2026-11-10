@@ -2138,6 +2138,11 @@ describe('Tamil Taxi API (e2e)', () => {
         expect(new Date(now.zone.endsAt).getTime() - Date.now()).toBeGreaterThan(119 * 60_000);
         expect(pushes.mock.calls.find(([p]) => p.driverId === driverId)?.[0]).toMatchObject({ kind: 'surge_now', title: expect.stringMatching(/^Fares ×1\.3 in Rules town until /) });
         expect((await check(cellB)).vehicleMultipliers).toEqual({ CAB: 1.3 });
+        // Over one zone: only drivers who could get there (this one was last seen ~27 km away).
+        const here = (
+          await http.post(`/v1/admin/cities/${id}/surge-now`).set(admin).send({ zoneId: evening.id, name: 'Rain here', multiplier: 1.2, hours: 1, vehicleKinds: ['CAB'], notifyDrivers: true }).expect(201)
+        ).body as { notified: number };
+        expect(here.notified).toBe(0);
       } finally {
         pushes.mockRestore();
         await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${token}`).expect(200);
@@ -2147,7 +2152,7 @@ describe('Tamil Taxi API (e2e)', () => {
     }
   });
 
-  it("nudges a busy zone's city drivers who are offline: once per zone and driver, never in quiet hours", async () => {
+  it("nudges a busy zone's nearby city drivers who are offline: once per zone and driver, never in quiet hours", async () => {
     const admin = await adminAuth();
     const id = `nudge-${Date.now()}`;
     const city = (await http.post('/v1/admin/cities').set(admin).send({ id, name: 'Nudge town', state: 'Tamil Nadu', centerLat: 11.1085, centerLng: 77.3411, radiusKm: 2 }).expect(201)).body as {
@@ -2155,10 +2160,16 @@ describe('Tamil Taxi API (e2e)', () => {
     };
     const cell = city.serviceCells[0];
     const zone = (await http.post(`/v1/admin/cities/${id}/zones`).set(admin).send({ name: 'Bus stand', kind: 'DEMAND', cells: [cell], nudgeDrivers: true }).expect(201)).body as { id: string };
-    const token = await onlineDriver('CAB', { lat: 11.3, lng: 77.5 });
-    const driverId = (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${token}`).expect(200)).body.id as string;
-    await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${token}`).expect(200);
-    await prisma.driver.update({ where: { id: driverId }, data: { cityId: id } });
+    // One driver last seen ~1 km from the zone, one ~27 km away (the same city, but too far to help).
+    const [driverId, farId] = await Promise.all(
+      [{ lat: 11.115, lng: 77.345 }, { lat: 11.3, lng: 77.5 }].map(async (at) => {
+        const token = await onlineDriver('CAB', at);
+        const me = (await http.get('/v1/drivers/me').set('Authorization', `Bearer ${token}`).expect(200)).body.id as string;
+        await http.post('/v1/drivers/me/offline').set('Authorization', `Bearer ${token}`).expect(200);
+        await prisma.driver.update({ where: { id: me }, data: { cityId: id } });
+        return me;
+      }),
+    );
     const passengerId = (await prisma.driver.findUniqueOrThrow({ where: { id: driverId }, select: { userId: true } })).userId;
     // Noon IST today; two riders went unserved there 5 minutes before.
     const noon = new Date(`${new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)}T12:00:00+05:30`);
@@ -2179,6 +2190,7 @@ describe('Tamil Taxi API (e2e)', () => {
       expect(mine()).toEqual([]);
       await nudges.scan(noon);
       expect(mine()).toEqual([expect.objectContaining({ kind: 'zone_busy', title: 'Riders are waiting: Bus stand' })]);
+      expect(pushes.mock.calls.filter(([p]) => p.driverId === farId)).toEqual([]);
       // Cooldowns: no second push.
       await nudges.scan(noon);
       expect(mine()).toHaveLength(1);

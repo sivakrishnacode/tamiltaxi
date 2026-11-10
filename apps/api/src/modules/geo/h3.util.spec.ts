@@ -1,6 +1,6 @@
 import { cellToChildren } from 'h3-js';
 
-import { atMostResolution, cellAt, cellsBounds, cellsForCircle, validateCells, zoneHolds } from './h3.util.js';
+import { atMostResolution, cellAt, cellsBounds, cellsForCircle, nearBounds, validateCells, zoneHolds } from './h3.util.js';
 
 describe('h3 utils', () => {
   it('covers an 18 km circle around Coimbatore at resolution 8', () => {
@@ -40,5 +40,13 @@ describe('h3 utils', () => {
     const big = cellAt(11.0183, 76.9725, 8);
     expect(atMostResolution(cellToChildren(big, 9), 8)).toEqual([big]);
     expect(atMostResolution([big], 9)).toEqual([big]);
+  });
+
+  it('tells whether a point is within some km of a rectangle', () => {
+    const box = { low: { lat: 12.92, lng: 80.11 }, high: { lat: 12.93, lng: 80.12 } };
+    expect(nearBounds(box, { lat: 12.925, lng: 80.115 }, 0)).toBe(true);
+    expect(nearBounds(box, { lat: 13.0, lng: 80.12 }, 10)).toBe(true); // ~8 km north
+    expect(nearBounds(box, { lat: 13.0, lng: 80.12 }, 5)).toBe(false);
+    expect(nearBounds(box, { lat: 12.925, lng: 80.25 }, 10)).toBe(false); // ~14 km east
   });
 });

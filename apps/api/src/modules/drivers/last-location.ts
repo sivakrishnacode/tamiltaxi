@@ -1,3 +1,5 @@
+import { type LatLngBounds, nearBounds } from '../geo/h3.util.js';
+
 /**
  * Where the server last saw each person, for the admin user and driver pages. Drivers: the newest live GPS fix
  * (written with `driver:alive`, which expires 90 s after the app stops). Riders: the point the rider app asks
@@ -28,4 +30,18 @@ export function parseLastLocation(raw: string | null | undefined): LastLocation 
   const [lat, lng, at] = raw.split(',').map(Number.parseFloat);
   if (![lat, lng, at].every(Number.isFinite)) return null;
   return { lat, lng, at: new Date(at).toISOString() };
+}
+
+/**
+ * [driverIds] less those last seen (`driver:lastfix`) more than [km] outside [bounds]: a push about one part of a big
+ * city (a busy zone, a surge there) shouldn't reach drivers across town. Drivers with no fix in the last 30 days are
+ * kept, since where they are is unknown.
+ */
+export async function driversNotFar(redis: { mget(...keys: string[]): Promise<(string | null)[]> }, driverIds: readonly string[], bounds: LatLngBounds, km: number): Promise<string[]> {
+  if (driverIds.length === 0) return [];
+  const fixes = await redis.mget(...driverIds.map(driverLastFixKey));
+  return driverIds.filter((_, i) => {
+    const at = parseLastLocation(fixes[i]);
+    return !at || nearBounds(bounds, at, km);
+  });
 }
