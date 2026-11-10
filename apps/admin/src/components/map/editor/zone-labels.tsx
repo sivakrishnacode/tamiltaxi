@@ -1,7 +1,7 @@
 "use client";
 
 import { useMap } from "@vis.gl/react-google-maps";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export interface ZoneLabel {
   readonly id: string;
@@ -29,10 +29,16 @@ const overlaps = (a: Rect, b: Rect) => a.l < b.r && b.l < a.r && a.t < b.b && b.
 
 /**
  * Zone names as small pills in one OverlayView: hidden below [minZoom], and a label whose box would overlap an
- * already placed (higher-priority) label is skipped, so names never pile up on each other.
+ * already placed (higher-priority) label is skipped, so names never pile up on each other. With [onSelect] a label is a
+ * button (click or Enter) that reports its zone id; the map ignores those clicks (no pan, no painting).
  */
-export function ZoneLabels({ labels, minZoom = 13 }: { labels: readonly ZoneLabel[]; minZoom?: number }) {
+export function ZoneLabels({ labels, minZoom = 13, onSelect }: { labels: readonly ZoneLabel[]; minZoom?: number; onSelect?: (id: string) => void }) {
   const map = useMap();
+  const select = useRef(onSelect);
+  useEffect(() => {
+    select.current = onSelect;
+  }, [onSelect]);
+  const isClickable = !!onSelect;
   useEffect(() => {
     if (!map) return;
     const sorted = [...labels].sort((a, b) => b.priority - a.priority);
@@ -42,11 +48,23 @@ export function ZoneLabels({ labels, minZoom = 13 }: { labels: readonly ZoneLabe
     const els = sorted.map((l) => {
       const el = document.createElement("div");
       el.title = l.title;
-      el.setAttribute("role", "note");
+      el.setAttribute("role", isClickable ? "button" : "note");
       el.style.cssText =
         "position:absolute;transform:translate(-50%,-50%);display:none;align-items:center;gap:4px;white-space:nowrap;" +
         "padding:2px 7px;border-radius:9999px;background:rgba(255,255,255,.92);box-shadow:0 1px 3px rgba(30,41,59,.25);" +
-        "font:600 11px/16px Inter,system-ui,sans-serif;color:#1E293B;cursor:default";
+        `font:600 11px/16px Inter,system-ui,sans-serif;color:#1E293B;cursor:${isClickable ? "pointer" : "default"}`;
+      if (isClickable) {
+        el.tabIndex = 0;
+        el.setAttribute("aria-label", `Show ${l.text} in the list`);
+        google.maps.OverlayView.preventMapHitsAndGesturesFrom(el);
+        el.addEventListener("click", () => select.current?.(l.id));
+        el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            select.current?.(l.id);
+          }
+        });
+      }
       const dot = document.createElement("span");
       dot.style.cssText = `width:7px;height:7px;border-radius:9999px;background:${l.color};flex:none`;
       el.append(dot, document.createTextNode(l.text));
@@ -86,6 +104,6 @@ export function ZoneLabels({ labels, minZoom = 13 }: { labels: readonly ZoneLabe
     };
     overlay.setMap(map);
     return () => overlay.setMap(null);
-  }, [map, labels, minZoom]);
+  }, [map, labels, minZoom, isClickable]);
   return null;
 }

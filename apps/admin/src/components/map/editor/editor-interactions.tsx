@@ -37,6 +37,8 @@ export interface EditorInteractionsProps {
   readonly focus: { lat: number; lng: number; key: number } | null;
   readonly fitCells: readonly string[];
   readonly fitKey: number;
+  /** Cells to move the map to (a zone picked in a list), each time [key] changes. */
+  readonly showCells: { readonly cells: readonly string[]; readonly key: number } | null;
   readonly showGrid: boolean;
   readonly onZoom: (zoom: number) => void;
 }
@@ -44,6 +46,8 @@ export interface EditorInteractionsProps {
 const PREVIEW_ADD = { color: "#D84315", fillOpacity: 0.12, weight: 2 } as const;
 const PREVIEW_REMOVE = { color: "#B91C1C", fillColor: "#FEE2E2", fillOpacity: 0.35, weight: 2 } as const;
 const GRID_STYLE = { color: "#94A3B8", fillOpacity: 0, weight: 0.6, opacity: 0.7 } as const;
+/** Closest zoom when moving to picked cells, so a station-sized zone still shows its streets. */
+const MAX_SHOW_ZOOM = 16;
 
 /** Mouse/touch/pen painting, brush hover preview, polygon drawing, circle picking, grid, fit and fly-to. */
 export function EditorInteractions(props: EditorInteractionsProps) {
@@ -313,6 +317,20 @@ export function EditorInteractions(props: EditorInteractionsProps) {
     map.panTo({ lat: focus.lat, lng: focus.lng });
     map.setZoom(15);
   }, [map, focus]);
+
+  // Move to cells picked in a list: fit them with room around, never closer than [MAX_SHOW_ZOOM].
+  const showKey = props.showCells?.key;
+  useEffect(() => {
+    const cells = latest.current.showCells?.cells;
+    if (!map || showKey === undefined || !cells?.length) return;
+    const b = cellsBounds(cells);
+    if (!b) return;
+    map.fitBounds(b, 96);
+    const once = google.maps.event.addListenerOnce(map, "idle", () => {
+      if ((map.getZoom() ?? 0) > MAX_SHOW_ZOOM) map.setZoom(MAX_SHOW_ZOOM);
+    });
+    return () => once.remove();
+  }, [map, showKey]);
 
   // Fit to the service area on open and on "Fit" clicks.
   const { fitKey } = props;

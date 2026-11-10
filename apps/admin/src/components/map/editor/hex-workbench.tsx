@@ -81,6 +81,8 @@ export function HexWorkbench({
   groups,
   warnCells = [],
   zoneLabels = [],
+  onZoneLabelClick,
+  showCells = null,
   boundaries = [],
   status,
   panel,
@@ -100,6 +102,10 @@ export function HexWorkbench({
   /** Cells to outline in amber (e.g. zone cells outside the service area). */
   warnCells?: readonly string[];
   zoneLabels?: readonly ZoneLabel[];
+  /** Makes the zone labels buttons: called with the clicked label's zone id. */
+  onZoneLabelClick?: (id: string) => void;
+  /** Moves the map to these cells (a zone picked in the list), each time [key] changes. */
+  showCells?: { readonly cells: readonly string[]; readonly key: number } | null;
   /** Google place IDs of the cities to outline (their limits; shown by default, a Layers switch hides them). */
   boundaries?: readonly (string | null)[];
   /** Extra text on the right of the toolbar (counts). */
@@ -470,7 +476,7 @@ export function HexWorkbench({
           {editor && editOutline && <HexOutline cells={editor.cells} {...editOutline} zIndex={10} />}
           <HexLayer cells={warnCells} style={{ color: "#F59E0B", fillColor: "#FEF3C7", fillOpacity: 0.35, weight: 2 }} zIndex={12} />
           <HexLayer cells={pendingPreview} style={{ color: "#1E293B", fillColor: "#1E293B", fillOpacity: 0.15, weight: 1.5 }} zIndex={20} />
-          {visible.labels && zoneLabels.length > 0 && <ZoneLabels labels={zoneLabels} />}
+          {visible.labels && zoneLabels.length > 0 && <ZoneLabels labels={zoneLabels} onSelect={onZoneLabelClick} />}
           <EditorInteractions
             resolution={resolution}
             tool={tool}
@@ -498,6 +504,7 @@ export function HexWorkbench({
             focus={focus}
             fitCells={fitCells}
             fitKey={fitKey}
+            showCells={showCells}
             showGrid={visible.grid}
             onZoom={setZoom}
           />

@@ -1,7 +1,7 @@
 "use client";
 
 import { getResolution } from "h3-js";
-import { HexagonIcon, Loader2Icon, PencilIcon, PlusIcon, SaveIcon, Trash2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { HexagonIcon, Loader2Icon, PencilIcon, PlusIcon, SaveIcon, SearchIcon, Trash2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -65,11 +65,17 @@ export function zoneOutline(kind: ZoneKind, state: ZoneState): OutlineStyle {
   return { color, weight: 1.5, opacity: 0.4 };
 }
 
-/** Live zones draw above the ones that are not working now. */
-const zoneLayer = (z: Zone): HexLayerDef => {
+/** Live zones draw above the ones that are not working now; the one picked on the map above all. */
+const zoneLayer = (z: Zone, isSelected = false): HexLayerDef => {
   const state = zoneState(z);
-  return { id: z.id, cells: z.cells, style: zoneStyle(z.kind, state), outline: zoneOutline(z.kind, state), zIndex: state === "live" ? 4 : 3 };
+  return { id: z.id, cells: z.cells, style: zoneStyle(z.kind, state, isSelected), outline: zoneOutline(z.kind, state), zIndex: isSelected ? 5 : state === "live" ? 4 : 3 };
 };
+
+/** Whether [z] matches a search ([q] trimmed, lower case): part of its name or its kind ("pickup point", "surge"). */
+const matches = (z: Zone, q: string) => !q || z.name.toLowerCase().includes(q) || humanize(z.kind).toLowerCase().includes(q);
+
+/** How long a zone picked on the map stays highlighted in the list and on the map. */
+const FOCUS_MS = 2500;
 
 /** A thin scrollbar that stays visible (overlay scrollbars hide until scrolled, so a long list looked cut off). */
 const SCROLLBAR = "[scrollbar-color:#CBD5E1_transparent] [scrollbar-width:thin]";
@@ -215,7 +221,14 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
   const ed = useCellEditor([]);
   const [toDelete, setToDelete] = useState<Zone | null>(null);
   const [isFullscreen, setFullscreen] = useState(false);
-  const { ref: listRef, isMore, check: checkMore } = useMoreBelow(`${city.zones.length}-${!!draft}-${isFullscreen}`);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = useMemo(() => city.zones.filter((z) => matches(z, q)), [city.zones, q]);
+  // The zone picked by its label on the map or its row in the list, highlighted in both; [from] says which side moves
+  // to it ([key] so a second pick moves again).
+  const [focus, setFocus] = useState<{ id: string; key: number; from: "map" | "list" } | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLLIElement>());
+  const { ref: listRef, isMore, check: checkMore } = useMoreBelow(`${shown.length}-${!!draft}-${isFullscreen}`);
   const [isPending, startTransition] = useTransition();
 
   // Finer zone hexagons count as inside when their city-sized parent is.
@@ -247,10 +260,42 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
     [city.serviceCells],
   );
   const zoneLayers: HexLayerDef[] = useMemo(
-    () => city.zones.filter((z) => z.id !== draft?.id).map(zoneLayer),
-    [city.zones, draft?.id],
+    () => city.zones.filter((z) => z.id !== draft?.id).map((z) => zoneLayer(z, z.id === focus?.id)),
+    [city.zones, draft?.id, focus?.id],
   );
   const labels = useMemo(() => city.zones.flatMap((z) => zoneLabel(z) ?? []), [city.zones]);
+
+  // A label clicked on the map: its zone in the list (the search cleared if it hides it), scrolled to and highlighted.
+  const showZone = useCallback(
+    (id: string) => {
+      const zone = city.zones.find((z) => z.id === id);
+      if (!zone) return;
+      setQuery((cur) => (matches(zone, cur.trim().toLowerCase()) ? cur : ""));
+      setFocus({ id, key: Date.now(), from: "map" });
+    },
+    [city.zones],
+  );
+  useEffect(() => {
+    if (!focus) return;
+    const list = focus.from === "map" ? listRef.current : null;
+    const item = itemRefs.current.get(focus.id);
+    if (list && item) {
+      // Scroll only the list where it scrolls on its own (wide screens); on phones the page brings it into view. A long
+      // way jumps at once (gliding past dozens of zones is slow), a short one glides.
+      if (list.scrollHeight > list.clientHeight) {
+        const top = list.scrollTop + item.getBoundingClientRect().top - list.getBoundingClientRect().top - (list.clientHeight - item.offsetHeight) / 2;
+        list.scrollTo({ top, behavior: Math.abs(top - list.scrollTop) > list.clientHeight * 2 ? "instant" : "smooth" });
+      } else item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    const timer = setTimeout(() => setFocus(null), FOCUS_MS);
+    return () => clearTimeout(timer);
+  }, [focus, listRef]);
+  // A row clicked in the list: the map moves to its zone.
+  const showCells = useMemo(() => {
+    const zone = focus?.from === "list" ? city.zones.find((z) => z.id === focus.id) : undefined;
+    return zone && focus ? { cells: zone.cells, key: focus.key } : null;
+  }, [focus, city.zones]);
+  const showOnMap = useCallback((z: Zone) => setFocus({ id: z.id, key: Date.now(), from: "list" }), []);
 
   function save() {
     if (!draft || !canSave) return;
@@ -395,21 +440,66 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
         <Card className="relative gap-0 pb-0 lg:min-h-0">
           <CardHeader className="shrink-0 border-b">
             <CardTitle className="font-semibold">Zones</CardTitle>
-            <CardDescription>{city.zones.length} in {city.name}</CardDescription>
+            <CardDescription>
+              {q ? `${shown.length} of ${city.zones.length}` : city.zones.length} in {city.name}
+            </CardDescription>
+            {city.zones.length > 0 && (
+              <div className="relative mt-2">
+                <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  value={query}
+                  placeholder="Search zones"
+                  aria-label="Search zones"
+                  className="pl-8"
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+                />
+              </div>
+            )}
           </CardHeader>
           {city.zones.length === 0 ? (
             <EmptyState icon={HexagonIcon} title="No zones" description="Create surge, demand, no-service or pickup-point zones." />
+          ) : shown.length === 0 ? (
+            <EmptyState
+              icon={SearchIcon}
+              title={`No zones match “${query.trim()}”`}
+              description="Search by part of a name or a kind, e.g. “metro” or “demand”."
+              action={
+                <Button size="sm" variant="outline" onClick={() => setQuery("")}>
+                  Clear search
+                </Button>
+              }
+            />
           ) : (
             <ul ref={listRef} onScroll={checkMore} className={cn("divide-y lg:min-h-0 lg:overflow-y-auto", SCROLLBAR)}>
-              {city.zones.map((z) => (
-                <li key={z.id} className="px-4 py-3">
+              {shown.map((z) => (
+                <li
+                  key={z.id}
+                  ref={(el) => {
+                    if (el) itemRefs.current.set(z.id, el);
+                    return () => {
+                      itemRefs.current.delete(z.id);
+                    };
+                  }}
+                  className={cn("cursor-pointer px-4 py-3 transition-colors duration-500 hover:bg-muted/50", focus?.id === z.id && "bg-coral-50 hover:bg-coral-50")}
+                  // A click on the row (not its switch or buttons) shows the zone on the map.
+                  onClick={(e) => !(e.target as HTMLElement).closest("button, a, input") && showOnMap(z)}
+                >
                   <div className="flex items-center gap-2">
                     <span
                       aria-hidden
                       className="size-3 shrink-0 rounded-sm"
                       style={zoneSwatch(z.kind)}
                     />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-navy-900">{z.name}</span>
+                    <button
+                      type="button"
+                      title={`Show ${z.name} on the map`}
+                      className="min-w-0 flex-1 truncate rounded-sm text-left text-sm font-medium text-navy-900 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      onClick={() => showOnMap(z)}
+                    >
+                      {z.name}
+                    </button>
                     <ZoneActiveSwitch key={`${z.id}-${z.isActive}`} cityId={city.id} zone={z} />
                   </div>
                   <div className="mt-1 flex items-center gap-2 pl-5 text-xs text-muted-foreground">
@@ -461,6 +551,8 @@ export function ZonesEditor({ city, stats }: { city: CityDetail; stats?: Readonl
         ]}
         warnCells={outside}
         zoneLabels={labels}
+        onZoneLabelClick={draft ? undefined : showZone}
+        showCells={showCells}
         boundaries={[city.placeId]}
         panel={side}
         onFullscreenChange={setFullscreen}

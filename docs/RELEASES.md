@@ -259,7 +259,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `059559b` (API) and `619c322` (admin).
+Staging runs `059559b` (API) and `619c322` (admin). Waiting to go out (admin only):
+
+- **Zones tab, search and map ↔ list:** a search box over the zone list (part of a name or a kind). Clicking a
+  zone's label on the map scrolls the list to it; clicking a zone in the list moves the map to it. The picked zone is
+  highlighted in both for a moment. Made for big cities like Chennai (100 zones).
 
 ### 10 Nov 2026 (third) · API at `059559b`
 
