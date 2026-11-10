@@ -259,7 +259,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `92ab7ee` (API) and `619c322` (admin).
+Staging runs `92ab7ee` (API) and `619c322` (admin). Waiting to go out (API only, no database change):
+
+- **Place search stays in the rider's city:** suggestions come from the city the pickup is in, else the one around
+  the rider's last map pin, else the nearest city. Before, the search box covered every city at once, so a second
+  city far away (Chennai) would have brought in the towns between (Salem, Trichy…) for a Coimbatore rider.
 
 ### 10 Nov 2026 (second) · API at `92ab7ee`
 

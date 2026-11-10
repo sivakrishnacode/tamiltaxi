@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../core/prisma/prisma.service.js';
+import { RedisService } from '../../core/redis/redis.service.js';
 import type { Place } from '../../generated/prisma/client.js';
 import { RideMode, TripStatus } from '../../generated/prisma/enums.js';
+import { parseLastLocation, riderLastPinKey } from '../drivers/last-location.js';
 import { estimateRoute, haversineMeters } from '../fares/fare-engine.js';
 import type { PlaceSuggestion, ResolvedPlace } from '../maps/google-maps.client.js';
 import { GeoService } from '../geo/geo.service.js';
@@ -25,6 +27,7 @@ export class PlacesService {
     private readonly prisma: PrismaService,
     private readonly maps: MapsService,
     private readonly geo: GeoService,
+    private readonly redis: RedisService,
   ) {}
 
   /** Seeded places matching [query] (also the offline fallback). */
@@ -40,14 +43,17 @@ export class PlacesService {
   }
 
   /**
-   * Google Places Autocomplete inside the service area, with each suggestion's road distance from [origin] (the
-   * pickup) when given; falls back to seeded search (ids prefixed "local:", straight-line × 1.3 distance). Under
-   * [AUTOCOMPLETE_MIN_CHARS] characters: no results, no lookup.
+   * Google Places Autocomplete inside one city's service area, with each suggestion's road distance from [origin]
+   * (the pickup) when given; falls back to seeded search (ids prefixed "local:", straight-line × 1.3 distance). The
+   * city is the one [origin] is in, else the one around [userId]'s last map position (the apps send no origin while
+   * the pickup itself is searched), else the nearest ([GeoService.serviceBounds]). Under [AUTOCOMPLETE_MIN_CHARS]
+   * characters: no results, no lookup.
    */
-  async autocomplete(params: { input: string; sessionToken: string; origin?: { lat: number; lng: number }; anywhere?: boolean }): Promise<{ source: 'google' | 'local'; results: PlaceSuggestion[] }> {
+  async autocomplete(params: { input: string; sessionToken: string; origin?: { lat: number; lng: number }; anywhere?: boolean; userId?: string }): Promise<{ source: 'google' | 'local'; results: PlaceSuggestion[] }> {
     if (MapsService.normaliseInput(params.input).length < AUTOCOMPLETE_MIN_CHARS) return { source: this.maps.isGoogleEnabled ? 'google' : 'local', results: [] };
     // Outstation drops are other towns: no service-area restriction, results lean towards the pickup.
-    const restriction = params.anywhere ? null : await this.geo.serviceBounds();
+    const near = params.origin ?? (params.userId ? parseLastLocation(await this.redis.get(riderLastPinKey(params.userId))) : null);
+    const restriction = params.anywhere ? null : await this.geo.serviceBounds(near);
     const google = await this.maps.autocomplete({ input: params.input, sessionToken: params.sessionToken, origin: params.origin, restriction });
     if (google) return { source: 'google', results: google };
     const local = await this.search(params.input);

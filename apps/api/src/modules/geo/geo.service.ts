@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import type { City, CityFareRule, CityModePricing, Zone } from '../../generated/prisma/client.js';
 import { VehicleKind, ZoneKind } from '../../generated/prisma/enums.js';
+import { haversineMeters } from '../fares/fare-engine.js';
 import { DEFAULT_PRICING, effectivePricing, type ModePricing } from '../fares/pricing.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { DemandService } from './demand.service.js';
@@ -39,6 +40,17 @@ export function multiplierFor(info: Pick<PointInfo, 'multiplier' | 'vehicleMulti
 
 const CACHE_MS = 30_000;
 
+/** The city whose centre is nearest [point] (undefined for none). */
+function closest(cities: readonly CityIndex[], point: { lat: number; lng: number }): CityIndex | undefined {
+  let best: CityIndex | undefined;
+  let bestM = Infinity;
+  for (const c of cities) {
+    const m = haversineMeters(point, { lat: c.city.centerLat, lng: c.city.centerLng });
+    if (m < bestM) [best, bestM] = [c, m];
+  }
+  return best;
+}
+
 /**
  * H3-based service areas. Cities and zones are cached in memory (30 s, or until [invalidate]
  * after an admin change) so every fare quote and booking can check them cheaply.
@@ -47,7 +59,8 @@ const CACHE_MS = 30_000;
 export class GeoService {
   /** [hasAnyCity]: any City row at all, active or not (none = a fresh install: everywhere is served). */
   private cache: { at: number; cities: CityIndex[]; hasAnyCity: boolean } | null = null;
-  private bounds: { at: number; value: LatLngBounds | null } | null = null;
+  /** [serviceBounds] per city id ('*': every city), for the city cache taken [at]. */
+  private bounds: { at: number; byCity: Map<string, LatLngBounds | null> } | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -116,17 +129,24 @@ export class GeoService {
   }
 
   /**
-   * The rectangle around every active city's service cells (+ ~1 km), for Places Autocomplete
-   * `locationRestriction`; null while no city has cells (search then leans towards the pickup). Recomputed with the
-   * city cache. No city is built in: every city comes from the database.
+   * The rectangle around one city's service cells (+ ~1 km), for Places Autocomplete `locationRestriction`: the
+   * active city [near] is in, else the one whose centre is closest. One rectangle around every city would take in the
+   * towns between them (Coimbatore and Chennai: most of Tamil Nadu), so that is only for an unknown [near]. Null while
+   * no city has cells (search then leans towards the pickup). Recomputed with the city cache. No city is built in:
+   * every city comes from the database.
    */
-  async serviceBounds(): Promise<LatLngBounds | null> {
-    const cities = await this.cities();
+  async serviceBounds(near?: { lat: number; lng: number } | null): Promise<LatLngBounds | null> {
+    const cities = (await this.cities()).filter((c) => c.city.serviceCells.length > 0);
     const at = this.cache?.at ?? 0;
-    if (this.bounds?.at !== at) {
-      this.bounds = { at, value: cellsBounds(cities.flatMap((c) => c.city.serviceCells)) };
+    if (this.bounds?.at !== at) this.bounds = { at, byCity: new Map() };
+    const city = near ? (cities.find((c) => c.service.has(cellAt(near.lat, near.lng, c.city.h3Resolution))) ?? closest(cities, near)) : undefined;
+    const key = city?.city.id ?? '*';
+    let value = this.bounds.byCity.get(key);
+    if (value === undefined) {
+      value = cellsBounds((city ? [city] : cities).flatMap((c) => c.city.serviceCells));
+      this.bounds.byCity.set(key, value);
     }
-    return this.bounds.value;
+    return value;
   }
 
   /** City-specific fare rates for a vehicle, if configured. */

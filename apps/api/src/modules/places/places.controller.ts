@@ -1,5 +1,7 @@
 import { Controller, Get, Param, ParseFloatPipe, Query } from '@nestjs/common';
 
+import type { AuthUser } from '../../core/auth/auth-user.js';
+import { CurrentUser } from '../../core/auth/current-user.decorator.js';
 import { Public } from '../../core/auth/public.decorator.js';
 import { LIMITS, RateLimit } from '../../core/rate-limit/rate-limit.decorator.js';
 import type { Place } from '../../generated/prisma/client.js';
@@ -38,13 +40,14 @@ export class PlacesController {
   @RateLimit(LIMITS.placesAutocomplete)
   @Get('autocomplete')
   autocomplete(
+    @CurrentUser() user: AuthUser,
     @Query('q') q = '',
     @Query('session') session = '',
     @Query('lat') lat?: string,
     @Query('lng') lng?: string,
     @Query('scope') scope?: string,
   ): Promise<{ source: 'google' | 'local'; results: PlaceSuggestion[] }> {
-    return this.places.autocomplete({ input: q, sessionToken: session || 'anonymous', origin: originOf(lat, lng), anywhere: scope === 'outstation' });
+    return this.places.autocomplete({ input: q, sessionToken: session || 'anonymous', origin: originOf(lat, lng), anywhere: scope === 'outstation', userId: user.userId });
   }
 
   /**
