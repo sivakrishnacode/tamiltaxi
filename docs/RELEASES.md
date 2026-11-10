@@ -268,6 +268,8 @@ Staging runs `92ab7ee` (API) and `619c322` (admin). Waiting to go out (API only,
   drivers whose last GPS fix is more than 15 km (the dispatch reach) beyond the zone; drivers with no known position
   still get them. In a big city, a busy zone in Tambaram no longer pings drivers in Ennore. A Surge now over the
   whole city still tells all its drivers.
+- **Big service areas save:** the API reads request bodies up to 512 KB (was 100 KB), so a city's service area of up
+  to 20,000 hexes can be saved from the admin. Before, a big metro over ~5,600 hexes (about 4,100 km²) failed.
 
 ### 10 Nov 2026 (second) · API at `92ab7ee`
 
