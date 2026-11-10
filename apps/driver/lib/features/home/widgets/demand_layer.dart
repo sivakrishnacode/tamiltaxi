@@ -76,8 +76,8 @@ List<MapZone> zonesFor(DemandMap? map, VehicleKind? vehicle) => [
         if (vehicle == null || z.appliesTo(vehicle)) z,
     ];
 
-/// Polygons for [map]: the service-area edge, each demand hex filled by its level, and inside it the busy nested
-/// hexes shaded by their own share of pickups; on top, the admin zones that matter to a driver of [vehicle], each
+/// Polygons for [map]: the service-area edge, each demand hex filled by its level, replaced when zoomed in by its busy
+/// nested hexes shaded by their own share of pickups; on top, the admin zones that matter to a driver of [vehicle], each
 /// outlined in its kind's colour.
 List<MapPolygon> demandPolygons(DemandMap? map, {VehicleKind? vehicle}) {
   if (map == null) return const [];
@@ -98,6 +98,9 @@ List<MapPolygon> demandPolygons(DemandMap? map, {VehicleKind? vehicle}) {
         strokeWidth: 2,
         zIndex: 1,
         minZoom: kHotspotMinZoom,
+        // Zoomed in, its nested hexes take its place: H3 children sit turned against their parent, so both at once
+        // look jagged.
+        maxZoom: h.nested.isEmpty ? 30 : kNestedMinZoom,
       ),
       for (final n in h.nested)
         MapPolygon(

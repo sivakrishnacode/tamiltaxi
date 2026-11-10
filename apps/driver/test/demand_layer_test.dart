@@ -25,12 +25,12 @@ DemandMap _map() => DemandMap(
     );
 
 void main() {
-  test('zoomed out: only the service area; city zoom: demand hexes; zoomed in: nested hexes too', () {
+  test('zoomed out: only the service area; city zoom: demand hexes; zoomed in: nested hexes in their place', () {
     final polys = demandPolygons(_map());
     int visibleAt(double z) => polys.where((p) => p.visibleAt(z)).length;
     expect(visibleAt(10), 1, reason: 'service area only');
     expect(visibleAt(12), 3, reason: 'service area + 2 demand hexes');
-    expect(visibleAt(14.6), 4, reason: '2 demand hexes + 2 nested hexes (Home default zoom)');
+    expect(visibleAt(14.6), 3, reason: "2 nested hexes + the demand hex that has none (Home default zoom)");
   });
 
   test('busier nested hexes are shaded darker', () {

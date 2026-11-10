@@ -104,7 +104,8 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 
 ### Next release: 0.1.4 (code 6)
 
-Nothing yet.
+- Home map: zoomed in, a busy area's small hexagons replace the big one instead of sitting on top of it, so
+  the demand map is a clean honeycomb (the two outlines no longer cross).
 
 ### 0.1.3 (code 5) · 10 Nov 2026
 
