@@ -227,6 +227,7 @@ npm run prisma:migrate -w @tamiltaxi/api   # new migration (dev)
 npm run prisma:seed -w @tamiltaxi/api      # idempotent seed
 npm run seed:demo-trips -w @tamiltaxi/api  # ~2,000 demo trips (then seed:demo-people)
 npm run seed:test-drivers -w @tamiltaxi/api # 11 approved test drivers to sign into (cab, bike, auto, goods bike, truck, …)
+npm run seed:zones -w @tamiltaxi/api -- chennai  # a city's starting zones from OpenStreetMap (prisma/zones/<city>.ts)
 ```
 
 Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/flutter.sh` passes
@@ -288,3 +289,4 @@ Flutter SDK comes from `$FLUTTER`, `PATH` or `~/development/flutter`. `scripts/f
 | 4 Nov 2026 | Key facts: zones may use finer hexagons than their city (to res 10) |
 | 9 Nov 2026 | API modules: `whatsapp` (WATX client, welcome messages) |
 | 9 Nov 2026 | Rule 1.4: event-driven API (domain events + `@OnEvent` listeners) |
+| 10 Nov 2026 | Commands: `seed:zones` (a city's starting zones from OpenStreetMap) |
