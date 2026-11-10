@@ -259,7 +259,13 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Staging runs `059559b` (API) and `619c322` (admin). Waiting to go out (admin only):
+Nothing yet: staging runs `059559b` (API) and `2a830e6` (admin).
+
+### 10 Nov 2026 (fourth) · admin at `2a830e6`
+
+Release: `staging-2026-11-10.4` at `2a830e6`
+
+Admin only.
 
 - **Zones tab, search and map ↔ list:** a search box over the zone list (part of a name or a kind). Clicking a
   zone's label on the map scrolls the list to it; clicking a zone in the list moves the map to it. The picked zone is
