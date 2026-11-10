@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -181,8 +183,11 @@ class _D13HomeScreenState extends ConsumerState<D13HomeScreen> {
   }
 
   void _goOffline() {
+    final rides = ref.read(driverSessionProvider).todayRides;
     ref.read(driverSessionProvider.notifier).goOffline();
     showTtSnack(context, "You're offline. No new requests.");
+    // After a day's rides, offline (no request can come in under the sheet): a good moment for Play's review sheet.
+    if (rides > 0) unawaited(PlayReview.ask());
   }
 
   Future<void> _resumePlan() async {

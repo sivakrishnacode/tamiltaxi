@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,6 +30,8 @@ class _PP10ParcelDeliveredScreenState extends ConsumerState<PP10ParcelDeliveredS
     if (!mounted) return;
     showTtSnack(context, 'Parcel added to Activity', success: true);
     context.go(Routes.parcel);
+    // A delivered parcel is a good moment for Play's review sheet.
+    if (!widget.showcase) unawaited(PlayReview.ask());
   }
 
   @override

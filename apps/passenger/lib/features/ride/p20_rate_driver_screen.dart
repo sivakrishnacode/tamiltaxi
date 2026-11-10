@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +43,8 @@ class _P20RateDriverScreenState extends ConsumerState<P20RateDriverScreen> {
     if (!mounted) return;
     if (submit) showTtSnack(context, 'Thanks! Your rating helps $driver.', success: true);
     context.go(Routes.ride);
+    // A finished ride is a good moment for Play's review sheet; not after Skip (the rider wants to move on).
+    if (submit && !widget.showcase) unawaited(PlayReview.ask());
   }
 
   @override

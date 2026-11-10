@@ -2,6 +2,7 @@
 // Home → search "Brook" → Brookefields Mall → Book Bike · ₹35 → driver found → arrives →
 // ride starts → arrived → rate → back Home, and the ride is in Activity.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tamiltaxi_data/tamiltaxi_data.dart';
 import 'package:tamiltaxi_passenger/features/ride/p13_driver_assigned_screen.dart';
@@ -37,6 +38,15 @@ Future<void> waitFor(WidgetTester tester, Finder finder, {Duration timeout = con
 
 void main() {
   testWidgets('passenger books a bike ride Gandhipuram → Brookefields through to rating', (tester) async {
+    // Google Play's review sheet (in_app_review), answered as on a phone installed from Play.
+    const play = MethodChannel('dev.britannio.in_app_review');
+    final playCalls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(play, (call) async {
+      playCalls.add(call.method);
+      return call.method == 'isAvailable' ? true : null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(play, null));
+
     final container = await pumpRoute(tester, Routes.ride);
     container.read(demoSettingsProvider.notifier).update((s) => s.copyWith(fastMode: true));
     await advance(tester, const Duration(seconds: 2));
@@ -73,10 +83,12 @@ void main() {
     // P-19 → P-20 → Submit.
     await tester.tap(find.text('Done, rate your ride'));
     await waitFor(tester, find.byType(P20RateDriverScreen));
+    expect(playCalls, isEmpty);
     await tester.tap(find.text('Submit'));
     await advance(tester, const Duration(seconds: 2));
 
     expect(container.read(rideFlowProvider).phase, RidePhase.planning);
+    expect(playCalls, ['isAvailable', 'requestReview'], reason: "Play's review sheet after a rated ride");
     // Repositories use Future.delayed, so pump fake time until the history loads.
     container.listen(tripHistoryProvider, (_, _) {});
     await advance(tester, const Duration(seconds: 2));

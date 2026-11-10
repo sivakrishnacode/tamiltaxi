@@ -38,6 +38,9 @@ pre-releases on GitHub.
   back: about 1 h 50 min), not the next evening, so the first price is for a same-day trip. Tap the return to stay
   longer; the earliest return is the drive both ways. The fare shows the waiting there as its own line, and the notes
   say what waiting costs an hour and that coming back later than chosen is added at the end, the first 30 min free.
+- Google Play's review sheet (stars and an optional review, without leaving the app) may appear after submitting a
+  ride rating or tapping Done on a delivered parcel. Google decides whether it shows: only on installs from Play, and
+  only a few times a year per person. Not after Skip.
 
 ### 0.1.2 (code 3) · 4 Nov 2026
 
@@ -137,6 +140,9 @@ Release: `passenger-v0.1.0+1` at `42008b6`
 - Outstation round trips: the request card says how long the trip is away ("Round trip · 9 h 40 min", days past 24
   hours) instead of "same day", and the fare shows the waiting there and a late return as their own lines. Rate card:
   round trip per km there and back, waiting per hour, allowance per 24 hours (no "km a day").
+- Google Play's review sheet (stars and an optional review, without leaving the app) may appear on going offline
+  after a day with rides, when no request can come in under it. Google decides whether it shows: only on installs from
+  Play, and only a few times a year per person.
 
 ### 0.1.2 (code 4) · 4 Nov 2026
 

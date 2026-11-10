@@ -4,6 +4,7 @@ library;
 export 'package:material_symbols_icons/symbols.dart';
 
 export 'src/format.dart';
+export 'src/play_review.dart';
 export 'src/illustrations/tt_illustration.dart';
 export 'src/theme/tt_colors.dart';
 export 'src/theme/tt_theme.dart';
