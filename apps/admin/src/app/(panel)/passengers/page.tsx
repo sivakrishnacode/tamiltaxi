@@ -17,18 +17,35 @@ export const metadata: Metadata = { title: "Riders" };
 
 export default async function PassengersPage({ searchParams }: PageProps<"/passengers">) {
   const sp = await searchParams;
-  const query = { q: param(sp.q), blocked: param(sp.blocked), women: param(sp.women), sort: param(sp.sort) };
+  const query = { q: param(sp.q), signup: param(sp.signup), blocked: param(sp.blocked), women: param(sp.women), sort: param(sp.sort) };
   const page = parsePage(sp.page);
   const pageSize = parsePageSize(sp.pageSize);
   const data = await adminApi.passengers({ ...query, page, pageSize });
   const isFiltered = !!(query.q || query.blocked || query.women);
+  const total = formatCount(data.total);
+  const description =
+    query.signup === "unfinished"
+      ? `${total} ${isFiltered ? "matching " : ""}unfinished sign-ups: verified their phone but never entered a name or booked a ride.`
+      : query.signup === "deleted"
+        ? `${total} ${isFiltered ? "matching " : ""}deleted accounts. Their personal details are wiped; trips stay for the records.`
+        : `${total} ${isFiltered ? "matching" : "registered"} riders. Open one to see their trips, account and safety contacts.`;
 
   return (
     <>
-      <PageHeader title="Riders" description={`${formatCount(data.total)} ${isFiltered ? "matching" : "registered"} riders. Open one to see their trips, account and safety contacts.`} />
+      <PageHeader title="Riders" description={description} />
       <ListFilters
         searchPlaceholder="Name or phone"
         filters={[
+          {
+            name: "signup",
+            label: "Sign-up",
+            defaultValue: "done",
+            options: [
+              { value: "done", label: "Signed up" },
+              { value: "unfinished", label: "Unfinished sign-ups" },
+              { value: "deleted", label: "Deleted accounts" },
+            ],
+          },
           { name: "blocked", label: "Accounts", options: [{ value: "false", label: "Active" }, { value: "true", label: "Blocked" }] },
           { name: "women", label: "Preferences", options: [{ value: "true", label: "Prefers women drivers" }] },
           {
@@ -48,8 +65,8 @@ export default async function PassengersPage({ searchParams }: PageProps<"/passe
         {data.items.length === 0 ? (
           <EmptyState
             icon={UsersIcon}
-            title={isFiltered ? "No riders match" : "No riders yet"}
-            description={isFiltered ? "Try another name, phone number or filter." : "Riders appear after their first sign-in."}
+            title={isFiltered || query.signup ? "No riders match" : "No riders yet"}
+            description={isFiltered || query.signup ? "Try another name, phone number or filter." : "Riders appear once they finish signing up."}
           />
         ) : (
           <Table>
@@ -75,7 +92,9 @@ export default async function PassengersPage({ searchParams }: PageProps<"/passe
                         <AvatarFallback className="bg-coral-50 text-xs font-semibold text-coral-600">{initials(u.name)}</AvatarFallback>
                       </Avatar>
                       <span className="min-w-0">
-                        <span className="block truncate">{u.name ?? <span className="font-normal text-muted-foreground">No name yet</span>}</span>
+                        <span className="block truncate">
+                          {u.name ?? <span className="font-normal text-muted-foreground">{u.deletedAt ? "Name removed" : "No name yet"}</span>}
+                        </span>
                         <span className="flex flex-wrap gap-1">
                           {u.isBlocked && (
                             <Badge variant="secondary" className="h-4 bg-error-tint px-1.5 text-[10px] text-error">
@@ -114,7 +133,8 @@ export default async function PassengersPage({ searchParams }: PageProps<"/passe
       </Card>
       <p className="mt-3 text-xs text-muted-foreground">
         Open a rider to block them or change their role. Drivers who book rides are listed here too, with only their
-        rides; their driving is under Drivers. Admins are in{" "}
+        rides; their driving is under Drivers. Unfinished sign-ups (no name yet) include driver-app sign-ins that never
+        registered. Admins are in{" "}
         <Link href="/users" className="text-coral-600 hover:underline">
           All accounts
         </Link>

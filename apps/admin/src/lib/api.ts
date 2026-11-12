@@ -180,6 +180,8 @@ export interface ListQuery {
   readonly gender?: string;
   /** Drivers: home city id, or "none". */
   readonly city?: string;
+  /** Riders: done (default) | unfinished (no name yet) | deleted. */
+  readonly signup?: string;
   /** Riders: "true" = prefers women drivers. */
   readonly women?: string;
   /** Trips booked from / before (ISO). */
@@ -203,6 +205,7 @@ function listQuery(q: ListQuery): QueryInput {
     online: q.online,
     gender: q.gender,
     women: q.women,
+    signup: q.signup,
     from: q.from,
     to: q.to,
   };

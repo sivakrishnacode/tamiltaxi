@@ -259,7 +259,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `059559b` (API) and `292f6bf` (admin).
+Staging runs `059559b` (API) and `292f6bf` (admin). Waiting:
+
+- **Riders list without unfinished sign-ups (API + admin):** Riders shows only people who finished signing up (entered
+  their name, or booked a ride). Accounts that verified their phone but never entered a name, and deleted accounts,
+  move behind a new **Sign-up** filter (Signed up · Unfinished sign-ups · Deleted accounts). The Dashboard's Riders
+  count matches. A deleted account's name reads "Name removed" instead of "No name yet".
 
 ### 10 Nov 2026 (fifth) · admin at `292f6bf`
 
