@@ -159,6 +159,36 @@ describe('Tamil Taxi features (e2e)', () => {
       await tripRow({ passengerId: d.userId, kind: 'RIDE', status: 'COMPLETED' });
       expect(await listed()).toBe(true);
     });
+
+    it('keeps unfinished sign-ups and deleted accounts apart from signed-up riders', async () => {
+      const admin = await adminAuth();
+      const rider = await login();
+      const ids = async (query: Record<string, string>): Promise<string[]> =>
+        ((await http.get('/v1/admin/passengers').query({ pageSize: 100, ...query }).set(admin).expect(200)).body.items as { id: string }[]).map((u) => u.id);
+      const signedUp = async (): Promise<number> => (await http.get('/v1/admin/stats').set(admin).expect(200)).body.passengers as number;
+
+      // Phone verified, name never entered: only under "unfinished".
+      expect(await ids({})).not.toContain(rider.userId);
+      expect(await ids({ signup: 'unfinished' })).toContain(rider.userId);
+      const before = await signedUp();
+
+      await http.patch('/v1/me').set(rider.auth).send({ name: 'Meena' }).expect(200);
+      expect(await ids({})).toContain(rider.userId);
+      expect(await ids({ signup: 'unfinished' })).not.toContain(rider.userId);
+      expect(await signedUp()).toBe(before + 1);
+
+      await http.delete('/v1/me').set(rider.auth).expect(204);
+      expect(await ids({})).not.toContain(rider.userId);
+      expect(await ids({ signup: 'deleted' })).toContain(rider.userId);
+      expect(await signedUp()).toBe(before);
+      await http.get('/v1/admin/passengers').query({ signup: 'bogus' }).set(admin).expect(400);
+
+      // Never named but has booked (an older app): still a rider, never hidden as unfinished.
+      const booked = await login();
+      await tripRow({ passengerId: booked.userId, kind: 'RIDE', status: 'COMPLETED' });
+      expect(await ids({})).toContain(booked.userId);
+      expect(await ids({ signup: 'unfinished' })).not.toContain(booked.userId);
+    });
   });
 
   describe('WhatsApp welcome messages', () => {

@@ -17,7 +17,7 @@ import { istToday, parseDay } from '../kyc/document-expiry.js';
 import { type CancelRateStats, DriverBlocksService } from '../trips/driver-blocks.service.js';
 import { DriverStatusSync } from './driver-status-sync.service.js';
 import { driverLastFixKey, type LastLocation, parseLastLocation } from '../drivers/last-location.js';
-import { driverOrder, driverSearch, flag, passengerOrder, tripOrder, userSearch } from './list-filters.js';
+import { driverOrder, driverSearch, flag, passengerOrder, riderSignup, tripOrder, userSearch } from './list-filters.js';
 
 /** What the drivers list shows (no UPI id, no booking prefs, latest plan only). */
 const DRIVER_LIST_SELECT = {
@@ -224,7 +224,7 @@ export class AdminService {
       OR: [{ role: Role.PASSENGER }, { role: Role.DRIVER, trips: { some: {} } }],
       isBlocked: flag(q.blocked),
       preferWomenDriver: q.women === 'true' ? true : undefined,
-      AND: userSearch(q.q),
+      AND: [riderSignup(q.signup), userSearch(q.q) ?? {}],
     };
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({ where, skip, take, orderBy: passengerOrder(q.sort), include: { _count: { select: { trips: true } } } }),

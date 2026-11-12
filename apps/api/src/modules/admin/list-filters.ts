@@ -7,6 +7,13 @@ export const TRIP_SORTS = ['newest', 'oldest', 'fare'] as const;
 export const LIST_SORTS = [...new Set([...DRIVER_SORTS, ...PASSENGER_SORTS, ...TRIP_SORTS])];
 
 /**
+ * Riders list `?signup=`: done (default) = named or has booked, not deleted; unfinished = verified their phone but
+ * never entered a name nor booked (the account is made at OTP sign-in, before P-05; also driver-app sign-ins that never
+ * registered); deleted.
+ */
+export const RIDER_SIGNUPS = ['done', 'unfinished', 'deleted'] as const;
+
+/**
  * The digits of a search that looks like a phone number ("+91 98765 43210" → "9876543210", "98765" → "98765"), so it
  * matches the stored "+919876543210" whatever spaces or prefix the admin typed. Null below 4 digits or when the text
  * has letters (a name or a plate).
@@ -72,6 +79,17 @@ export function driverOrder(sort: string | undefined): Prisma.DriverOrderByWithR
       return [{ user: { name: 'asc' } }];
     default:
       return [{ createdAt: 'desc' }];
+  }
+}
+
+export function riderSignup(value: string | undefined): Prisma.UserWhereInput {
+  switch (value) {
+    case 'unfinished':
+      return { deletedAt: null, name: null, trips: { none: {} } };
+    case 'deleted':
+      return { deletedAt: { not: null } };
+    default:
+      return { deletedAt: null, OR: [{ name: { not: null } }, { trips: { some: {} } }] };
   }
 }
 

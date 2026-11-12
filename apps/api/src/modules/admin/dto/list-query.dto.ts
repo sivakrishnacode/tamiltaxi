@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import { IsDateString, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 import { Gender, VehicleKind } from '../../../generated/prisma/enums.js';
-import { LIST_SORTS } from '../list-filters.js';
+import { LIST_SORTS, RIDER_SIGNUPS } from '../list-filters.js';
 
 /** Common list query: ?page=1&pageSize=20&q=…&status=… */
 export class ListQueryDto {
@@ -78,7 +78,12 @@ export class ListQueryDto {
   @IsEnum(Gender)
   gender?: Gender;
 
-  /** Riders: "true" = prefers women drivers. */
+  /** Riders: done (default) | unfinished (no name yet) | deleted. */
+  @IsOptional()
+  @IsIn(RIDER_SIGNUPS)
+  signup?: string;
+
+    /** Riders: "true" = prefers women drivers. */
   @IsOptional()
   @IsIn(['true'])
   women?: string;

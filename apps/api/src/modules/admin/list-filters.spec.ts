@@ -1,4 +1,4 @@
-import { driverOrder, flag, phoneDigits, spacedPlate } from './list-filters.js';
+import { driverOrder, flag, phoneDigits, riderSignup, spacedPlate } from './list-filters.js';
 
 describe('admin list filters', () => {
   it('reads phone searches whatever the spacing or prefix', () => {
@@ -25,5 +25,13 @@ describe('admin list filters', () => {
     expect(flag('true')).toBe(true);
     expect(flag('false')).toBe(false);
     expect(flag('yes')).toBeUndefined();
+  });
+
+  it('lists signed-up riders by default, unfinished sign-ups and deleted accounts on request', () => {
+    const done = { deletedAt: null, OR: [{ name: { not: null } }, { trips: { some: {} } }] };
+    expect(riderSignup(undefined)).toEqual(done);
+    expect(riderSignup('done')).toEqual(done);
+    expect(riderSignup('unfinished')).toEqual({ deletedAt: null, name: null, trips: { none: {} } });
+    expect(riderSignup('deleted')).toEqual({ deletedAt: { not: null } });
   });
 });

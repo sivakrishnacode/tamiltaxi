@@ -4,6 +4,7 @@ import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { DriverStatus, Role, SubscriptionStatus, TicketStatus, TripStatus } from '../../generated/prisma/enums.js';
 import { AdminMissedService } from './admin-missed.service.js';
 import type { AdminStats } from './admin.types.js';
+import { riderSignup } from './list-filters.js';
 
 const ACTIVE_TRIP: TripStatus[] = [
   TripStatus.SEARCHING,
@@ -33,7 +34,8 @@ export class AdminStatsService {
     const [online, passengers, tripsToday, activeTrips, completedToday, cancelledToday, missedToday, fares, paid, activeSubs, trialSubs, openTickets] =
       await Promise.all([
         this.prisma.driver.count({ where: { isOnline: true } }),
-        this.prisma.user.count({ where: { role: Role.PASSENGER } }),
+        // Signed-up riders, as on the Riders page: not deleted, and past the name step.
+        this.prisma.user.count({ where: { role: Role.PASSENGER, ...riderSignup('done') } }),
         this.prisma.trip.count({ where: { createdAt: { gte: today } } }),
         this.prisma.trip.count({ where: { status: { in: ACTIVE_TRIP } } }),
         this.prisma.trip.count({ where: { createdAt: { gte: today }, status: { in: [TripStatus.COMPLETED, TripStatus.DELIVERED] } } }),

@@ -282,6 +282,9 @@ Issue: #12 · Labels: plan, api, admin
   by default, a surge zone with no vehicles picked still covers them)
 - [ ] API errors: a body the parser rejects (malformed JSON, over 512 KB) comes back as a 500 and is logged as a
   server error; return its own 400 / 413 (the parser's errors carry `status`)
+- [ ] Unfinished sign-ups (phone verified, no name, no trips; admin Riders › Sign-up filter): decide whether to
+  delete them after about 30 days (less personal data kept; a returning person simply signs up again), or to create
+  the account only once the name is entered (both apps and an API that still serves the installed versions)
 
 ### Cab and 3-wheeler fares next to the government auto fare
 
