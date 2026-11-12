@@ -259,7 +259,12 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Nothing yet: staging runs `b897034` (API and admin).
+Staging runs `b897034` (API and admin). Waiting:
+
+- **Picture sizes in the admin (admin):** Engage › In-app shows the size to make beside Splash screen (1080 × 2400 px)
+  and Home banners (1200 × 600 px). "New picture" says "Make it …", marks where the app's × sits on a banner preview,
+  and checks the chosen file: "the right size", or a warning when another shape will be cut or a small picture may
+  look blurry.
 
 ### 12 Nov 2026 · API and admin at `b897034`
 

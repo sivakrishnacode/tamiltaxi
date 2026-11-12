@@ -8,11 +8,41 @@ export const PROMO_PLACEMENTS: readonly PromoPlacement[] = ["SPLASH", "BANNER"];
 
 export const PLACEMENT_LABEL: Record<PromoPlacement, string> = { SPLASH: "Splash screen", BANNER: "Home banner" };
 
-/** The picture size to make, shown in the dialog. */
-export const PLACEMENT_HINT: Record<PromoPlacement, string> = {
-  SPLASH: "Portrait, 1080 × 2400 px. Phones crop the edges, so keep words and faces in the middle.",
-  BANNER: "Wide, 1200 × 600 px (2 : 1).",
+/** The picture size to make for each place: the app shows pictures in this shape. */
+export const PLACEMENT_SIZE: Record<PromoPlacement, { readonly width: number; readonly height: number; readonly ratio: string }> = {
+  SPLASH: { width: 1080, height: 2400, ratio: "9 : 20" },
+  BANNER: { width: 1200, height: 600, ratio: "2 : 1" },
 };
+
+/** How the picture shows in the app, under its size in the dialog and on the In-app page. */
+export const PLACEMENT_HINT: Record<PromoPlacement, string> = {
+  SPLASH: "Full screen, portrait. Phones crop the edges, so keep words and faces in the middle.",
+  BANNER: "Shown whole on Home, about 90% of the phone's width when there are several. Keep words away from the top-right corner, where the small × sits.",
+};
+
+/** "1200 × 600 px (2 : 1)" for a place. */
+export function placementSize(placement: PromoPlacement): string {
+  const { width, height, ratio } = PLACEMENT_SIZE[placement];
+  return `${width} × ${height} px (${ratio})`;
+}
+
+/**
+ * Whether a chosen picture of [width] × [height] px fits [placement]: "ok", or "warn" with what the app will do. A
+ * picture of another shape is cut to fit (cover); a smaller one is stretched and may look blurry. Never blocks an upload.
+ */
+export function pictureSizeCheck(placement: PromoPlacement, width: number, height: number): { tone: "ok" | "warn"; text: string } {
+  const want = PLACEMENT_SIZE[placement];
+  const size = `${width} × ${height} px`;
+  const shape = width / height / (want.width / want.height);
+  if (Math.abs(shape - 1) > 0.02) {
+    const cut = shape > 1 ? "the left and right edges" : "the top and bottom";
+    return { tone: "warn", text: `${size} isn't ${want.ratio}: the app cuts off ${cut} (the preview shows what stays). Make it ${placementSize(placement)}.` };
+  }
+  if (width < want.width * 0.9) {
+    return { tone: "warn", text: `${size} is the right shape but small, so it may look blurry. Make it ${want.width} × ${want.height} px.` };
+  }
+  return { tone: "ok", text: `${size}: the right size.` };
+}
 
 export type PromoStatus = "Live" | "Scheduled" | "Ended" | "Hidden";
 

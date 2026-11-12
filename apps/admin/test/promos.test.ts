@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { promoInputError, promoStatus, type PromoInput } from "@/lib/promos";
+import { pictureSizeCheck, placementSize, promoInputError, promoStatus, type PromoInput } from "@/lib/promos";
 
 const NOW = new Date("2026-10-20T06:00:00Z").getTime();
 const ok: PromoInput = {
@@ -44,5 +44,22 @@ describe("promoStatus", () => {
     expect(promoStatus({ isActive: true, startsAt: at(5), endsAt: null }, NOW)).toBe("Scheduled");
     expect(promoStatus({ isActive: false, startsAt: at(-1), endsAt: null }, NOW)).toBe("Hidden");
     expect(promoStatus({ isActive: true, startsAt: at(-5), endsAt: at(-1) }, NOW)).toBe("Ended");
+  });
+});
+
+describe("pictureSizeCheck", () => {
+  it("passes the size each place shows best at, and larger pictures of that shape", () => {
+    expect(placementSize("BANNER")).toBe("1200 × 600 px (2 : 1)");
+    expect(pictureSizeCheck("BANNER", 1200, 600)).toEqual({ tone: "ok", text: "1200 × 600 px: the right size." });
+    expect(pictureSizeCheck("BANNER", 2400, 1200).tone).toBe("ok");
+    expect(pictureSizeCheck("BANNER", 1200, 605).tone).toBe("ok");
+    expect(pictureSizeCheck("SPLASH", 1080, 2400).tone).toBe("ok");
+  });
+
+  it("says what the app cuts off from another shape, and warns about small pictures", () => {
+    expect(pictureSizeCheck("BANNER", 1080, 1080).text).toMatch(/isn't 2 : 1: the app cuts off the top and bottom.*1200 × 600 px/);
+    expect(pictureSizeCheck("BANNER", 1500, 500).text).toMatch(/left and right edges/);
+    expect(pictureSizeCheck("SPLASH", 1080, 1920).text).toMatch(/isn't 9 : 20: the app cuts off the left and right edges/);
+    expect(pictureSizeCheck("BANNER", 800, 400)).toEqual({ tone: "warn", text: "800 × 400 px is the right shape but small, so it may look blurry. Make it 1200 × 600 px." });
   });
 });

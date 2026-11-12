@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
+import { CircleCheckIcon, Loader2Icon, PlusIcon, Trash2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -18,7 +18,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { PLACEMENT_HINT, PLACEMENT_LABEL, PROMO_IMAGE_TYPES, PROMO_PLACEMENTS, promoInputError } from "@/lib/promos";
+import {
+  PLACEMENT_HINT,
+  PLACEMENT_LABEL,
+  PROMO_IMAGE_TYPES,
+  PROMO_PLACEMENTS,
+  pictureSizeCheck,
+  placementSize,
+  promoInputError,
+} from "@/lib/promos";
 import type { PromoPlacement } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +43,8 @@ export function NewPromoButton({ nextOrder }: { nextOrder: number }) {
   const [title, setTitle] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  /** The chosen picture's size in pixels, read from its preview URL. */
+  const [dims, setDims] = useState<{ url: string; width: number; height: number } | null>(null);
   const [linkUrl, setLinkUrl] = useState("");
   const [sortOrder, setSortOrder] = useState(String(nextOrder));
   const [startsAt, setStartsAt] = useState("");
@@ -44,12 +54,18 @@ export function NewPromoButton({ nextOrder }: { nextOrder: number }) {
   const input = { placement, title, image, linkUrl, sortOrder, startsAt: toIso(startsAt), endsAt: toIso(endsAt) };
   // Shown only once the form is filled in: an empty form isn't an error yet.
   const error = title.trim() && image ? promoInputError(input) : null;
+  const sizeCheck = dims && dims.url === preview ? pictureSizeCheck(placement, dims.width, dims.height) : null;
 
   /** The chosen file and its preview; the previous preview's object URL is released. */
   function chooseImage(file: File | null) {
     if (preview) URL.revokeObjectURL(preview);
     setImage(file);
-    setPreview(file ? URL.createObjectURL(file) : null);
+    const url = file ? URL.createObjectURL(file) : null;
+    setPreview(url);
+    if (!url) return;
+    const img = new window.Image();
+    img.onload = () => setDims({ url, width: img.naturalWidth, height: img.naturalHeight });
+    img.src = url;
   }
 
   function reset() {
@@ -124,17 +140,39 @@ export function NewPromoButton({ nextOrder }: { nextOrder: number }) {
                 accept={PROMO_IMAGE_TYPES.join(",")}
                 onChange={(e) => chooseImage(e.target.files?.[0] ?? null)}
               />
-              <p className="text-xs text-muted-foreground">{PLACEMENT_HINT[placement]} JPG, PNG or WebP, up to 2 MB.</p>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-navy-900">Make it {placementSize(placement)}.</span> {PLACEMENT_HINT[placement]} JPG,
+                PNG or WebP, up to 2 MB.
+              </p>
               {preview && (
-                // eslint-disable-next-line @next/next/no-img-element -- a local preview (object URL) of the chosen file
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className={cn(
-                    "rounded-lg border bg-muted object-cover",
-                    isBanner ? "aspect-[2/1] w-full" : "aspect-[9/20] w-32",
+                <div className={cn("relative", isBanner ? "w-full" : "w-32")}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a local preview (object URL) of the chosen file */}
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className={cn("w-full rounded-lg border bg-muted object-cover", isBanner ? "aspect-[2/1]" : "aspect-[9/20]")}
+                  />
+                  {isBanner && (
+                    // Where the app's close button sits, so words can be kept clear of it.
+                    <span
+                      className="absolute top-[3.6%] right-[1.8%] flex aspect-square w-[6%] items-center justify-center rounded-full bg-black/35 text-white"
+                      title="The app's close button sits here"
+                      aria-hidden
+                    >
+                      <XIcon className="size-3/5" />
+                    </span>
                   )}
-                />
+                </div>
+              )}
+              {sizeCheck && (
+                <p className={cn("flex items-start gap-1.5 text-xs", sizeCheck.tone === "ok" ? "text-success" : "text-warning")}>
+                  {sizeCheck.tone === "ok" ? (
+                    <CircleCheckIcon className="mt-px size-3.5 shrink-0" aria-hidden />
+                  ) : (
+                    <TriangleAlertIcon className="mt-px size-3.5 shrink-0" aria-hidden />
+                  )}
+                  {sizeCheck.text}
+                </p>
               )}
             </div>
             <div className="grid gap-2">

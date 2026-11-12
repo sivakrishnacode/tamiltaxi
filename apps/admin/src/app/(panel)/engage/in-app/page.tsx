@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { adminApi } from "@/lib/api";
 import { announcementStatus } from "@/lib/engage";
 import { formatDateTime } from "@/lib/format";
-import { promoStatus, type PromoStatus } from "@/lib/promos";
+import { placementSize, promoStatus, type PromoStatus } from "@/lib/promos";
 import type { Promo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,24 @@ const STATUS_CLASS: Record<PromoStatus, string> = {
   Ended: "",
 };
 
-function Section({ id, icon: Icon, title, where, description, children }: { id: string; icon: LucideIcon; title: string; where: string; description: string; children: React.ReactNode }) {
+function Section({
+  id,
+  icon: Icon,
+  title,
+  where,
+  size,
+  description,
+  children,
+}: {
+  id: string;
+  icon: LucideIcon;
+  title: string;
+  where: string;
+  /** The picture size to make, e.g. "1200 × 600 px (2 : 1)". */
+  size?: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
     <section aria-labelledby={id} className="grid gap-3">
       <div className="flex items-start gap-2.5">
@@ -38,6 +55,11 @@ function Section({ id, icon: Icon, title, where, description, children }: { id: 
             <Badge variant="outline" className="font-sans font-normal">
               {where}
             </Badge>
+            {size && (
+              <Badge variant="secondary" className="font-sans font-normal">
+                Picture {size}
+              </Badge>
+            )}
           </h2>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
@@ -157,6 +179,7 @@ export default async function InAppPage() {
           icon={SmartphoneIcon}
           title="Splash screen"
           where="Rider app"
+          size={placementSize("SPLASH")}
           description="Full screen for 2 seconds as the app opens, for festivals and offers. The newest live one shows. Phones download it in the background, so it appears from the next launch; one starting within 3 days is fetched early."
         >
           {splashes.length === 0 ? (
@@ -173,7 +196,8 @@ export default async function InAppPage() {
           icon={GalleryHorizontalIcon}
           title="Home banners"
           where="Rider app"
-          description="Riders swipe through the live ones on Home, under “More ways to travel”, lowest order first. Its × hides one until the app restarts; a tap opens its link."
+          size={placementSize("BANNER")}
+          description="Riders swipe through the live ones on Home, under “More ways to travel”, lowest order first; with several, the next one peeks in at the edge. Its small × (top right) hides one until the app restarts; a tap opens its link."
         >
           {banners.length === 0 ? (
             <Card>
