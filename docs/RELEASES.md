@@ -259,7 +259,11 @@ deploys (26–29 Sep 2026: first start, Didit and HTTPS, the first 28 Sep deploy
 
 ### Next deploy
 
-Staging runs `059559b` (API) and `292f6bf` (admin). Waiting:
+Nothing yet: staging runs `b897034` (API and admin).
+
+### 12 Nov 2026 · API and admin at `b897034`
+
+Release: `staging-2026-11-12` at `b897034`
 
 - **Riders list without unfinished sign-ups (API + admin):** Riders shows only people who finished signing up (entered
   their name, or booked a ride). Accounts that verified their phone but never entered a name, and deleted accounts,
