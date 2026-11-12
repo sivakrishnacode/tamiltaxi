@@ -35,6 +35,10 @@ Future<ProviderContainer> _pump(WidgetTester tester, List<Promo> banners) async 
   return container;
 }
 
+/// Where banner [id]'s picture is drawn (it fills its card).
+Rect _picture(WidgetTester tester, String id) => tester.getRect(find.byWidgetPredicate(
+    (w) => w is Image && w.image is NetworkImage && (w.image as NetworkImage).url.contains('/$id/')));
+
 /// The page dots: one per banner, or none for a single one.
 Finder get _dots => find.descendant(of: find.byType(Row), matching: find.byType(AnimatedContainer));
 
@@ -55,6 +59,26 @@ void main() {
     await tester.pump();
     expect(find.bySemanticsLabel('Banner a'), findsOneWidget);
     expect(_dots, findsNWidgets(2));
+  });
+
+  testWidgets('several banners: each is 90% wide and 2 : 1, the next one peeks in; one banner: full width',
+      (tester) async {
+    final container = await _pump(tester, [_banner('a'), _banner('b')]);
+    final row = tester.getRect(find.byType(PageView));
+    final a = _picture(tester, 'a');
+    final b = _picture(tester, 'b');
+    expect(a.left, closeTo(row.left + 4, 0.5), reason: 'lines up with the content above');
+    expect(a.width, closeTo(row.width * 0.9 - 8, 0.5));
+    expect(a.height, closeTo(a.width / 2, 0.5));
+    expect(b.left - a.right, closeTo(8, 0.5));
+    expect(b.left, lessThan(row.right), reason: 'the start of the next banner shows');
+
+    container.read(closedBannersProvider.notifier).close('b');
+    await tester.pump();
+    expect(find.byType(PageView), findsNothing);
+    final single = _picture(tester, 'a');
+    expect(single.width, closeTo(row.width - 4, 0.5));
+    expect(single.height, closeTo(single.width / 2, 0.5));
   });
 
   testWidgets('no banners: nothing on Home at all', (tester) async {

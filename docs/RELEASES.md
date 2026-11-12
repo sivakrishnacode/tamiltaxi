@@ -41,6 +41,9 @@ pre-releases on GitHub.
 - Google Play's review sheet (stars and an optional review, without leaving the app) may appear after submitting a
   ride rating or tapping Done on a delivered parcel. Google decides whether it shows: only on installs from Play, and
   only a few times a year per person. Not after Skip.
+- Home banners: with two or more, each banner is a little narrower (90% of the width) and shorter, and the start of the
+  next one shows at the edge, so riders can see there is more to swipe. A single banner stays full width. The × that
+  closes a banner is smaller and lighter.
 
 ### 0.1.2 (code 3) · 4 Nov 2026
 

@@ -14,8 +14,10 @@ class ClosedBanners extends Notifier<Set<String>> {
   void close(String id) => state = {...state, id};
 }
 
-/// Home banners (6j): the admin's pictures under "More ways to travel", swiped through like Rapido's. × hides one
-/// until the app restarts; a tap opens its link in the browser. Nothing at all while there are none.
+/// Home banners (6j): the admin's pictures under "More ways to travel", swiped through like Rapido's. With two or
+/// more, each is [_pageFraction] of the width, so the start of the next one peeks in at the edge; a single banner
+/// takes the full width. Pictures keep their 2 : 1 shape (the admin's 1200 × 600). × hides one until the app
+/// restarts; a tap opens its link in the browser. Nothing at all while there are none.
 class HomeBanners extends ConsumerStatefulWidget {
   const HomeBanners({super.key});
 
@@ -23,8 +25,14 @@ class HomeBanners extends ConsumerStatefulWidget {
   ConsumerState<HomeBanners> createState() => _HomeBannersState();
 }
 
+/// The width of one banner page when there are several; the rest shows the next banner.
+const _pageFraction = 0.9;
+
+/// Space between two banners in the row.
+const _gap = 8.0;
+
 class _HomeBannersState extends ConsumerState<HomeBanners> {
-  final _pages = PageController();
+  final _pages = PageController(viewportFraction: _pageFraction);
   int _page = 0;
 
   @override
@@ -45,18 +53,29 @@ class _HomeBannersState extends ConsumerState<HomeBanners> {
       padding: const EdgeInsets.only(top: TtSpacing.l),
       child: Column(
         children: [
-          AspectRatio(
-            aspectRatio: 2,
-            child: PageView.builder(
-              controller: _pages,
-              itemCount: shown.length,
-              onPageChanged: (i) => setState(() => _page = i),
-              itemBuilder: (context, i) => _BannerCard(
-                banner: shown[i],
-                onClose: () => ref.read(closedBannersProvider.notifier).close(shown[i].id),
+          if (shown.length == 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: AspectRatio(aspectRatio: 2, child: _card(shown.single)),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) => SizedBox(
+                // A page is _pageFraction of the width, less the gap: the picture inside stays 2 : 1.
+                height: (constraints.maxWidth * _pageFraction - _gap) / 2,
+                child: PageView.builder(
+                  controller: _pages,
+                  // The first banner lines up with the content above; the last ends at the right edge.
+                  padEnds: false,
+                  itemCount: shown.length,
+                  onPageChanged: (i) => setState(() => _page = i),
+                  itemBuilder: (context, i) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: _gap / 2),
+                    child: _card(shown[i]),
+                  ),
+                ),
               ),
             ),
-          ),
           if (shown.length > 1) ...[
             const SizedBox(height: TtSpacing.s),
             Row(
@@ -80,6 +99,9 @@ class _HomeBannersState extends ConsumerState<HomeBanners> {
       ),
     );
   }
+
+  Widget _card(Promo banner) =>
+      _BannerCard(banner: banner, onClose: () => ref.read(closedBannersProvider.notifier).close(banner.id));
 }
 
 class _BannerCard extends StatelessWidget {
@@ -91,53 +113,49 @@ class _BannerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final link = banner.linkUrl;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: ClipRRect(
-        borderRadius: TtRadii.cardRadius,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            const ColoredBox(color: TtColors.inputBg),
-            Semantics(
-              image: true,
-              button: link != null,
-              label: banner.title,
-              child: Image.network(
-                banner.imageUrl,
-                fit: BoxFit.cover,
-                excludeFromSemantics: true,
-                frameBuilder: (context, child, frame, sync) => AnimatedOpacity(
-                  opacity: sync || frame != null ? 1 : 0,
-                  duration: const Duration(milliseconds: 250),
-                  child: child,
-                ),
-                errorBuilder: (context, error, stack) => const SizedBox.shrink(),
+    return ClipRRect(
+      borderRadius: TtRadii.cardRadius,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: TtColors.inputBg),
+          Semantics(
+            image: true,
+            button: link != null,
+            label: banner.title,
+            child: Image.network(
+              banner.imageUrl,
+              fit: BoxFit.cover,
+              excludeFromSemantics: true,
+              frameBuilder: (context, child, frame, sync) => AnimatedOpacity(
+                opacity: sync || frame != null ? 1 : 0,
+                duration: const Duration(milliseconds: 250),
+                child: child,
+              ),
+              errorBuilder: (context, error, stack) => const SizedBox.shrink(),
+            ),
+          ),
+          if (link != null)
+            Material(
+              type: MaterialType.transparency,
+              child: InkWell(onTap: () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication)),
+            ),
+          // A small, quiet × 6 dp from the corner; the button around it keeps a full-size tap area.
+          Positioned(
+            top: -8,
+            right: -8,
+            child: IconButton(
+              tooltip: 'Close banner',
+              onPressed: onClose,
+              icon: Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(color: Color(0x59000000), shape: BoxShape.circle),
+                child: const Icon(Symbols.close_rounded, size: 13, color: Colors.white),
               ),
             ),
-            if (link != null)
-              Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  onTap: () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
-                ),
-              ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                tooltip: 'Close banner',
-                onPressed: onClose,
-                icon: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: const BoxDecoration(color: Color(0x8C000000), shape: BoxShape.circle),
-                  child: const Icon(Symbols.close_rounded, size: 16, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
